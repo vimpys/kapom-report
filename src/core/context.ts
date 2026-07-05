@@ -34,6 +34,11 @@ export interface RenderContext {
   /** engine จัดการ page-break — block เรียกเพื่อ advance y */
   readonly advanceY: (amount: number) => void;
   readonly ensureSpace: (requiredHeight: number) => void;
+  /**
+   * สำหรับ block ที่วาดข้ามหน้าด้วยตัวเอง (เช่น AutoTable) — แจ้ง engine
+   * ว่า doc ไปจบที่หน้า/ตำแหน่งไหน; pageIndex เป็น 0-based ถอยหลังไม่ได้
+   */
+  readonly syncCursor: (pageIndex: number, y: number) => void;
 }
 
 /**

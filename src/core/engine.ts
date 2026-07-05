@@ -85,6 +85,9 @@ export class RenderEngine {
       ensureSpace: (requiredHeight) => {
         this.cursor.ensureSpace(requiredHeight);
       },
+      syncCursor: (pageIndex, y) => {
+        this.cursor.syncTo(pageIndex, y);
+      },
     };
   }
 }

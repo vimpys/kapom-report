@@ -138,6 +138,29 @@ describe('PdfCursor — ensureSpace / page-break', () => {
     expect(() => cursor.ensureSpace(Number.NaN)).toThrow(KapomLayoutError);
   });
 
+  it('syncTo: ตาม doc ที่ block วาดข้ามหน้าเอง — ไม่ fire onPageBreak', () => {
+    const onPageBreak = vi.fn();
+    const cursor = makeCursor(onPageBreak);
+
+    cursor.syncTo(2, 150);
+
+    expect(cursor.pageIndex).toBe(2);
+    expect(cursor.y).toBe(150);
+    expect(cursor.x).toBe(15);
+    expect(onPageBreak).not.toHaveBeenCalled();
+  });
+
+  it('syncTo: หน้าเดิมได้ แต่ถอยหลัง/ค่าไม่ valid → throw', () => {
+    const cursor = makeCursor();
+    cursor.syncTo(1, 100);
+
+    expect(() => cursor.syncTo(1, 120)).not.toThrow();
+    expect(() => cursor.syncTo(0, 50)).toThrow(KapomLayoutError);
+    expect(() => cursor.syncTo(1.5, 50)).toThrow(KapomLayoutError);
+    expect(() => cursor.syncTo(2, Number.NaN)).toThrow(KapomLayoutError);
+    expect(() => cursor.syncTo(2, -5)).toThrow(KapomLayoutError);
+  });
+
   it('break ต่อเนื่องหลายหน้า → pageIndex นับสะสม, callback ได้ index ใหม่ทุกครั้ง', () => {
     const indices: number[] = [];
     const cursor = makeCursor((i) => indices.push(i));

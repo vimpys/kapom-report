@@ -5,10 +5,11 @@ import { TextBlock } from './text-block';
 import { SpacerBlock } from './spacer-block';
 import { DividerBlock } from './divider-block';
 import { ImageBlock } from './image-block';
+import { TableBlock } from './table-block';
 
 /**
  * แปลง ReportNode หนึ่ง node เป็น MeasurableBlock ที่ render ได้
- * ยังไม่รองรับ table/group/raw/stack/section — ดู roadmap ใน CLAUDE.md (ขั้น 2c เป็นต้นไป)
+ * ยังไม่รองรับ group/raw/stack/section — ดู roadmap ใน CLAUDE.md (ขั้น 3 เป็นต้นไป)
  */
 export function createBlock<T>(node: ReportNode<T>): MeasurableBlock {
   switch (node.type) {
@@ -20,6 +21,8 @@ export function createBlock<T>(node: ReportNode<T>): MeasurableBlock {
       return new DividerBlock(node);
     case 'image':
       return new ImageBlock(node);
+    case 'table':
+      return new TableBlock(node);
     default:
       throw new KapomError(
         `Block type '${node.type}' ยังไม่รองรับ (ดู roadmap ใน CLAUDE.md)`,

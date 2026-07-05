@@ -67,4 +67,11 @@ export {
   DividerBlock,
 } from './blocks/divider-block';
 export { ImageBlock } from './blocks/image-block';
+export { TableBlock } from './blocks/table-block';
 export { createBlock } from './blocks/create-block';
+
+export { DEFAULT_NUMBER_FORMAT, formatNumber, getNumberFormatter } from './format/number-format';
+
+export type { ResolvedTableContent } from './table/column-resolver';
+export { resolveTableContent, DEFAULT_SUMMARY_LABEL } from './table/column-resolver';
+export { computeAggregate, asDecimalish } from './table/aggregate';

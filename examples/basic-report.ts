@@ -1,5 +1,5 @@
 /**
- * Demo — สร้าง PDF จริงด้วย RenderEngine + Text/Spacer/Divider/Image blocks
+ * Demo — สร้าง PDF จริงด้วย RenderEngine + Text/Spacer/Divider/Image/Table blocks
  * รัน: npm run demo
  * ผลลัพธ์: examples/output/basic-report.pdf
  */
@@ -7,7 +7,54 @@ import { jsPDF } from 'jspdf';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { RenderEngine, createBlock } from '../src/index';
+import { RenderEngine, createBlock, nativeNumeric } from '../src/index';
+import type { TableNode } from '../src/index';
+
+interface Sale {
+  product: string;
+  qty: number;
+  /** string ตาม DECIMAL จาก DB — ระบบรับ Decimalish ตรงๆ */
+  price: string;
+}
+
+const sales: Sale[] = Array.from({ length: 45 }, (_, i) => ({
+  product: `Product ${String.fromCharCode(65 + (i % 26))}${i + 1}`,
+  qty: (i % 7) + 1,
+  price: `${(i % 90) + 10}.${String(i % 100).padStart(2, '0')}`,
+}));
+
+const salesTable: TableNode<Sale> = {
+  type: 'table',
+  columns: [
+    { type: 'rowNumber', header: '#', align: 'right', width: 12 },
+    { type: 'data', key: 'product', header: 'Product' },
+    { type: 'data', key: 'qty', header: 'Qty', align: 'right', aggregate: 'sum' },
+    {
+      type: 'data',
+      key: 'price',
+      header: 'Unit Price',
+      align: 'right',
+      headerAlign: 'center',
+      numberFormat: {},
+      aggregate: 'avg',
+    },
+    {
+      type: 'computed',
+      header: 'Amount',
+      align: 'right',
+      compute: (row) => nativeNumeric.multiply(row.qty, row.price),
+      aggregate: 'sum',
+    },
+    {
+      type: 'runningTotal',
+      header: 'Running',
+      align: 'right',
+      valueOf: (row) => nativeNumeric.multiply(row.qty, row.price),
+    },
+  ],
+  data: sales,
+  summaryLabel: 'Total',
+};
 
 const here = dirname(fileURLToPath(import.meta.url));
 const outDir = join(here, 'output');
@@ -61,6 +108,19 @@ engine.render([
       content: `บรรทัดทดสอบที่ ${i + 1} — เนื้อหาซ้ำเพื่อยืนยันว่า RenderEngine ขึ้นหน้าใหม่เองเมื่อพื้นที่ไม่พอ`,
     }),
   ),
+  createBlock({ type: 'spacer', height: 8 }),
+  createBlock({
+    type: 'text',
+    content: 'Sales table — AutoTable + rowNumber/computed/runningTotal + aggregate (sum/avg)',
+    style: { fontSize: 12, fontStyle: 'bold' },
+  }),
+  createBlock({ type: 'spacer', height: 4 }),
+  createBlock(salesTable),
+  createBlock({ type: 'spacer', height: 6 }),
+  createBlock({
+    type: 'text',
+    content: 'บรรทัดนี้ต้องต่อจากท้ายตารางบนหน้าสุดท้ายของตาราง (พิสูจน์ cursor sync หลัง AutoTable)',
+  }),
 ]);
 
 mkdirSync(outDir, { recursive: true });

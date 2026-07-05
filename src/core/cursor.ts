@@ -114,4 +114,23 @@ export class PdfCursor implements CursorState {
     this.currentX = this.margins.left;
     this.onPageBreak?.(this.currentPageIndex);
   }
+
+  /**
+   * sync state ตาม doc จริง หลัง block วาดข้ามหน้าเอง (เช่น AutoTable)
+   * ไม่ fire onPageBreak — หน้าใน doc ถูกเพิ่มไปแล้วโดยตัว block
+   * ถอยหลังไม่ได้ (pageIndex ต้อง >= ปัจจุบัน) — render เดินหน้าอย่างเดียว
+   */
+  syncTo(pageIndex: number, y: number): void {
+    if (!Number.isInteger(pageIndex) || pageIndex < this.currentPageIndex) {
+      throw new KapomLayoutError(
+        `syncTo: pageIndex ต้องเป็นจำนวนเต็ม >= หน้าปัจจุบัน ${this.currentPageIndex} (ได้ ${pageIndex})`,
+      );
+    }
+    if (!Number.isFinite(y) || y < 0) {
+      throw new KapomLayoutError(`syncTo: y ต้องเป็นค่า >= 0 (ได้ ${y})`);
+    }
+    this.currentPageIndex = pageIndex;
+    this.currentY = y;
+    this.currentX = this.margins.left;
+  }
 }
