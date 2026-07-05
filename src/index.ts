@@ -51,13 +51,20 @@ export type {
   MeasurableBlock,
 } from './core/context';
 
-export { KapomError, KapomLayoutError } from './core/errors';
+export { KapomError, KapomLayoutError, KapomFontError } from './core/errors';
 
 export type { PdfCursorOptions } from './core/cursor';
 export { PdfCursor } from './core/cursor';
 
 export type { RenderEngineOptions } from './core/engine';
 export { RenderEngine, DEFAULT_PAGE_MARGINS } from './core/engine';
+
+export type { TextNormalizeOptions } from './core/text-normalizer';
+export { normalizeText } from './core/text-normalizer';
+export { drawText } from './core/draw-text';
+
+export type { FontConfig, FontSource, FontVariantStyle } from './font/font-config';
+export { registerFonts } from './font/register-fonts';
 
 export { DEFAULT_TEXT_STYLE, TextBlock } from './blocks/text-block';
 export { SpacerBlock } from './blocks/spacer-block';

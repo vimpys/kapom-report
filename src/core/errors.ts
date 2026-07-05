@@ -8,3 +8,9 @@ export class KapomError extends Error {
 
 /** layout invariant พัง — margin/page size ไม่ valid, advance ติดลบ ฯลฯ */
 export class KapomLayoutError extends KapomError {}
+
+/**
+ * font config ไม่ valid — jsPDF fail แบบ silent (ตัวอักษรหาย/กลายเป็นสี่เหลี่ยม ไม่ throw)
+ * เลยต้อง validate เองแบบ fail-fast ตอน register กันปัญหาไปโผล่ตอนเปิดไฟล์ PDF
+ */
+export class KapomFontError extends KapomError {}

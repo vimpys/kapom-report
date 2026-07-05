@@ -1,8 +1,10 @@
 import { autoTable } from 'jspdf-autotable';
 import type { Styles, UserOptions } from 'jspdf-autotable';
 import type { MeasurableBlock, MeasureContext, RenderContext } from '../core/context';
+import { drawText } from '../core/draw-text';
 import { KapomError } from '../core/errors';
 import { lineHeightOf } from '../core/text-metrics';
+import { normalizeText } from '../core/text-normalizer';
 import {
   createSegmentState,
   DEFAULT_SUMMARY_LABEL,
@@ -105,12 +107,12 @@ export class TableBlock<T> implements MeasurableBlock {
   private renderGrouped(ctx: RenderContext, resolver: GroupResolver<T>): void {
     const columns = visibleColumns(this.node.columns);
     const aligns = columns.map(resolveColumnAlign);
-    const head = columns.map((col) => col.header);
+    const head = columns.map((col) => normalizeText(col.header));
     const groups = splitGroups(this.node.data, resolver);
     const state = createSegmentState(columns.length);
 
     const segments: GroupSegment[] = groups.map((group) => ({
-      label: groupHeaderLabel(resolver, group.key, group.rows),
+      label: normalizeText(groupHeaderLabel(resolver, group.key, group.rows)),
       body: resolveSegmentBody(columns, group.rows, ctx.numeric, state),
       foot: resolveAggregateRow(
         columns,
@@ -178,7 +180,7 @@ export class TableBlock<T> implements MeasurableBlock {
         body: [grandFoot],
         columnStyles,
         bodyStyles: {
-          fontStyle: 'bold',
+          fontStyle: this.resolveEmphasisStyle(ctx.doc),
           fillColor: [...GRAND_TOTAL_FILL],
           textColor: [...GRAND_TOTAL_TEXT],
         },
@@ -199,10 +201,10 @@ export class TableBlock<T> implements MeasurableBlock {
     doc.rect(cursor.x, cursor.y, contentWidth, bandHeight, 'F');
 
     doc.setFontSize(AUTOTABLE_DEFAULT_FONT_SIZE);
-    doc.setFont(doc.getFont().fontName, 'bold');
+    doc.setFont(doc.getFont().fontName, this.resolveEmphasisStyle(doc));
     doc.setTextColor(0, 0, 0);
     const inset = 5 / doc.internal.scaleFactor; // ล้อ cellPadding ของ AutoTable
-    doc.text(label, cursor.x + inset, cursor.y + lineHeight * 1.15);
+    drawText(doc, label, cursor.x + inset, cursor.y + lineHeight * 1.15);
 
     ctx.advanceY(bandHeight);
   }
@@ -219,8 +221,22 @@ export class TableBlock<T> implements MeasurableBlock {
     };
   }
 
+  /**
+   * ทุก built-in theme ของ AutoTable ตั้ง head/foot เป็น fontStyle 'bold' โดย default —
+   * ถ้า font ปัจจุบันไม่มี variant 'bold' ลงทะเบียนไว้ jsPDF จะ warn เงียบๆ แล้ว fallback
+   * (silent failure ที่ decision เรื่อง font บอกไว้ว่าต้องกันเอง) เช็คจาก getFontList ก่อนเสมอ
+   */
+  private resolveEmphasisStyle(doc: RenderContext['doc']): 'bold' | 'normal' {
+    const fontName = doc.getFont().fontName;
+    const availableStyles = doc.getFontList()[fontName] ?? [];
+    return availableStyles.includes('bold') ? 'bold' : 'normal';
+  }
+
   /** เรียก autoTable ที่ตำแหน่ง cursor แล้ว sync cursor ตาม doc หลังวาด */
   private runAutoTable(ctx: RenderContext, options: UserOptions): void {
+    const fontName = ctx.doc.getFont().fontName;
+    const headFontStyle = this.resolveEmphasisStyle(ctx.doc);
+
     autoTable(ctx.doc, {
       startY: ctx.cursor.y,
       // margin ทั้งสี่ด้าน — AutoTable ใช้ top เป็นจุดเริ่มของหน้าถัดไปเวลาแบ่งหน้าเอง
@@ -230,6 +246,11 @@ export class TableBlock<T> implements MeasurableBlock {
         bottom: ctx.margins.bottom,
         left: ctx.margins.left,
       },
+      // AutoTable มี default font 'helvetica' ของตัวเอง ไม่สืบทอดจาก doc.getFont() —
+      // ต้องส่ง font ปัจจุบันของ doc ตรงๆ ไม่งั้น font ไทยที่ลงทะเบียนไว้จะไม่มีผลกับตาราง
+      styles: { font: fontName },
+      headStyles: { fontStyle: headFontStyle },
+      footStyles: { fontStyle: headFontStyle },
       ...options,
     });
 

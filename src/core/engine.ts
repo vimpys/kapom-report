@@ -1,4 +1,6 @@
 import type { jsPDF } from 'jspdf';
+import type { FontConfig } from '../font/font-config';
+import { registerFonts } from '../font/register-fonts';
 import { nativeNumeric } from '../numeric/numeric-strategy';
 import type { NumericStrategy } from '../numeric/numeric-strategy';
 import type {
@@ -13,6 +15,8 @@ import { measureTextBlockHeight } from './text-metrics';
 export interface RenderEngineOptions {
   margins?: Partial<PageMargins>;
   numeric?: NumericStrategy;
+  /** ลงทะเบียนก่อน block แรก render เสมอ (VFS timing) — ตั้งเป็น default font ของทั้ง doc ด้วย */
+  font?: FontConfig;
 }
 
 /** หน่วยตาม doc — 15 เหมาะกับ doc หน่วย mm (default ของ jsPDF); doc หน่วย pt ควร override */
@@ -37,6 +41,13 @@ export class RenderEngine {
     this.doc = doc;
     this.margins = { ...DEFAULT_PAGE_MARGINS, ...options.margins };
     this.numeric = options.numeric ?? nativeNumeric;
+
+    if (options.font) {
+      // ต้องเกิดก่อน block แรก render เสมอ — constructor รันก่อน .render() ทุกครั้งอยู่แล้ว
+      const defaultFamily = registerFonts(doc, options.font);
+      doc.setFont(defaultFamily, 'normal');
+    }
+
     this.cursor = new PdfCursor({
       pageWidth: doc.internal.pageSize.getWidth(),
       pageHeight: doc.internal.pageSize.getHeight(),

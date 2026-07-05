@@ -37,6 +37,8 @@ export function makeStubDoc(splitInto: string[] = ['line1']) {
     addImage: vi.fn(),
     /** ความกว้างจำลอง: 2 หน่วยต่อตัวอักษร — พอสำหรับทดสอบสัดส่วน column width */
     getTextWidth: vi.fn((text: string): number => text.length * 2),
+    addFileToVFS: vi.fn(),
+    addFont: vi.fn(),
   };
 
   return { stub, doc: stub as unknown as jsPDF };

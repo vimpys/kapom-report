@@ -1,4 +1,5 @@
 import { KapomError } from '../core/errors';
+import { normalizeText } from '../core/text-normalizer';
 import { formatNumber } from '../format/number-format';
 import { computeAggregate } from './aggregate';
 import type { Decimalish, NumericStrategy } from '../numeric/numeric-strategy';
@@ -80,7 +81,7 @@ export function resolveSegmentBody<T>(
 
   const body = rows.map((row, localIndex) =>
     columns.map((col, colIndex) =>
-      resolveCell(col, row, localIndex, colIndex, state, numeric),
+      normalizeText(resolveCell(col, row, localIndex, colIndex, state, numeric)),
     ),
   );
 
@@ -175,7 +176,7 @@ export function resolveAggregateRow<T>(
 
   const first = foot[0];
   if (first === '') foot[0] = label;
-  return foot;
+  return foot.map((cell) => normalizeText(cell));
 }
 
 /** ตารางไม่ group = segment เดียว — mode per-group จึงเท่ากับ continuous โดยธรรมชาติ */
@@ -194,7 +195,7 @@ export function resolveTableContent<T>(
   );
 
   return {
-    head: columns.map((col) => col.header),
+    head: columns.map((col) => normalizeText(col.header)),
     body,
     foot,
     aligns: columns.map(resolveColumnAlign),

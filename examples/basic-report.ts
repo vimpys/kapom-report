@@ -1,14 +1,25 @@
 /**
  * Demo — สร้าง PDF จริงด้วย RenderEngine + Text/Spacer/Divider/Image/Table blocks
+ * ลงทะเบียน font ไทยจริง (Sarabun, OFL) ผ่าน font registry — ข้อความไทยแสดงผลถูกต้องแล้ว
  * รัน: npm run demo
  * ผลลัพธ์: examples/output/basic-report.pdf
  */
 import { jsPDF } from 'jspdf';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { RenderEngine, createBlock, nativeNumeric } from '../src/index';
-import type { TableNode } from '../src/index';
+import type { FontConfig, TableNode } from '../src/index';
+
+const here = dirname(fileURLToPath(import.meta.url));
+const fontsDir = join(here, '../tests/fixtures/fonts');
+
+const fontConfig: FontConfig = {
+  fonts: [
+    { family: 'Sarabun', data: new Uint8Array(readFileSync(join(fontsDir, 'Sarabun-Regular.ttf'))), style: 'normal' },
+    { family: 'Sarabun', data: new Uint8Array(readFileSync(join(fontsDir, 'Sarabun-Bold.ttf'))), style: 'bold' },
+  ],
+};
 
 interface Sale {
   product: string;
@@ -94,12 +105,11 @@ const salesTable: TableNode<Sale> = {
   summaryLabel: 'Total',
 };
 
-const here = dirname(fileURLToPath(import.meta.url));
 const outDir = join(here, 'output');
 const outFile = join(outDir, 'basic-report.pdf');
 
 const doc = new jsPDF();
-const engine = new RenderEngine(doc);
+const engine = new RenderEngine(doc, { font: fontConfig });
 
 const repeatedParagraph =
   'ข้อความตัวอย่างสำหรับทดสอบการตัดบรรทัดอัตโนมัติ (word wrap) ของ PdfCursor engine เมื่อความกว้างไม่พอสำหรับหนึ่งบรรทัด engine จะคำนวณจำนวนบรรทัดจริงผ่าน jsPDF splitTextToSize แล้วเลื่อน cursor ลงตามความสูงที่วัดได้ ';
