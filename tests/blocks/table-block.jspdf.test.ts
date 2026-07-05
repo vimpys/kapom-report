@@ -371,3 +371,101 @@ describe('TableBlock — zebra/conditional (Style resolver) × jsPDF จริ�
     expect(body[1]?.cells['0']?.styles.textColor).not.toEqual([220, 38, 38]); // b2: amount 1
   });
 });
+
+describe('TableBlock — column-level headerStyle/cellStyle × jsPDF จริง', () => {
+  it('headerStyle ใช้กับ head cell ของคอลัมน์นั้นเท่านั้น ไม่กระทบคอลัมน์อื่น', () => {
+    const doc = new jsPDF();
+    const engine = new RenderEngine(doc);
+
+    engine.render([
+      createBlock(
+        ledgerNode([{ label: 'a', amount: 1 }], {
+          columns: [
+            { type: 'data', key: 'label', header: 'Label', headerStyle: { fontSize: 16, color: [255, 0, 0] } },
+            { type: 'data', key: 'amount', header: 'Amount', align: 'right' },
+          ],
+        }),
+      ),
+    ]);
+
+    const head = doc.lastAutoTable?.head[0]?.cells ?? {};
+    expect(head['0']?.styles.fontSize).toBe(16);
+    expect(head['0']?.styles.textColor).toEqual([255, 0, 0]);
+    // คอลัมน์ที่ไม่ได้ตั้ง headerStyle ยังใช้ Typography columnHeader token ปกติ
+    expect(head['1']?.styles.fontSize).toBe(DEFAULT_TYPOGRAPHY.columnHeader.fontSize);
+  });
+
+  it('cellStyle ใช้กับทุก body cell ของคอลัมน์นั้น ไม่กระทบ head', () => {
+    const doc = new jsPDF();
+    const engine = new RenderEngine(doc);
+
+    engine.render([
+      createBlock(
+        ledgerNode(
+          [
+            { label: 'a', amount: 1 },
+            { label: 'b', amount: 2 },
+          ],
+          {
+            columns: [
+              { type: 'data', key: 'label', header: 'Label' },
+              {
+                type: 'data',
+                key: 'amount',
+                header: 'Amount',
+                align: 'right',
+                cellStyle: { fontStyle: 'italic', color: [0, 100, 0] },
+              },
+            ],
+          },
+        ),
+      ),
+    ]);
+
+    const body = doc.lastAutoTable?.body ?? [];
+    expect(body[0]?.cells['1']?.styles.fontStyle).toBe('italic');
+    expect(body[0]?.cells['1']?.styles.textColor).toEqual([0, 100, 0]);
+    expect(body[1]?.cells['1']?.styles.textColor).toEqual([0, 100, 0]);
+    // head ของคอลัมน์เดียวกันไม่ได้รับ cellStyle
+    expect(doc.lastAutoTable?.head[0]?.cells['1']?.styles.fontStyle).not.toBe('italic');
+    // คอลัมน์อื่นไม่ได้รับผลกระทบ
+    expect(body[0]?.cells['0']?.styles.textColor).not.toEqual([0, 100, 0]);
+  });
+
+  it('precedence: zebra/conditional (row-level) ยังทับ cellStyle (column-level) ได้', () => {
+    const doc = new jsPDF();
+    const engine = new RenderEngine(doc);
+
+    engine.render([
+      createBlock(
+        ledgerNode(
+          [
+            { label: 'a', amount: 5 },
+            { label: 'b', amount: -5 },
+          ],
+          {
+            columns: [
+              { type: 'data', key: 'label', header: 'Label' },
+              {
+                type: 'data',
+                key: 'amount',
+                header: 'Amount',
+                align: 'right',
+                cellStyle: { color: [0, 0, 0] },
+              },
+            ],
+            style: {
+              conditional: (row) => (row.amount < 0 ? { textColor: [220, 38, 38] } : undefined),
+            },
+          },
+        ),
+      ),
+    ]);
+
+    const body = doc.lastAutoTable?.body ?? [];
+    // แถว 0: conditional ไม่ตรง → cellStyle (ดำ) ยังอยู่
+    expect(body[0]?.cells['1']?.styles.textColor).toEqual([0, 0, 0]);
+    // แถว 1: conditional ตรง → ทับ cellStyle เป็นแดง
+    expect(body[1]?.cells['1']?.styles.textColor).toEqual([220, 38, 38]);
+  });
+});

@@ -20,7 +20,7 @@ import {
   groupHeaderLabel,
   splitGroups,
 } from '../table/group-resolver';
-import type { ResolvedAlign } from '../types/column';
+import type { ReportColumn, ResolvedAlign } from '../types/column';
 import { resolveColumnAlign } from '../types/column';
 import type { GroupResolver, TableNode, TableStyleOptions } from '../types/node';
 import type { CellStyle, RGB, TextStyle } from '../types/primitives';
@@ -58,6 +58,17 @@ function cellStyleToAutoTableStyles(style: Partial<CellStyle>): Partial<Styles> 
   if (style.fontStyle) styles.fontStyle = style.fontStyle;
   if (style.fontSize !== undefined) styles.fontSize = style.fontSize;
   if (style.halign) styles.halign = style.halign;
+  return styles;
+}
+
+/** column-level headerStyle/cellStyle (Partial<TextStyle>) → AutoTable Partial<Styles> */
+function partialTextStyleToAutoTableStyles(style: Partial<TextStyle> | undefined): Partial<Styles> {
+  if (!style) return {};
+  const styles: Partial<Styles> = {};
+  if (style.fontSize !== undefined) styles.fontSize = style.fontSize;
+  if (style.fontStyle) styles.fontStyle = style.fontStyle;
+  if (style.color) styles.textColor = [...style.color];
+  if (style.fontFamily) styles.font = style.fontFamily;
   return styles;
 }
 
@@ -104,6 +115,7 @@ export class TableBlock<T> implements MeasurableBlock {
   // ── flat (ไม่ group) ────────────────────────────────────────────────
 
   private renderFlat(ctx: RenderContext): void {
+    const columns = visibleColumns(this.node.columns);
     const content = resolveTableContent(this.node, ctx.numeric);
     const columnStyles: Record<string, Partial<Styles>> = {};
     content.aligns.forEach((align, index) => {
@@ -111,6 +123,8 @@ export class TableBlock<T> implements MeasurableBlock {
       columnStyles[String(index)] = {
         halign: align.data,
         ...(width !== undefined ? { cellWidth: width } : {}),
+        // column-level cellStyle มาก่อน didParseCell เสมอ → zebra/conditional ยังทับได้ตาม precedence
+        ...partialTextStyleToAutoTableStyles(columns[index]?.cellStyle),
       };
     });
 
@@ -122,7 +136,7 @@ export class TableBlock<T> implements MeasurableBlock {
       headStyles: this.resolveTokenStyles(ctx, ctx.typography.columnHeader),
       bodyStyles: this.resolveTokenStyles(ctx, ctx.typography.detailRow),
       footStyles: this.resolveTokenStyles(ctx, ctx.typography.summary),
-      didParseCell: this.cellHook(content.aligns, this.node.data, this.node.style),
+      didParseCell: this.cellHook(content.aligns, columns, this.node.data, this.node.style),
     });
   }
 
@@ -171,6 +185,7 @@ export class TableBlock<T> implements MeasurableBlock {
       columnStyles[String(index)] = {
         halign: align.data,
         cellWidth: widths[index] ?? 'auto',
+        ...partialTextStyleToAutoTableStyles(columns[index]?.cellStyle),
       };
     });
 
@@ -196,7 +211,7 @@ export class TableBlock<T> implements MeasurableBlock {
         headStyles: this.resolveTokenStyles(ctx, ctx.typography.columnHeader),
         bodyStyles: this.resolveTokenStyles(ctx, ctx.typography.detailRow),
         footStyles: this.resolveTokenStyles(ctx, ctx.typography.groupFooter),
-        didParseCell: this.cellHook(aligns, segment.rows, this.node.style),
+        didParseCell: this.cellHook(aligns, columns, segment.rows, this.node.style),
       });
     }
 
@@ -268,20 +283,34 @@ export class TableBlock<T> implements MeasurableBlock {
     return available.includes(requested) ? requested : 'normal';
   }
 
-  /** columnStyles.halign มีผลแค่ body — head/foot ต่าง column ต้อง set ราย cell; body ยังทับด้วย zebra/conditional (ตาม precedence) */
+  /**
+   * columnStyles.halign มีผลแค่ body — head/foot ต่าง column ต้อง set ราย cell
+   * precedence เต็ม: conditional > zebra > column-level (headerStyle/cellStyle) > row-type (Typography)
+   * cellStyle ถูก merge เข้า columnStyles ไปแล้วก่อนถึงจุดนี้ (ดู renderFlat/renderGrouped) —
+   * ที่นี่จัดการ headerStyle (head section เท่านั้น เพราะ columnStyles ไม่มีผลกับ head)
+   * กับ zebra/conditional (body section เท่านั้น) ซึ่งต้องมาทีหลังสุดเพื่อทับ cellStyle ได้
+   */
   private cellHook(
     aligns: readonly ResolvedAlign[],
+    columns: readonly ReportColumn<T>[],
     rows: readonly T[],
     styleOptions: TableStyleOptions<T> | undefined,
   ): NonNullable<UserOptions['didParseCell']> {
     return (data) => {
       const align = aligns[data.column.index];
-      if (align) {
-        if (data.section === 'head') data.cell.styles.halign = align.header;
-        if (data.section === 'foot') data.cell.styles.halign = align.data;
+
+      if (data.section === 'head') {
+        if (align) data.cell.styles.halign = align.header;
+        const column = columns[data.column.index];
+        Object.assign(data.cell.styles, partialTextStyleToAutoTableStyles(column?.headerStyle));
+        return;
       }
 
-      if (data.section !== 'body') return;
+      if (data.section === 'foot') {
+        if (align) data.cell.styles.halign = align.data;
+        return;
+      }
+
       const row = rows[data.row.index];
       if (row === undefined) return;
       const override = resolveRowStyle(styleOptions, row, data.row.index);
