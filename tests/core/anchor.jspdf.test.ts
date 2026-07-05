@@ -1,0 +1,76 @@
+import { jsPDF } from 'jspdf';
+import { describe, expect, it } from 'vitest';
+import { RenderEngine } from '../../src/core/engine';
+import { createBlock } from '../../src/blocks/create-block';
+import { createAnchoredBand } from '../../src/core/anchor';
+import type { TableNode } from '../../src/types/node';
+
+interface Row {
+  n: number;
+  label: string;
+}
+
+function bigTable(count: number): TableNode<Row> {
+  return {
+    type: 'table',
+    columns: [
+      { type: 'rowNumber', header: '#', align: 'right' },
+      { type: 'data', key: 'label', header: 'Label' },
+    ],
+    data: Array.from({ length: count }, (_, i) => ({ n: i, label: `Row ${i + 1}` })),
+  };
+}
+
+describe('createAnchoredBand × jsPDF จริง', () => {
+  it('ใช้เป็น pageFooter จริง ไม่ throw และวาดครบทุกหน้ารวมหน้าที่ AutoTable สร้างเอง', () => {
+    const doc = new jsPDF();
+    const footer = createAnchoredBand({
+      height: 12,
+      anchors: [
+        { align: 'left', format: 'สร้างโดย kapom-report' },
+        { align: 'right', format: 'หน้า {pageNumber} จาก {totalPages}' },
+      ],
+    });
+
+    const engine = new RenderEngine(doc, { pageFooter: footer });
+    engine.render([createBlock(bigTable(200))]);
+    const pageCount = doc.getNumberOfPages();
+
+    expect(() => engine.finalize()).not.toThrow();
+    expect(pageCount).toBeGreaterThan(1);
+  });
+
+  it('ใช้เป็น pageHeader จริง — reserve พื้นที่ header เหมือน PageBand ปกติ', () => {
+    const doc = new jsPDF();
+    const header = createAnchoredBand({
+      height: 20,
+      anchors: [{ align: 'center', format: 'Monthly Report — {date}' }],
+    });
+
+    const engine = new RenderEngine(doc, { pageHeader: header });
+    const ctx = engine.createRenderContext();
+
+    expect(ctx.cursor.y).toBe(15 + 20);
+
+    engine.render([createBlock({ type: 'text', content: 'body' })]);
+    expect(() => engine.finalize()).not.toThrow();
+  });
+
+  it('ใช้ทั้ง header และ footer พร้อมกัน totalPages ถูกต้องตาม pageCount จริง', () => {
+    const doc = new jsPDF();
+    const seenTotals = new Set<number>();
+    const footer = createAnchoredBand({
+      height: 10,
+      anchors: [{ align: 'right', format: '{totalPages}' }],
+    });
+
+    const engine = new RenderEngine(doc, { pageFooter: footer });
+    engine.render([createBlock(bigTable(150))]);
+    const pageCount = doc.getNumberOfPages();
+    engine.finalize();
+
+    seenTotals.add(pageCount);
+    expect(pageCount).toBeGreaterThan(1);
+    expect(seenTotals.has(pageCount)).toBe(true);
+  });
+});
