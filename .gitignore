@@ -6,3 +6,4 @@ dist/
 coverage/
 *.tsbuildinfo
 types-stub/
+examples/output/
