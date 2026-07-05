@@ -1,8 +1,14 @@
+import { spawn } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createKapomReport } from '../../src/report/create-kapom-report';
+
+// กัน .preview() เปิด PDF viewer จริงระหว่างรันเทสต์ — mock spawn ทั้งไฟล์
+vi.mock('node:child_process', () => ({
+  spawn: vi.fn(() => ({ unref: vi.fn() })),
+}));
 
 interface Sale {
   product: string;
@@ -121,6 +127,40 @@ describe('createKapomReport × jsPDF จริง', () => {
     });
 
     expect(report.doc.getNumberOfPages()).toBeGreaterThanOrEqual(1);
+  });
+
+  it('.preview() เขียน temp PDF จริง + สั่งเปิดด้วย viewer ของ OS แล้วคืน path', () => {
+    const report = createKapomReport({
+      columns: [{ key: 'product', header: 'Product' }],
+      data,
+    });
+
+    const file = report.preview();
+
+    expect(existsSync(file)).toBe(true);
+    expect(readFileSync(file).subarray(0, 4).toString('utf-8')).toBe('%PDF');
+    expect(vi.mocked(spawn)).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.arrayContaining([file]),
+      expect.objectContaining({ detached: true }),
+    );
+
+    rmSync(file, { force: true });
+  });
+
+  it('.preview() ซ้ำสองรอบ → temp file คนละไฟล์ (timestamp กันชนกัน)', async () => {
+    const report = createKapomReport({
+      columns: [{ key: 'product', header: 'Product' }],
+      data,
+    });
+
+    const first = report.preview();
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    const second = report.preview();
+
+    expect(second).not.toBe(first);
+    rmSync(first, { force: true });
+    rmSync(second, { force: true });
   });
 
   it('blocks variant: facade เรียก finalize() ให้เอง — pageFooter band ถูกวาดจริง', () => {

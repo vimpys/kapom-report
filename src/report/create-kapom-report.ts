@@ -1,5 +1,8 @@
 import { jsPDF } from 'jspdf';
+import { spawn } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { RenderEngine } from '../core/engine';
 import { createBlock } from '../blocks/create-block';
 import type { KapomReportInput } from './resolve-report-config';
@@ -10,6 +13,22 @@ export interface KapomReport {
   readonly doc: jsPDF;
   /** เขียนไฟล์ลง disk (Node เท่านั้น — เหมือน examples/shared.ts save()) */
   save(filename: string): void;
+  /**
+   * เขียน temp file แล้วเปิดด้วย PDF viewer default ของ OS (Node เท่านั้น) — คืน path ของ temp file;
+   * ฝั่ง browser ใช้ `report.doc.output('dataurlnewwindow')` ของ jsPDF ตรงๆ แทน (มี overload พร้อมอยู่แล้ว)
+   */
+  preview(): string;
+}
+
+/** เปิดไฟล์ด้วยโปรแกรม default ของ OS — detach process ไม่บล็อก/ไม่ผูก lifetime กับ Node */
+function openWithDefaultViewer(file: string): void {
+  const command =
+    process.platform === 'win32'
+      ? { cmd: 'cmd', args: ['/c', 'start', '', file] }
+      : process.platform === 'darwin'
+        ? { cmd: 'open', args: [file] }
+        : { cmd: 'xdg-open', args: [file] };
+  spawn(command.cmd, command.args, { detached: true, stdio: 'ignore' }).unref();
 }
 
 /**
@@ -29,10 +48,19 @@ export function createKapomReport<T>(config: KapomReportInput<T>): KapomReport {
   engine.render(blocks.map((node) => createBlock(node)));
   engine.finalize();
 
+  const writeTo = (filename: string): void => {
+    writeFileSync(filename, Buffer.from(doc.output('arraybuffer')));
+  };
+
   return {
     doc,
-    save(filename: string): void {
-      writeFileSync(filename, Buffer.from(doc.output('arraybuffer')));
+    save: writeTo,
+    preview(): string {
+      // timestamp กันชนกันเมื่อ preview ซ้ำหลายรอบ (viewer บางตัว lock ไฟล์เดิมค้างไว้)
+      const file = join(tmpdir(), `kapom-report-${Date.now()}.pdf`);
+      writeTo(file);
+      openWithDefaultViewer(file);
+      return file;
     },
   };
 }
