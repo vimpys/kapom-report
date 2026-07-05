@@ -16,7 +16,8 @@ import { PdfCursor } from './cursor';
 import { drawText } from './draw-text';
 import type { PageBand } from './page-band';
 import { measureTextBlockHeight } from './text-metrics';
-import type { Watermark } from './watermark';
+import type { Watermark, WatermarkInput } from './watermark';
+import { resolveWatermark } from './watermark';
 
 export interface RenderEngineOptions {
   margins?: Partial<PageMargins>;
@@ -29,8 +30,11 @@ export interface RenderEngineOptions {
   pageHeader?: PageBand;
   /** page footer ซ้ำทุกหน้า — กินพื้นที่สงวนล่างสุด; วาดตอน finalize() */
   pageFooter?: PageBand;
-  /** watermark ซ้ำทุกหน้า — ไม่หัก content area (ต่าง page header/footer); วาดตอน finalize() ก่อน band */
-  watermark?: Watermark;
+  /**
+   * watermark ซ้ำทุกหน้า — ไม่หัก content area (ต่าง page header/footer); วาดตอน finalize() ก่อน band
+   * รับ preset `{ text: 'DRAFT', ... }` หรือ render callback เต็มรูป (escape hatch)
+   */
+  watermark?: WatermarkInput;
 }
 
 /** หน่วยตาม doc — 15 เหมาะกับ doc หน่วย mm (default ของ jsPDF); doc หน่วย pt ควร override */
@@ -62,7 +66,7 @@ export class RenderEngine {
     this.typography = resolveTypography(options.typography);
     this.pageHeader = options.pageHeader;
     this.pageFooter = options.pageFooter;
-    this.watermark = options.watermark;
+    this.watermark = options.watermark !== undefined ? resolveWatermark(options.watermark) : undefined;
 
     if (options.font) {
       // ต้องเกิดก่อน block แรก render เสมอ — constructor รันก่อน .render() ทุกครั้งอยู่แล้ว

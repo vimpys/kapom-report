@@ -3,7 +3,7 @@ import { KapomError } from '../core/errors';
 import type { NumericStrategy } from '../numeric/numeric-strategy';
 import type { PageMargins } from '../core/context';
 import type { PageBand } from '../core/page-band';
-import type { Watermark } from '../core/watermark';
+import type { WatermarkInput } from '../core/watermark';
 import type { RenderEngineOptions } from '../core/engine';
 import type { FontConfig } from '../font/font-config';
 import type { DeepPartial } from '../types/primitives';
@@ -31,7 +31,8 @@ export interface KapomReportBaseOptions {
   numeric?: NumericStrategy;
   pageHeader?: PageBand;
   pageFooter?: PageBand;
-  watermark?: Watermark;
+  /** preset `{ text: 'DRAFT', ... }` หรือ render callback เต็มรูป (escape hatch) */
+  watermark?: WatermarkInput;
   /** ส่งตรงเข้า `new jsPDF(options)` — orientation/format/unit ฯลฯ (ไม่ใส่ = default ของ jsPDF เอง คือ a4/portrait/mm) */
   document?: jsPDFOptions;
 }

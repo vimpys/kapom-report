@@ -103,6 +103,8 @@ describe('SignatureBlock — render', () => {
 
   it('วาด label กึ่งกลางใต้เส้นแต่ละ slot', () => {
     const { stub, doc } = makeStubDoc(['ผู้จัดทำ']);
+    // label ไทย + stub font default เป็น helvetica → ต้องตั้ง font ไม่ใช่ built-in ก่อน (Thai font guard)
+    doc.setFont('Sarabun', 'normal');
     const engine = new RenderEngine(doc);
     const block = new SignatureBlock({
       type: 'signature',

@@ -3,6 +3,7 @@ import type { FontStyle as AutoTableFontStyle, Styles, UserOptions } from 'jspdf
 import type { MeasurableBlock, MeasureContext, RenderContext } from '../core/context';
 import { drawText } from '../core/draw-text';
 import { KapomError } from '../core/errors';
+import { containsThai, isBuiltinStandardFont, thaiGlyphError } from '../core/font-guard';
 import { lineHeightOf } from '../core/text-metrics';
 import { normalizeText } from '../core/text-normalizer';
 import { resolveRowStyle } from '../style/resolve-cell-style';
@@ -376,8 +377,31 @@ export class TableBlock<T> implements MeasurableBlock {
     };
   }
 
+  /**
+   * fail-fast กัน silent mojibake ใน cell — AutoTable วาด cell เองข้าม drawText facade
+   * (guard ใน drawText จับไม่ได้) ต้อง scan เองก่อนส่งเข้า autoTable; เช็ค font ครั้งเดียว
+   * นอก loop — user ที่ลงทะเบียน font แล้ว (ทางปกติ) ข้าม scan ทั้งก้อนไม่มีต้นทุน
+   */
+  private assertThaiCellsRenderable(ctx: RenderContext, options: UserOptions): void {
+    const fontName = ctx.doc.getFont().fontName;
+    if (!isBuiltinStandardFont(fontName)) return;
+
+    for (const section of [options.head, options.body, options.foot]) {
+      if (!section) continue;
+      for (const row of section) {
+        if (!Array.isArray(row)) continue;
+        for (const cell of row) {
+          if (typeof cell === 'string' && containsThai(cell)) {
+            throw thaiGlyphError(fontName, cell);
+          }
+        }
+      }
+    }
+  }
+
   /** เรียก autoTable ที่ตำแหน่ง cursor แล้ว sync cursor ตาม doc หลังวาด */
   private runAutoTable(ctx: RenderContext, options: UserOptions): void {
+    this.assertThaiCellsRenderable(ctx, options);
     const pageHeight = ctx.doc.internal.pageSize.getHeight();
     autoTable(ctx.doc, {
       startY: ctx.cursor.y,

@@ -1,12 +1,13 @@
 /**
  * Demo — Signature Block + Watermark (roadmap 6d)
  * โฟกัส: { type: 'signature' } เส้นเซ็นชื่อ+label หลาย slot เป็น Report Footer
- * และ watermark ซ้ำทุกหน้าผ่าน withOpacity() คุม opacity ให้ดู "อยู่ใต้" content
- * (จริงๆ วาดทับเสมอ เพราะ jsPDF ไม่มี z-order — ดู core/watermark.ts)
+ * และ watermark preset `{ text: 'DRAFT' }` — แค่ระบุข้อความก็ได้ตราจางกลางหน้า
+ * ทุกหน้า (opacity/fontSize/สี default ให้; ต้องการ custom เต็มรูปยังเขียน
+ * render callback + withOpacity() เองได้ — ดู core/watermark.ts)
  * เรียกผ่าน createKapomReport({ blocks, watermark }) — facade เรียก finalize() ให้เอง
  */
-import { createKapomReport, withOpacity } from '../src/index';
-import type { TableNode, Watermark } from '../src/index';
+import { createKapomReport } from '../src/index';
+import type { TableNode } from '../src/index';
 import { fontConfig, saveReport } from './shared';
 
 interface Sale {
@@ -28,20 +29,10 @@ const salesTable: TableNode<Sale> = {
   data: sales,
 };
 
-const draftWatermark: Watermark = {
-  render: (ctx) => {
-    // withOpacity set GState ก่อนวาดแล้ว reset กลับ 1 ให้เอง — ไม่ต้อง import GState จาก jspdf
-    withOpacity(ctx.doc, 0.15, () => {
-      ctx.doc.setFontSize(60);
-      ctx.doc.setTextColor(150, 150, 150);
-      ctx.drawText('DRAFT', ctx.pageWidth / 2 - 45, ctx.pageHeight / 2);
-    });
-  },
-};
-
 const report = createKapomReport<Sale>({
   font: fontConfig,
-  watermark: draftWatermark,
+  // preset — จัดกึ่งกลางหน้า + opacity 0.15 + fontSize 60 + สีเทาให้เอง (override ได้ทุกค่า)
+  watermark: { text: 'DRAFT' },
   blocks: [
     { type: 'text', content: 'Monthly Sales Report', role: 'reportTitle' },
     { type: 'spacer', height: 6 },

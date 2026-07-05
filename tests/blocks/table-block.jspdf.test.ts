@@ -123,6 +123,9 @@ function groupedNode(
     group: {
       by: 'category',
       headerLabel: (key, rows) => `${key} — ${rows.length} items`,
+      // default footerLabel เป็นภาษาไทย ('รวม X') — เทสต์ชุดนี้ไม่ลงทะเบียนฟอนต์ไทย
+      // จะโดน Thai font guard (fail-fast ที่ถูกต้อง) จึง override เป็นอังกฤษ
+      footerLabel: (key) => `Subtotal ${key}`,
       ...(keepTogether ? { keepTogether } : {}),
     },
   };
@@ -225,6 +228,8 @@ function ledgerNode(data: Ledger[], overrides: Partial<TableNode<Ledger>> = {}):
       { type: 'data', key: 'amount', header: 'Amount', align: 'right' },
     ],
     data,
+    // default summaryLabel เป็นภาษาไทย ('รวม') — เทสต์ชุดนี้ไม่ลงทะเบียนฟอนต์ไทย จะโดน Thai font guard
+    summaryLabel: 'Total',
     ...overrides,
   };
 }
@@ -497,7 +502,12 @@ describe('TableBlock × nested group (subGroup chain, roadmap 10)', () => {
         { type: 'data', key: 'qty', header: 'Qty', align: 'right', aggregate: 'sum' },
       ],
       data,
-      group: { by: 'region', subGroup: { by: 'category' } },
+      // footerLabel default เป็นภาษาไทย — เทสต์ชุดนี้ไม่ลงทะเบียนฟอนต์ไทย ต้อง override (Thai font guard)
+      group: {
+        by: 'region',
+        footerLabel: (key) => `Sum ${key}`,
+        subGroup: { by: 'category', footerLabel: (key) => `Sum ${key}` },
+      },
       summaryLabel: 'Grand Total',
     };
   }
@@ -527,7 +537,10 @@ describe('TableBlock × nested group (subGroup chain, roadmap 10)', () => {
     const engineFlat = new RenderEngine(docFlat);
     const ctxFlat = engineFlat.createRenderContext();
     engineFlat.render([
-      createBlock({ ...nestedNode(data), group: { by: 'region' } } satisfies TableNode<RegionSale>),
+      createBlock({
+        ...nestedNode(data),
+        group: { by: 'region', footerLabel: (key) => `Sum ${key}` },
+      } satisfies TableNode<RegionSale>),
     ]);
 
     const nestedTotal = ctxNested.cursor.pageIndex * 1000 + ctxNested.cursor.y;
@@ -550,11 +563,20 @@ describe('TableBlock × nested group (subGroup chain, roadmap 10)', () => {
     const doc = new jsPDF();
     const engine = new RenderEngine(doc);
 
+    const englishFooter = (key: string): string => `Sum ${key}`;
     const node = nestedNode(makeRegionSales(8));
     engine.render([
       createBlock({
         ...node,
-        group: { by: 'region', subGroup: { by: 'category', subGroup: { by: 'product' } } },
+        group: {
+          by: 'region',
+          footerLabel: englishFooter,
+          subGroup: {
+            by: 'category',
+            footerLabel: englishFooter,
+            subGroup: { by: 'product', footerLabel: englishFooter },
+          },
+        },
       } satisfies TableNode<RegionSale>),
     ]);
 

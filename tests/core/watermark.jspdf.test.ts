@@ -1,7 +1,8 @@
 import { jsPDF, GState } from 'jspdf';
 import { describe, expect, it, vi } from 'vitest';
 import { RenderEngine } from '../../src/core/engine';
-import { withOpacity } from '../../src/core/watermark';
+import { KapomError } from '../../src/core/errors';
+import { resolveWatermark, withOpacity } from '../../src/core/watermark';
 import { createBlock } from '../../src/blocks/create-block';
 import type { TableNode } from '../../src/types/node';
 
@@ -83,6 +84,45 @@ describe('watermark × jsPDF จริง', () => {
       }),
     ).toThrow('boom');
     expect(setGState).toHaveBeenCalledTimes(2); // finally ยัง reset เสมอ
+  });
+
+  it('preset { text } (ค้างแก้ #2): วาดทุกหน้าด้วย opacity ที่คุมให้เอง — ไม่ต้องเขียน render callback', () => {
+    const doc = new jsPDF();
+    const setGState = vi.spyOn(doc, 'setGState');
+    const engine = new RenderEngine(doc, { watermark: { text: 'DRAFT' } });
+
+    engine.render([createBlock(bigTable(200))]);
+    const pageCount = doc.getNumberOfPages();
+    engine.finalize();
+
+    expect(pageCount).toBeGreaterThan(1);
+    // withOpacity ต่อหน้า: set opacity + reset = 2 ครั้ง
+    expect(setGState).toHaveBeenCalledTimes(pageCount * 2);
+  });
+
+  it('preset: showOnFirstPage false → หน้าแรกไม่วาด', () => {
+    const doc = new jsPDF();
+    const setGState = vi.spyOn(doc, 'setGState');
+    const engine = new RenderEngine(doc, {
+      watermark: { text: 'DRAFT', showOnFirstPage: false },
+    });
+
+    engine.render([createBlock(bigTable(200))]);
+    const pageCount = doc.getNumberOfPages();
+    engine.finalize();
+
+    expect(setGState).toHaveBeenCalledTimes((pageCount - 1) * 2);
+  });
+
+  it('preset: validate fail-fast — text ว่าง / opacity นอกช่วง / fontSize ติดลบ → throw KapomError', () => {
+    expect(() => resolveWatermark({ text: '  ' })).toThrow(KapomError);
+    expect(() => resolveWatermark({ text: 'DRAFT', opacity: 1.5 })).toThrow(KapomError);
+    expect(() => resolveWatermark({ text: 'DRAFT', fontSize: -1 })).toThrow(KapomError);
+  });
+
+  it('preset: render callback เต็มรูป (Watermark เดิม) ผ่าน resolveWatermark ตรงไม่ถูกแตะ', () => {
+    const watermark = { render: vi.fn() };
+    expect(resolveWatermark(watermark)).toBe(watermark);
   });
 
   it('ไม่กระทบ content area — ตารางไม่ใช้พื้นที่มากขึ้นเมื่อมี watermark', () => {

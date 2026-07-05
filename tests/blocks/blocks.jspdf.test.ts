@@ -14,7 +14,8 @@ describe('Text/Spacer/Divider blocks × jsPDF จริง', () => {
     const engine = new RenderEngine(doc);
 
     engine.render([
-      createBlock({ type: 'text', content: 'หัวข้อรายงาน', style: { fontSize: 16 } }),
+      // อังกฤษล้วน — เทสต์นี้ไม่ลงทะเบียนฟอนต์ไทย (helvetica) จะโดน Thai font guard ถ้าใช้ข้อความไทย
+      createBlock({ type: 'text', content: 'Report Title', style: { fontSize: 16 } }),
       createBlock({ type: 'spacer', height: 5 }),
       createBlock({ type: 'divider' }),
       createBlock({ type: 'spacer', height: 5 }),

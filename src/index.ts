@@ -70,8 +70,16 @@ export { RenderEngine, DEFAULT_PAGE_MARGINS } from './core/engine';
 
 export type { PageBand, PageBandContext, PageBandRenderer } from './core/page-band';
 
-export type { Watermark, WatermarkContext, WatermarkRenderer } from './core/watermark';
-export { withOpacity } from './core/watermark';
+export type { Watermark, WatermarkContext, WatermarkRenderer, TextWatermark, WatermarkInput } from './core/watermark';
+export {
+  withOpacity,
+  resolveWatermark,
+  DEFAULT_WATERMARK_OPACITY,
+  DEFAULT_WATERMARK_FONT_SIZE,
+  DEFAULT_WATERMARK_COLOR,
+} from './core/watermark';
+
+export { containsThai, isBuiltinStandardFont } from './core/font-guard';
 
 export type { SystemFieldValues } from './core/system-field';
 export { resolveSystemFields } from './core/system-field';

@@ -61,6 +61,8 @@ describe('createAnchoredBand', () => {
 
   it('แทน {pageNumber}/{totalPages} เป็น 1-based จาก pageIndex', () => {
     const stubDoc = makeStubDoc();
+    // format เป็นภาษาไทย — ต้องตั้ง font ที่ไม่ใช่ built-in ก่อน ไม่งั้นโดน Thai font guard (fail-fast ที่ถูกต้อง)
+    stubDoc.doc.setFont('Sarabun', 'normal');
     const band = createAnchoredBand({
       height: 10,
       anchors: [{ align: 'left', format: 'หน้า {pageNumber} จาก {totalPages}' }],

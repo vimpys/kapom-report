@@ -1,5 +1,7 @@
 import { GState } from 'jspdf';
 import type { jsPDF } from 'jspdf';
+import { KapomError } from './errors';
+import type { RGB } from '../types/primitives';
 
 export interface WatermarkContext {
   readonly doc: jsPDF;
@@ -40,4 +42,66 @@ export function withOpacity(doc: jsPDF, opacity: number, draw: () => void): void
   } finally {
     doc.setGState(new GState({ opacity: 1 }));
   }
+}
+
+export const DEFAULT_WATERMARK_OPACITY = 0.15;
+export const DEFAULT_WATERMARK_FONT_SIZE = 60;
+export const DEFAULT_WATERMARK_COLOR: RGB = [150, 150, 150];
+
+/**
+ * declarative preset (ค้างแก้ #2 จาก code review) — แค่ระบุข้อความก็ได้ตรากลางหน้า
+ * ทุกหน้าโดยไม่ต้องเขียน render callback / รู้จัก jsPDF เลย (pattern เดียวกับ
+ * createAnchoredBand ที่แก้ให้ PageBand); ต้องการมากกว่านี้ค่อยหลุดไป Watermark เต็มรูป
+ */
+export interface TextWatermark {
+  text: string;
+  /** ความจาง 0-1 — default 0.15 */
+  opacity?: number;
+  /** pt — default 60 */
+  fontSize?: number;
+  /** default เทา [150,150,150] */
+  color?: RGB;
+  /** วาดบนหน้าแรกด้วยไหม — default true */
+  showOnFirstPage?: boolean;
+}
+
+/** config ที่ engine/facade รับ — preset ข้อความ หรือ render callback เต็มรูป (escape hatch) */
+export type WatermarkInput = Watermark | TextWatermark;
+
+function isTextWatermark(input: WatermarkInput): input is TextWatermark {
+  return 'text' in input;
+}
+
+/** แปลง WatermarkInput เป็น Watermark ที่ engine ใช้ — validate fail-fast ตอน resolve (ก่อน render) */
+export function resolveWatermark(input: WatermarkInput): Watermark {
+  if (!isTextWatermark(input)) return input;
+
+  const { text } = input;
+  const opacity = input.opacity ?? DEFAULT_WATERMARK_OPACITY;
+  const fontSize = input.fontSize ?? DEFAULT_WATERMARK_FONT_SIZE;
+  const color = input.color ?? DEFAULT_WATERMARK_COLOR;
+
+  if (text.trim() === '') {
+    throw new KapomError('watermark: text ต้องไม่ว่าง');
+  }
+  if (!Number.isFinite(opacity) || opacity < 0 || opacity > 1) {
+    throw new KapomError(`watermark: opacity ต้องอยู่ในช่วง 0-1 (ได้ ${opacity})`);
+  }
+  if (!Number.isFinite(fontSize) || fontSize <= 0) {
+    throw new KapomError(`watermark: fontSize ต้องเป็นค่าบวก (ได้ ${fontSize})`);
+  }
+
+  return {
+    ...(input.showOnFirstPage !== undefined ? { showOnFirstPage: input.showOnFirstPage } : {}),
+    render: (ctx) => {
+      withOpacity(ctx.doc, opacity, () => {
+        ctx.doc.setFontSize(fontSize);
+        const [r, g, b] = color;
+        ctx.doc.setTextColor(r, g, b);
+        // จัดกึ่งกลางจริงด้วยความกว้างที่วัดได้ (ไม่ใช่ offset เดา) — วัดหลัง setFontSize เสมอ
+        const textWidth = ctx.doc.getTextWidth(text);
+        ctx.drawText(text, (ctx.pageWidth - textWidth) / 2, ctx.pageHeight / 2);
+      });
+    },
+  };
 }
