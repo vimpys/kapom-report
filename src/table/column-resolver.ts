@@ -22,41 +22,78 @@ export interface ResolvedTableContent {
   widths: (number | undefined)[];
 }
 
+/**
+ * state ที่ไหลข้าม segment (กลุ่ม) — mode 'continuous' อ่าน/สะสมผ่านตัวนี้
+ * grouped table สร้างครั้งเดียวแล้วส่งเข้า resolveSegmentBody ทีละกลุ่มตามลำดับ render
+ */
+export interface SegmentState {
+  /** จำนวนแถวที่ resolve ไปแล้วก่อน segment นี้ (ฐานของ rowNumber continuous) */
+  rowOffset: number;
+  /** ยอดสะสมต่อ column index (runningTotal continuous) */
+  runningTotals: (Decimalish | undefined)[];
+}
+
+export function createSegmentState(columnCount: number): SegmentState {
+  return {
+    rowOffset: 0,
+    runningTotals: Array.from({ length: columnCount }, () => undefined),
+  };
+}
+
+/** filter ตาม visible + fail-fast ถ้าไม่เหลือ column เลย */
+export function visibleColumns<T>(
+  columns: readonly ReportColumn<T>[],
+): ReportColumn<T>[] {
+  const visible = columns.filter(isColumnVisible);
+  if (visible.length === 0) {
+    throw new KapomError('table ต้องมี column ที่ visible อย่างน้อย 1 ตัว');
+  }
+  return visible;
+}
+
 function stringifyCell(value: unknown): string {
   return value === null || value === undefined ? '' : String(value);
 }
 
-export function resolveTableContent<T>(
-  node: TableNode<T>,
+function asDecimalishCell(value: unknown, columnHeader: string): Decimalish {
+  if (typeof value === 'number' || typeof value === 'string') return value;
+  throw new KapomError(
+    `column '${columnHeader}': numberFormat ต้องการค่า number|string แต่ได้ ${typeof value}`,
+  );
+}
+
+/**
+ * resolve body ของหนึ่ง segment (ทั้งตารางเมื่อไม่ group, หนึ่งกลุ่มเมื่อ group)
+ * mutate state: per-group accumulator ถูก reset ที่หัว segment, rowOffset เลื่อนตอนจบ
+ */
+export function resolveSegmentBody<T>(
+  columns: readonly ReportColumn<T>[],
+  rows: readonly T[],
   numeric: NumericStrategy,
-): ResolvedTableContent {
-  const columns = node.columns.filter(isColumnVisible);
-  if (columns.length === 0) {
-    throw new KapomError('table ต้องมี column ที่ visible อย่างน้อย 1 ตัว');
-  }
+  state: SegmentState,
+): string[][] {
+  columns.forEach((col, index) => {
+    if (col.type === 'runningTotal' && (col.mode ?? 'continuous') === 'per-group') {
+      state.runningTotals[index] = undefined;
+    }
+  });
 
-  const aligns = columns.map(resolveColumnAlign);
-  const widths = columns.map((col) => col.width);
-  const head = columns.map((col) => col.header);
-
-  // state ต่อ column สำหรับ runningTotal — สะสมตาม render order จริง
-  const runningTotals: (Decimalish | undefined)[] = columns.map(() => undefined);
-
-  const body = node.data.map((row, rowIndex) =>
+  const body = rows.map((row, localIndex) =>
     columns.map((col, colIndex) =>
-      resolveCell(col, row, rowIndex, colIndex, runningTotals, numeric),
+      resolveCell(col, row, localIndex, colIndex, state, numeric),
     ),
   );
 
-  return { head, body, foot: resolveFoot(columns, node, numeric), aligns, widths };
+  state.rowOffset += rows.length;
+  return body;
 }
 
 function resolveCell<T>(
   col: ReportColumn<T>,
   row: T,
-  rowIndex: number,
+  localIndex: number,
   colIndex: number,
-  runningTotals: (Decimalish | undefined)[],
+  state: SegmentState,
   numeric: NumericStrategy,
 ): string {
   switch (col.type) {
@@ -75,11 +112,12 @@ function resolveCell<T>(
     }
     case 'rowNumber': {
       const mode = col.mode ?? 'continuous';
-      if (mode !== 'continuous') {
-        // per-group มากับ group block (ขั้น 3), per-page ต้อง two-pass (ขั้น 7)
-        throw new KapomError(`rowNumber mode '${mode}' ยังไม่รองรับ — MVP มีเฉพาะ 'continuous'`);
+      if (mode === 'per-page') {
+        // per-page ต้องรู้ page break จริง → two-pass (roadmap ขั้น 7)
+        throw new KapomError(`rowNumber mode 'per-page' ยังไม่รองรับ — ต้องรอ two-pass (ขั้น 7)`);
       }
-      const n = (col.startAt ?? 1) + rowIndex;
+      const base = mode === 'continuous' ? state.rowOffset : 0;
+      const n = (col.startAt ?? 1) + base + localIndex;
       return col.formatter ? col.formatter(n) : String(n);
     }
     case 'computed': {
@@ -89,29 +127,25 @@ function resolveCell<T>(
       return formatNumber(value, numeric, col.numberFormat);
     }
     case 'runningTotal': {
-      const mode = col.mode ?? 'continuous';
-      if (mode !== 'continuous') {
-        throw new KapomError(`runningTotal mode '${mode}' ยังไม่รองรับ — MVP มีเฉพาะ 'continuous'`);
-      }
-      const previous = runningTotals[colIndex] ?? 0;
+      const previous = state.runningTotals[colIndex] ?? 0;
       const accumulated = numeric.add(previous, col.valueOf(row));
-      runningTotals[colIndex] = accumulated;
-      return col.formatter ? col.formatter(accumulated) : formatNumber(accumulated, numeric, col.numberFormat);
+      state.runningTotals[colIndex] = accumulated;
+      return col.formatter
+        ? col.formatter(accumulated)
+        : formatNumber(accumulated, numeric, col.numberFormat);
     }
   }
 }
 
-function asDecimalishCell(value: unknown, columnHeader: string): Decimalish {
-  if (typeof value === 'number' || typeof value === 'string') return value;
-  throw new KapomError(
-    `column '${columnHeader}': numberFormat ต้องการค่า number|string แต่ได้ ${typeof value}`,
-  );
-}
-
-function resolveFoot<T>(
+/**
+ * แถว aggregate (group footer / grand total) — label ลง cell แรกที่ว่าง
+ * คืน undefined เมื่อไม่มี column ไหนประกาศ aggregate
+ */
+export function resolveAggregateRow<T>(
   columns: readonly ReportColumn<T>[],
-  node: TableNode<T>,
+  rows: readonly T[],
   numeric: NumericStrategy,
+  label: string,
 ): string[] | undefined {
   const hasAggregate = columns.some(
     (col) => (col.type === 'data' || col.type === 'computed') && col.aggregate !== undefined,
@@ -124,13 +158,13 @@ function resolveFoot<T>(
 
     if (typeof col.aggregate === 'function') {
       // custom aggregate fn มีเฉพาะ DataColumn (ดู types/column.ts)
-      return formatNumber(col.aggregate(node.data), numeric, col.numberFormat);
+      return formatNumber(col.aggregate(rows), numeric, col.numberFormat);
     }
 
     const values =
       col.type === 'data'
-        ? node.data.map((row) => asDecimalishCell(row[col.key], col.header))
-        : node.data.map((row) => col.compute(row));
+        ? rows.map((row) => asDecimalishCell(row[col.key], col.header))
+        : rows.map((row) => col.compute(row));
 
     const result = computeAggregate(col.aggregate, values, numeric);
     // count เป็นจำนวนเต็มเสมอ — format ทศนิยม 2 ตำแหน่งจะอ่านแปลก (เช่น "3.00")
@@ -140,6 +174,30 @@ function resolveFoot<T>(
   });
 
   const first = foot[0];
-  if (first === '') foot[0] = node.summaryLabel ?? DEFAULT_SUMMARY_LABEL;
+  if (first === '') foot[0] = label;
   return foot;
+}
+
+/** ตารางไม่ group = segment เดียว — mode per-group จึงเท่ากับ continuous โดยธรรมชาติ */
+export function resolveTableContent<T>(
+  node: TableNode<T>,
+  numeric: NumericStrategy,
+): ResolvedTableContent {
+  const columns = visibleColumns(node.columns);
+  const state = createSegmentState(columns.length);
+  const body = resolveSegmentBody(columns, node.data, numeric, state);
+  const foot = resolveAggregateRow(
+    columns,
+    node.data,
+    numeric,
+    node.summaryLabel ?? DEFAULT_SUMMARY_LABEL,
+  );
+
+  return {
+    head: columns.map((col) => col.header),
+    body,
+    foot,
+    aligns: columns.map(resolveColumnAlign),
+    widths: columns.map((col) => col.width),
+  };
 }

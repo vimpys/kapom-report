@@ -28,8 +28,8 @@ describe('TableBlock — validation', () => {
     expect(() => new TableBlock(node({ nested: () => undefined }))).toThrow(KapomError);
   });
 
-  it('group ยังไม่รองรับ → throw ตอนสร้าง', () => {
-    expect(() => new TableBlock(node({ group: { by: 'name' } }))).toThrow(KapomError);
+  it('group รองรับแล้ว → ไม่ throw', () => {
+    expect(() => new TableBlock(node({ group: { by: 'name' } }))).not.toThrow();
   });
 });
 

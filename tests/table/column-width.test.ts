@@ -1,0 +1,67 @@
+import { describe, expect, it } from 'vitest';
+import { computeColumnWidths } from '../../src/table/column-width';
+import { makeStubDoc, SCALE_FACTOR } from '../helpers/stub-doc';
+
+// stub: getTextWidth = 2 หน่วย/ตัวอักษร, padding = 10/SCALE_FACTOR ต่อ column
+const PAD = 10 / SCALE_FACTOR;
+
+describe('computeColumnWidths', () => {
+  it('scale ให้รวมพอดี contentWidth ตามสัดส่วนความกว้างธรรมชาติ', () => {
+    const { doc } = makeStubDoc();
+    const widths = computeColumnWidths(
+      doc,
+      [
+        ['aaaa', 'aaaaaaaa'], // 8 กับ 16 หน่วย + pad
+      ],
+      [undefined, undefined],
+      100,
+    );
+
+    expect(widths).toHaveLength(2);
+    const total = (widths[0] ?? 0) + (widths[1] ?? 0);
+    expect(total).toBeCloseTo(100, 6);
+    // สัดส่วนตามความกว้างธรรมชาติ: (8+pad) : (16+pad)
+    const expectedRatio = (8 + PAD) / (16 + PAD);
+    expect((widths[0] ?? 0) / (widths[1] ?? 0)).toBeCloseTo(expectedRatio, 6);
+  });
+
+  it('column ที่ user fix width ไม่ถูก scale — เฉพาะที่เหลือถูกยืด/หด', () => {
+    const { doc } = makeStubDoc();
+    const widths = computeColumnWidths(
+      doc,
+      [['xx', 'yy', 'zz']],
+      [30, undefined, undefined],
+      100,
+    );
+
+    expect(widths[0]).toBe(30);
+    const flexTotal = (widths[1] ?? 0) + (widths[2] ?? 0);
+    expect(flexTotal).toBeCloseTo(70, 6);
+  });
+
+  it('วัดบรรทัดยาวสุดใน cell หลายบรรทัด และข้าม cell ว่าง', () => {
+    const { doc } = makeStubDoc();
+    const widths = computeColumnWidths(
+      doc,
+      [
+        ['short\nlongerline', ''],
+        ['', 'abc'],
+      ],
+      [undefined, undefined],
+      1000, // กว้างพอไม่ต้อง scale... แต่ flex จะถูกยืดเต็ม
+      // ยืดเต็ม 1000 → ตรวจแค่สัดส่วน
+    );
+
+    const ratio = (widths[0] ?? 0) / (widths[1] ?? 0);
+    // 'longerline' = 10 ตัว × 2 = 20 vs 'abc' = 6
+    expect(ratio).toBeCloseTo((20 + PAD) / (6 + PAD), 6);
+  });
+
+  it('restore fontSize เดิมหลังวัดเสมอ', () => {
+    const { stub, doc } = makeStubDoc();
+    computeColumnWidths(doc, [['x']], [undefined], 100);
+
+    const calls = stub.setFontSize.mock.calls.map((args) => args[0]);
+    expect(calls).toEqual([10, 16]);
+  });
+});

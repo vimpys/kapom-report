@@ -29,10 +29,14 @@ export function makeStubDoc(splitInto: string[] = ['line1']) {
     splitTextToSize: vi.fn((): string[] => splitInto),
     setTextColor: vi.fn(),
     setDrawColor: vi.fn(),
+    setFillColor: vi.fn(),
     setLineWidth: vi.fn(),
     line: vi.fn(),
+    rect: vi.fn(),
     text: vi.fn(),
     addImage: vi.fn(),
+    /** ความกว้างจำลอง: 2 หน่วยต่อตัวอักษร — พอสำหรับทดสอบสัดส่วน column width */
+    getTextWidth: vi.fn((text: string): number => text.length * 2),
   };
 
   return { stub, doc: stub as unknown as jsPDF };

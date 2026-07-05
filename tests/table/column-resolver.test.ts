@@ -2,9 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { KapomError } from '../../src/core/errors';
 import { nativeNumeric } from '../../src/numeric/numeric-strategy';
 import {
+  createSegmentState,
   DEFAULT_SUMMARY_LABEL,
+  resolveAggregateRow,
+  resolveSegmentBody,
   resolveTableContent,
 } from '../../src/table/column-resolver';
+import type { ReportColumn } from '../../src/types/column';
 import type { TableNode } from '../../src/types/node';
 
 interface Sale {
@@ -122,7 +126,7 @@ describe('resolveTableContent — body cell ต่อ column type', () => {
     expect(content.body.map((r) => r[1])).toEqual(['(1)', '(2)', '(3)']);
   });
 
-  it('rowNumber: mode per-page/per-group ยังไม่รองรับ → throw ชัดเจน', () => {
+  it('rowNumber: mode per-page ยังไม่รองรับ → throw ชัดเจน', () => {
     expect(() =>
       resolveTableContent(
         baseNode([{ type: 'rowNumber', header: '#', mode: 'per-page' }]),
@@ -258,6 +262,18 @@ describe('resolveTableContent — foot (aggregate)', () => {
     expect(() => resolveTableContent(node, nativeNumeric)).toThrow(KapomError);
   });
 
+  it('resolveAggregateRow: label กำหนดเองลง cell แรกที่ว่าง', () => {
+    const columns: ReportColumn<Sale>[] = [
+      { type: 'data', key: 'product', header: 'สินค้า' },
+      { type: 'data', key: 'price', header: 'ราคา', aggregate: 'sum' },
+    ];
+
+    expect(resolveAggregateRow(columns, sales, nativeNumeric, 'รวม B')).toEqual([
+      'รวม B',
+      '10.80',
+    ]);
+  });
+
   it('data ว่าง → sum/count เป็นศูนย์ ไม่ throw', () => {
     const node: TableNode<Sale> = {
       type: 'table',
@@ -272,5 +288,52 @@ describe('resolveTableContent — foot (aggregate)', () => {
     const content = resolveTableContent(node, nativeNumeric);
     expect(content.body).toEqual([]);
     expect(content.foot).toEqual([DEFAULT_SUMMARY_LABEL, '0.00', '0']);
+  });
+});
+
+describe('resolveSegmentBody — state ข้าม segment (group)', () => {
+  const seg1: Sale[] = [sales[0] as Sale, sales[1] as Sale];
+  const seg2: Sale[] = [sales[2] as Sale];
+
+  it('rowNumber continuous: นับต่อข้าม segment; per-group: reset ทุก segment', () => {
+    const columns: ReportColumn<Sale>[] = [
+      { type: 'rowNumber', header: 'ต่อเนื่อง' },
+      { type: 'rowNumber', header: 'ต่อกลุ่ม', mode: 'per-group' },
+    ];
+    const state = createSegmentState(columns.length);
+
+    const body1 = resolveSegmentBody(columns, seg1, nativeNumeric, state);
+    const body2 = resolveSegmentBody(columns, seg2, nativeNumeric, state);
+
+    expect(body1.map((r) => r[0])).toEqual(['1', '2']);
+    expect(body2.map((r) => r[0])).toEqual(['3']); // ต่อจากเดิม
+    expect(body1.map((r) => r[1])).toEqual(['1', '2']);
+    expect(body2.map((r) => r[1])).toEqual(['1']); // reset
+  });
+
+  it('runningTotal continuous: สะสมข้าม segment; per-group: reset ทุก segment', () => {
+    const columns: ReportColumn<Sale>[] = [
+      { type: 'runningTotal', header: 'สะสม', valueOf: (r) => r.price },
+      { type: 'runningTotal', header: 'สะสมกลุ่ม', valueOf: (r) => r.price, mode: 'per-group' },
+    ];
+    const state = createSegmentState(columns.length);
+
+    const body1 = resolveSegmentBody(columns, seg1, nativeNumeric, state);
+    const body2 = resolveSegmentBody(columns, seg2, nativeNumeric, state);
+
+    // continuous: 10.50 → 10.60 → 10.80
+    expect(body1.map((r) => r[0])).toEqual(['10.50', '10.60']);
+    expect(body2.map((r) => r[0])).toEqual(['10.80']);
+    // per-group: reset เป็น 0.20 ใน segment ใหม่
+    expect(body2.map((r) => r[1])).toEqual(['0.20']);
+  });
+
+  it('per-page ยัง throw เหมือนเดิม (ต้อง two-pass)', () => {
+    const columns: ReportColumn<Sale>[] = [
+      { type: 'rowNumber', header: '#', mode: 'per-page' },
+    ];
+    expect(() =>
+      resolveSegmentBody(columns, seg1, nativeNumeric, createSegmentState(1)),
+    ).toThrow(/per-page/);
   });
 });
