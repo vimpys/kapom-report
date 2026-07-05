@@ -23,8 +23,11 @@
   "keywords": ["pdf", "report", "jspdf", "autotable", "typescript", "declarative", "thai"],
   "license": "MIT",
   "peerDependencies": {
-    "jspdf": "^2.5.0 || ^3.0.0",
-    "jspdf-autotable": "^3.8.0 || ^5.0.0"
+    "jspdf": "^4.2.0",
+    "jspdf-autotable": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=22"
   },
   "devDependencies": {
     "typescript": "^5.6.0"
