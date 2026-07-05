@@ -1,0 +1,30 @@
+/**
+ * ตัวช่วยที่ทุก demo ใช้ร่วมกัน — โหลดฟอนต์ไทย + เขียนไฟล์ออก
+ * แต่ละ demo เป็นไฟล์ standalone รันตรงได้ (`tsx examples/01-text-blocks.ts`)
+ * หรือรันทั้งหมดผ่าน `npm run demo`
+ */
+import type { jsPDF } from 'jspdf';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import type { FontConfig } from '../src/index';
+
+const here = dirname(fileURLToPath(import.meta.url));
+const fontsDir = join(here, '../tests/fixtures/fonts');
+const outDir = join(here, 'output');
+
+/** Sarabun (Google Fonts, OFL) — ฟอนต์ไทยสำหรับทุก demo; ลงทะเบียนต่อ engine (VFS ต่อ doc) */
+export const fontConfig: FontConfig = {
+  fonts: [
+    { family: 'Sarabun', data: new Uint8Array(readFileSync(join(fontsDir, 'Sarabun-Regular.ttf'))), style: 'normal' },
+    { family: 'Sarabun', data: new Uint8Array(readFileSync(join(fontsDir, 'Sarabun-Bold.ttf'))), style: 'bold' },
+  ],
+};
+
+/** เขียน PDF ลง examples/output/<name>.pdf แล้ว log จำนวนหน้า */
+export function save(doc: jsPDF, name: string): void {
+  mkdirSync(outDir, { recursive: true });
+  const file = join(outDir, `${name}.pdf`);
+  writeFileSync(file, Buffer.from(doc.output('arraybuffer')));
+  console.log(`✓ ${name}.pdf (${doc.getNumberOfPages()} หน้า)`);
+}

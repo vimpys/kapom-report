@@ -22,7 +22,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
-    "demo": "tsx examples/basic-report.ts"
+    "demo": "tsx examples/01-text-blocks.ts && tsx examples/02-sales-table.ts && tsx examples/03-grouped-report.ts && tsx examples/04-styled-ledger.ts && tsx examples/05-page-header-footer.ts"
   },
   "keywords": [
     "pdf",
