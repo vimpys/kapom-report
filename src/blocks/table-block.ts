@@ -10,16 +10,16 @@ import {
   createSegmentState,
   DEFAULT_SUMMARY_LABEL,
   resolveAggregateRow,
-  resolveSegmentBody,
   resolveTableContent,
   visibleColumns,
 } from '../table/column-resolver';
 import { computeColumnWidths } from '../table/column-width';
+import type { GroupTreeNode } from '../table/group-tree';
 import {
-  groupFooterLabel,
-  groupHeaderLabel,
-  splitGroups,
-} from '../table/group-resolver';
+  buildGroupTree,
+  countGroupBands,
+  flattenGroupTreeRows,
+} from '../table/group-tree';
 import type { ReportColumn, ResolvedAlign } from '../types/column';
 import { resolveColumnAlign } from '../types/column';
 import type { GroupResolver, TableNode, TableStyleOptions } from '../types/node';
@@ -33,13 +33,6 @@ const GROUP_BAND_HEIGHT_RATIO = 1.6;
 /** พื้นหลัง band/grand-total เป็น convention ของ composite pattern นี้เอง — ยังไม่เปิดให้ theme override (ดู CLAUDE.md) */
 const GROUP_BAND_FILL: RGB = [236, 240, 241];
 const GRAND_TOTAL_FILL: RGB = [41, 128, 185];
-
-interface GroupSegment<T> {
-  label: string;
-  rows: readonly T[];
-  body: string[][];
-  foot: string[] | undefined;
-}
 
 /** TextStyle (Typography token) → AutoTable Partial<Styles> — font family ไม่ set ถ้าไม่ระบุ (สืบทอดจาก styles.font base แทน) */
 function tokenToAutoTableStyles(token: TextStyle): Partial<Styles> {
@@ -94,8 +87,9 @@ export class TableBlock<T> implements MeasurableBlock {
       return (1 + this.node.data.length + footRows) * rowHeight;
     }
 
-    // grouped: ทุกกลุ่มมี band + head ของตัวเอง + subtotal (ถ้ามี aggregate) + grand total
-    const groupCount = splitGroups(this.node.data, this.node.group).length;
+    // grouped: ทุกกลุ่มทุกระดับมี band + subtotal (ถ้ามี aggregate); leaf segment มี head ของตัวเอง
+    // countGroupBands นับรวมทุกระดับของ subGroup chain (nested group, roadmap 10)
+    const groupCount = countGroupBands(this.node.group, this.node.data);
     const bandHeight = lineHeight * GROUP_BAND_HEIGHT_RATIO;
     return (
       groupCount * (bandHeight + rowHeight + footRows * rowHeight) +
@@ -140,26 +134,16 @@ export class TableBlock<T> implements MeasurableBlock {
     });
   }
 
-  // ── grouped (composite: band + segment ต่อกลุ่ม + grand total) ──────
+  // ── grouped (composite: band + segment ต่อกลุ่ม + grand total; recursive เมื่อมี subGroup) ──────
 
   private renderGrouped(ctx: RenderContext, resolver: GroupResolver<T>): void {
     const columns = visibleColumns(this.node.columns);
     const aligns = columns.map(resolveColumnAlign);
     const head = columns.map((col) => normalizeText(col.header));
-    const groups = splitGroups(this.node.data, resolver);
     const state = createSegmentState(columns.length);
 
-    const segments: GroupSegment<T>[] = groups.map((group) => ({
-      label: normalizeText(groupHeaderLabel(resolver, group.key, group.rows)),
-      rows: group.rows,
-      body: resolveSegmentBody(columns, group.rows, ctx.numeric, state),
-      foot: resolveAggregateRow(
-        columns,
-        group.rows,
-        ctx.numeric,
-        groupFooterLabel(resolver, group.key, group.rows),
-      ),
-    }));
+    // tree ครอบทุกระดับของ subGroup chain — leaf มี body, non-leaf มี children (roadmap 10)
+    const tree = buildGroupTree(columns, this.node.data, resolver, ctx.numeric, state);
     const grandFoot = resolveAggregateRow(
       columns,
       this.node.data,
@@ -167,10 +151,10 @@ export class TableBlock<T> implements MeasurableBlock {
       this.node.summaryLabel ?? DEFAULT_SUMMARY_LABEL,
     );
 
-    // fix column widths ชุดเดียวจากเนื้อหาทุกกลุ่ม — เส้น column ตรงกันข้าม segment
+    // fix column widths ชุดเดียวจากเนื้อหาทุกกลุ่มทุกระดับ — เส้น column ตรงกันข้าม segment
     const allRows: (readonly string[])[] = [
       head,
-      ...segments.flatMap((seg) => (seg.foot ? [...seg.body, seg.foot] : seg.body)),
+      ...flattenGroupTreeRows(tree),
       ...(grandFoot ? [grandFoot] : []),
     ];
     const widths = computeColumnWidths(
@@ -192,28 +176,15 @@ export class TableBlock<T> implements MeasurableBlock {
     const lineHeight = lineHeightOf(ctx.doc, ctx.typography.detailRow.fontSize);
     const bandHeight = lineHeight * GROUP_BAND_HEIGHT_RATIO;
     const rowEstimate = lineHeight * ESTIMATED_ROW_HEIGHT_RATIO;
-    const minRows = resolver.keepTogether?.minRowsWithHeader ?? 1;
 
-    for (const segment of segments) {
-      // keep-together: band + head + N แถวแรกต้องอยู่หน้าเดียวกัน ไม่งั้น break ก่อนวาด band
-      const required =
-        bandHeight +
-        rowEstimate +
-        Math.min(minRows, segment.body.length) * rowEstimate;
-      ctx.ensureSpace(required);
-
-      this.drawGroupBand(ctx, segment.label, bandHeight);
-      this.runAutoTable(ctx, {
-        head: [head],
-        body: segment.body,
-        ...(segment.foot ? { foot: [segment.foot] } : {}),
-        columnStyles,
-        headStyles: this.resolveTokenStyles(ctx, ctx.typography.columnHeader),
-        bodyStyles: this.resolveTokenStyles(ctx, ctx.typography.detailRow),
-        footStyles: this.resolveTokenStyles(ctx, ctx.typography.groupFooter),
-        didParseCell: this.cellHook(aligns, columns, segment.rows, this.node.style),
-      });
-    }
+    this.renderGroupTree(ctx, tree, {
+      head,
+      aligns,
+      columns,
+      columnStyles,
+      bandHeight,
+      rowEstimate,
+    });
 
     if (grandFoot) {
       ctx.ensureSpace(rowEstimate);
@@ -236,7 +207,82 @@ export class TableBlock<T> implements MeasurableBlock {
     }
   }
 
-  private drawGroupBand(ctx: RenderContext, label: string, bandHeight: number): void {
+  /** context คงที่ที่ส่งลงทุกชั้นของ renderGroupTree (คำนวณครั้งเดียวใน renderGrouped) */
+  private renderGroupTree(
+    ctx: RenderContext,
+    tree: readonly GroupTreeNode<T>[],
+    shared: {
+      head: string[];
+      aligns: readonly ResolvedAlign[];
+      columns: readonly ReportColumn<T>[];
+      columnStyles: Record<string, Partial<Styles>>;
+      bandHeight: number;
+      rowEstimate: number;
+    },
+  ): void {
+    for (const node of tree) {
+      // keep-together: band (+band ลูกซ้อนลงไปจนถึง leaf) + head + N แถวแรกต้องอยู่หน้าเดียวกัน
+      ctx.ensureSpace(this.requiredSpaceFor(node, shared.bandHeight, shared.rowEstimate));
+      this.drawGroupBand(ctx, node.label, shared.bandHeight, node.depth);
+
+      if (node.children) {
+        this.renderGroupTree(ctx, node.children, shared);
+        // subtotal ระดับ non-leaf ไม่มี segment ให้ฝากเป็น foot — วาดเป็นแถวเดี่ยวแยก
+        if (node.foot) this.renderSubtotalRow(ctx, node.foot, shared);
+        continue;
+      }
+
+      this.runAutoTable(ctx, {
+        head: [shared.head],
+        body: node.body ?? [],
+        ...(node.foot ? { foot: [node.foot] } : {}),
+        columnStyles: shared.columnStyles,
+        headStyles: this.resolveTokenStyles(ctx, ctx.typography.columnHeader),
+        bodyStyles: this.resolveTokenStyles(ctx, ctx.typography.detailRow),
+        footStyles: this.resolveTokenStyles(ctx, ctx.typography.groupFooter),
+        didParseCell: this.cellHook(shared.aligns, shared.columns, node.rows, this.node.style),
+      });
+    }
+  }
+
+  /** พื้นที่ขั้นต่ำก่อนวาด band ของ node นี้ — non-leaf ต้องเผื่อ band ลูกซ้อนลงไปจนถึง leaf แรก */
+  private requiredSpaceFor(
+    node: GroupTreeNode<T>,
+    bandHeight: number,
+    rowEstimate: number,
+  ): number {
+    const firstChild = node.children?.[0];
+    if (firstChild) {
+      return bandHeight + this.requiredSpaceFor(firstChild, bandHeight, rowEstimate);
+    }
+    const bodyRows = node.body?.length ?? 0;
+    return bandHeight + rowEstimate + Math.min(node.minRowsWithHeader, bodyRows) * rowEstimate;
+  }
+
+  /**
+   * subtotal ของกลุ่ม non-leaf (nested group) — แถวเดี่ยว theme 'plain' เหตุผลเดียวกับ grand total
+   * (foot-only table เป็น edge case ที่ AutoTable ไม่การันตี + กัน alternateRow ทับ fillColor);
+   * ใช้พื้น GROUP_BAND_FILL เดียวกับ band ให้จับคู่กับหัวกลุ่มทางสายตา ต่างจาก grand total สีเข้ม
+   */
+  private renderSubtotalRow(
+    ctx: RenderContext,
+    foot: string[],
+    shared: { aligns: readonly ResolvedAlign[]; columnStyles: Record<string, Partial<Styles>>; rowEstimate: number },
+  ): void {
+    ctx.ensureSpace(shared.rowEstimate);
+    this.runAutoTable(ctx, {
+      theme: 'plain',
+      body: [foot],
+      columnStyles: shared.columnStyles,
+      bodyStyles: {
+        ...this.resolveTokenStyles(ctx, ctx.typography.groupFooter),
+        fillColor: [...GROUP_BAND_FILL],
+      },
+      didParseCell: this.alignHook(shared.aligns),
+    });
+  }
+
+  private drawGroupBand(ctx: RenderContext, label: string, bandHeight: number, depth = 0): void {
     const { doc, cursor, contentWidth } = ctx;
     const token = ctx.typography.groupHeader;
     const [r, g, b] = GROUP_BAND_FILL;
@@ -250,8 +296,10 @@ export class TableBlock<T> implements MeasurableBlock {
     doc.setTextColor(tr, tg, tb);
 
     const inset = 5 / doc.internal.scaleFactor; // ล้อ cellPadding ของ AutoTable
+    // nested group: indent label ตามชั้นให้เห็นลำดับชั้น (band เต็มความกว้างเท่ากันทุกระดับ)
+    const indent = inset * 2 * depth;
     const lineHeight = lineHeightOf(doc, token.fontSize);
-    drawText(doc, label, cursor.x + inset, cursor.y + lineHeight * 1.15);
+    drawText(doc, label, cursor.x + inset + indent, cursor.y + lineHeight * 1.15);
 
     ctx.advanceY(bandHeight);
   }

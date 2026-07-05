@@ -469,3 +469,95 @@ describe('TableBlock — column-level headerStyle/cellStyle × jsPDF จริ�
     expect(body[1]?.cells['1']?.styles.textColor).toEqual([220, 38, 38]);
   });
 });
+
+describe('TableBlock × nested group (subGroup chain, roadmap 10)', () => {
+  interface RegionSale {
+    no?: never;
+    region: string;
+    category: string;
+    product: string;
+    qty: number;
+  }
+
+  function makeRegionSales(count: number): RegionSale[] {
+    return Array.from({ length: count }, (_, i) => ({
+      region: i % 2 === 0 ? 'North' : 'South',
+      category: i % 3 === 0 ? 'Food' : 'Drink',
+      product: `Product ${i + 1}`,
+      qty: (i % 5) + 1,
+    }));
+  }
+
+  function nestedNode(data: RegionSale[]): TableNode<RegionSale> {
+    return {
+      type: 'table',
+      columns: [
+        { type: 'rowNumber', header: '#', align: 'right' },
+        { type: 'data', key: 'product', header: 'Product' },
+        { type: 'data', key: 'qty', header: 'Qty', align: 'right', aggregate: 'sum' },
+      ],
+      data,
+      group: { by: 'region', subGroup: { by: 'category' } },
+      summaryLabel: 'Grand Total',
+    };
+  }
+
+  it('2 ระดับ: วาดจบไม่ throw, cursor sync ตาม doc, grand total เป็นตารางสุดท้าย', () => {
+    const doc = new jsPDF();
+    const engine = new RenderEngine(doc);
+    const ctx = engine.createRenderContext();
+
+    engine.render([createBlock(nestedNode(makeRegionSales(12)))]);
+
+    expect(doc.lastAutoTable?.finalY).toBeDefined();
+    expect(ctx.cursor.y).toBe(doc.lastAutoTable?.finalY);
+    // grand total = body แถวเดียว theme plain (ตารางสุดท้ายที่วาด)
+    expect(doc.lastAutoTable?.body).toHaveLength(1);
+  });
+
+  it('nested กินความสูงมากกว่า single-level เพราะมี band+subtotal ต่อ sub-group เพิ่ม', () => {
+    const data = makeRegionSales(12);
+
+    const docNested = new jsPDF();
+    const engineNested = new RenderEngine(docNested);
+    const ctxNested = engineNested.createRenderContext();
+    engineNested.render([createBlock(nestedNode(data))]);
+
+    const docFlat = new jsPDF();
+    const engineFlat = new RenderEngine(docFlat);
+    const ctxFlat = engineFlat.createRenderContext();
+    engineFlat.render([
+      createBlock({ ...nestedNode(data), group: { by: 'region' } } satisfies TableNode<RegionSale>),
+    ]);
+
+    const nestedTotal = ctxNested.cursor.pageIndex * 1000 + ctxNested.cursor.y;
+    const flatTotal = ctxFlat.cursor.pageIndex * 1000 + ctxFlat.cursor.y;
+    expect(nestedTotal).toBeGreaterThan(flatTotal);
+  });
+
+  it('ตารางยาวข้ามหน้า: AutoTable/keep-together แบ่งหน้าเอง cursor.pageIndex ตามหน้าสุดท้ายจริง', () => {
+    const doc = new jsPDF();
+    const engine = new RenderEngine(doc);
+    const ctx = engine.createRenderContext();
+
+    engine.render([createBlock(nestedNode(makeRegionSales(120)))]);
+
+    expect(doc.getNumberOfPages()).toBeGreaterThan(1);
+    expect(ctx.cursor.pageIndex).toBe(doc.getNumberOfPages() - 1);
+  });
+
+  it('3 ระดับซ้อน (region → category → product) วาดจบไม่ throw', () => {
+    const doc = new jsPDF();
+    const engine = new RenderEngine(doc);
+
+    const node = nestedNode(makeRegionSales(8));
+    engine.render([
+      createBlock({
+        ...node,
+        group: { by: 'region', subGroup: { by: 'category', subGroup: { by: 'product' } } },
+      } satisfies TableNode<RegionSale>),
+    ]);
+
+    expect(doc.lastAutoTable?.finalY).toBeDefined();
+  });
+});
