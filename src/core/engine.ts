@@ -8,6 +8,7 @@ import type {
   RenderContext,
 } from './context';
 import { PdfCursor } from './cursor';
+import { measureTextBlockHeight } from './text-metrics';
 
 export interface RenderEngineOptions {
   margins?: Partial<PageMargins>;
@@ -66,7 +67,7 @@ export class RenderEngine {
       contentWidth: this.cursor.contentWidth,
       numeric: this.numeric,
       measureText: (text, fontSize, maxWidth) =>
-        this.measureTextHeight(text, fontSize, maxWidth),
+        measureTextBlockHeight(this.doc, text, fontSize, maxWidth),
     };
   }
 
@@ -85,22 +86,5 @@ export class RenderEngine {
         this.cursor.ensureSpace(requiredHeight);
       },
     };
-  }
-
-  private measureTextHeight(
-    text: string,
-    fontSize: number,
-    maxWidth: number,
-  ): number {
-    const previousSize = this.doc.getFontSize();
-    this.doc.setFontSize(fontSize);
-    // jspdf ประกาศ return เป็น any → รับเป็น unknown แล้ว narrow
-    const split: unknown = this.doc.splitTextToSize(text, maxWidth);
-    this.doc.setFontSize(previousSize);
-    const lineCount = Array.isArray(split) ? split.length : 1;
-    // fontSize เป็น pt เสมอ → หาร scaleFactor แปลงกลับเป็นหน่วยของ doc
-    const lineHeight =
-      (fontSize * this.doc.getLineHeightFactor()) / this.doc.internal.scaleFactor;
-    return lineCount * lineHeight;
   }
 }

@@ -58,3 +58,12 @@ export { PdfCursor } from './core/cursor';
 
 export type { RenderEngineOptions } from './core/engine';
 export { RenderEngine, DEFAULT_PAGE_MARGINS } from './core/engine';
+
+export { DEFAULT_TEXT_STYLE, TextBlock } from './blocks/text-block';
+export { SpacerBlock } from './blocks/spacer-block';
+export {
+  DEFAULT_DIVIDER_THICKNESS,
+  DEFAULT_DIVIDER_COLOR,
+  DividerBlock,
+} from './blocks/divider-block';
+export { createBlock } from './blocks/create-block';

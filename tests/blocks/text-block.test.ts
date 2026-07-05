@@ -1,0 +1,82 @@
+import { describe, expect, it } from 'vitest';
+import { RenderEngine } from '../../src/core/engine';
+import { TextBlock, DEFAULT_TEXT_STYLE } from '../../src/blocks/text-block';
+import { makeStubDoc, SCALE_FACTOR } from '../helpers/stub-doc';
+
+describe('TextBlock — measureHeight', () => {
+  it('ใช้ default fontSize เมื่อไม่ระบุ style', () => {
+    const { stub, doc } = makeStubDoc(['line1', 'line2']);
+    const engine = new RenderEngine(doc);
+    const block = new TextBlock({ type: 'text', content: 'hello' });
+
+    const height = block.measureHeight(engine.createMeasureContext());
+
+    expect(stub.setFontSize).toHaveBeenCalledWith(DEFAULT_TEXT_STYLE.fontSize);
+    const expectedLineHeight =
+      (DEFAULT_TEXT_STYLE.fontSize * 1.15) / SCALE_FACTOR;
+    expect(height).toBeCloseTo(2 * expectedLineHeight, 6);
+  });
+
+  it('ใช้ fontSize จาก style override', () => {
+    const { stub, doc } = makeStubDoc(['only-one-line']);
+    const engine = new RenderEngine(doc);
+    const block = new TextBlock({
+      type: 'text',
+      content: 'hello',
+      style: { fontSize: 20 },
+    });
+
+    block.measureHeight(engine.createMeasureContext());
+
+    expect(stub.setFontSize).toHaveBeenCalledWith(20);
+  });
+});
+
+describe('TextBlock — render', () => {
+  it('set fontSize/font/color ตาม default แล้ววาด text ที่ตำแหน่ง cursor', () => {
+    const { stub, doc } = makeStubDoc(['line1', 'line2']);
+    const engine = new RenderEngine(doc);
+    const block = new TextBlock({ type: 'text', content: 'hello' });
+
+    block.render(engine.createRenderContext());
+
+    expect(stub.setFontSize).toHaveBeenCalledWith(DEFAULT_TEXT_STYLE.fontSize);
+    expect(stub.setFont).toHaveBeenCalledWith('helvetica', 'normal');
+    expect(stub.setTextColor).toHaveBeenCalledWith(0, 0, 0);
+
+    const expectedLineHeight = (DEFAULT_TEXT_STYLE.fontSize * 1.15) / SCALE_FACTOR;
+    expect(stub.text).toHaveBeenCalledWith(
+      ['line1', 'line2'],
+      15,
+      15 + expectedLineHeight,
+    );
+  });
+
+  it('advance cursor y ตามจำนวนบรรทัด × line-height', () => {
+    const { doc } = makeStubDoc(['line1', 'line2', 'line3']);
+    const engine = new RenderEngine(doc);
+    const block = new TextBlock({ type: 'text', content: 'hello' });
+    const ctx = engine.createRenderContext();
+
+    block.render(ctx);
+
+    const expectedLineHeight = (DEFAULT_TEXT_STYLE.fontSize * 1.15) / SCALE_FACTOR;
+    expect(ctx.cursor.y).toBeCloseTo(15 + 3 * expectedLineHeight, 6);
+  });
+
+  it('style override: fontSize/fontStyle/fontFamily/color ทั้งหมดถูกส่งเข้า doc', () => {
+    const { stub, doc } = makeStubDoc(['line1']);
+    const engine = new RenderEngine(doc);
+    const block = new TextBlock({
+      type: 'text',
+      content: 'สวัสดี',
+      style: { fontSize: 14, fontStyle: 'bold', fontFamily: 'THSarabun', color: [255, 0, 0] },
+    });
+
+    block.render(engine.createRenderContext());
+
+    expect(stub.setFontSize).toHaveBeenCalledWith(14);
+    expect(stub.setFont).toHaveBeenCalledWith('THSarabun', 'bold');
+    expect(stub.setTextColor).toHaveBeenCalledWith(255, 0, 0);
+  });
+});
