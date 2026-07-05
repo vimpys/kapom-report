@@ -9,14 +9,27 @@ export const SCALE_FACTOR = 72 / 25.4;
  * ใช้ร่วมกันทั้ง engine/block tests กันโค้ด stub กระจัดกระจาย
  */
 export function makeStubDoc(splitInto: string[] = ['line1']) {
-  const state = { fontSize: 16, font: { fontName: 'helvetica', fontStyle: 'normal' } };
+  const state = {
+    fontSize: 16,
+    font: { fontName: 'helvetica', fontStyle: 'normal' },
+    pageCount: 1,
+    currentPage: 1,
+  };
 
   const stub = {
     internal: {
       pageSize: { getWidth: () => 210, getHeight: () => 297 },
       scaleFactor: SCALE_FACTOR,
     },
-    addPage: vi.fn(),
+    addPage: vi.fn((): void => {
+      state.pageCount += 1;
+      state.currentPage = state.pageCount;
+    }),
+    getNumberOfPages: vi.fn((): number => state.pageCount),
+    getCurrentPageInfo: vi.fn(() => ({ pageNumber: state.currentPage })),
+    setPage: vi.fn((page: number): void => {
+      state.currentPage = page;
+    }),
     getFontSize: vi.fn((): number => state.fontSize),
     setFontSize: vi.fn((size: number): void => {
       state.fontSize = size;

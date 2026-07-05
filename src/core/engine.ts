@@ -13,6 +13,8 @@ import type {
   RenderContext,
 } from './context';
 import { PdfCursor } from './cursor';
+import { drawText } from './draw-text';
+import type { PageBand } from './page-band';
 import { measureTextBlockHeight } from './text-metrics';
 
 export interface RenderEngineOptions {
@@ -22,6 +24,10 @@ export interface RenderEngineOptions {
   font?: FontConfig;
   /** font token ต่อ row-type (columnHeader/detailRow/groupHeader/...) — merge ทับ DEFAULT_TYPOGRAPHY ทีละ token */
   typography?: DeepPartial<Typography>;
+  /** page header ซ้ำทุกหน้า — กินพื้นที่สงวนบนสุด (หัก content area); วาดตอน finalize() */
+  pageHeader?: PageBand;
+  /** page footer ซ้ำทุกหน้า — กินพื้นที่สงวนล่างสุด; วาดตอน finalize() */
+  pageFooter?: PageBand;
 }
 
 /** หน่วยตาม doc — 15 เหมาะกับ doc หน่วย mm (default ของ jsPDF); doc หน่วย pt ควร override */
@@ -42,12 +48,16 @@ export class RenderEngine {
   private readonly margins: PageMargins;
   private readonly numeric: NumericStrategy;
   private readonly typography: Typography;
+  private readonly pageHeader: PageBand | undefined;
+  private readonly pageFooter: PageBand | undefined;
 
   constructor(doc: jsPDF, options: RenderEngineOptions = {}) {
     this.doc = doc;
     this.margins = { ...DEFAULT_PAGE_MARGINS, ...options.margins };
     this.numeric = options.numeric ?? nativeNumeric;
     this.typography = resolveTypography(options.typography);
+    this.pageHeader = options.pageHeader;
+    this.pageFooter = options.pageFooter;
 
     if (options.font) {
       // ต้องเกิดก่อน block แรก render เสมอ — constructor รันก่อน .render() ทุกครั้งอยู่แล้ว
@@ -59,6 +69,8 @@ export class RenderEngine {
       pageWidth: doc.internal.pageSize.getWidth(),
       pageHeight: doc.internal.pageSize.getHeight(),
       margins: this.margins,
+      headerHeight: this.pageHeader?.height ?? 0,
+      footerHeight: this.pageFooter?.height ?? 0,
       onPageBreak: () => {
         this.doc.addPage();
       },
@@ -97,6 +109,8 @@ export class RenderEngine {
       cursor: this.cursor,
       margins: this.margins,
       contentWidth: this.cursor.contentWidth,
+      contentTop: this.cursor.contentTop,
+      contentBottom: this.cursor.contentBottom,
       numeric: this.numeric,
       typography: this.typography,
       advanceY: (amount) => {
@@ -109,5 +123,55 @@ export class RenderEngine {
         this.cursor.syncTo(pageIndex, y);
       },
     };
+  }
+
+  /**
+   * วาด page header/footer band ทุกหน้า — ต้องเรียกครั้งเดียวหลัง render() ทุก block จบ
+   * (band วาดตอนนี้ไม่ใช่ตอน page-break เพราะ AutoTable สร้างหน้าเองข้าม onPageBreak ของเรา —
+   * iterate ทุกหน้าใน doc จริงตอนจบจึงครอบทุกหน้าไม่ว่าใครสร้าง + รู้ pageCount แล้ว)
+   * no-op ถ้าไม่มี band; ปลอดภัยแม้ไม่มี — facade/ผู้ใช้เรียกได้เสมอ
+   */
+  finalize(): void {
+    if (!this.pageHeader && !this.pageFooter) return;
+
+    const pageCount = this.doc.getNumberOfPages();
+    const pageWidth = this.doc.internal.pageSize.getWidth();
+    const pageHeight = this.doc.internal.pageSize.getHeight();
+    const bandWidth = pageWidth - this.margins.left - this.margins.right;
+    const currentPage = this.doc.getCurrentPageInfo().pageNumber;
+
+    for (let page = 1; page <= pageCount; page += 1) {
+      const pageIndex = page - 1;
+      this.doc.setPage(page);
+
+      if (this.pageHeader && (page > 1 || this.pageHeader.showOnFirstPage !== false)) {
+        this.drawBand(this.pageHeader, this.margins.top, bandWidth, pageIndex, pageCount);
+      }
+      if (this.pageFooter && (page > 1 || this.pageFooter.showOnFirstPage !== false)) {
+        const footerTop = pageHeight - this.margins.bottom - this.pageFooter.height;
+        this.drawBand(this.pageFooter, footerTop, bandWidth, pageIndex, pageCount);
+      }
+    }
+
+    this.doc.setPage(currentPage); // คืน active page เดิม กัน caller งงถ้าวาดต่อ
+  }
+
+  private drawBand(
+    band: PageBand,
+    top: number,
+    width: number,
+    pageIndex: number,
+    pageCount: number,
+  ): void {
+    band.render({
+      doc: this.doc,
+      pageIndex,
+      pageCount,
+      x: this.margins.left,
+      y: top,
+      width,
+      height: band.height,
+      drawText: (text, x, y) => drawText(this.doc, text, x, y),
+    });
   }
 }

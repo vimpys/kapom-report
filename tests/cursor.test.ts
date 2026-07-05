@@ -27,6 +27,78 @@ describe('PdfCursor — initial state', () => {
     expect(cursor.contentWidth).toBe(180);
     expect(cursor.contentHeight).toBe(267);
     expect(cursor.remainingHeight).toBe(267);
+    expect(cursor.contentTop).toBe(15);
+    expect(cursor.contentBottom).toBe(282);
+  });
+});
+
+describe('PdfCursor — header/footer reserved height', () => {
+  it('content เริ่มใต้ header, contentBottom เหนือ footer, contentHeight หักทั้งคู่', () => {
+    const cursor = new PdfCursor({
+      pageWidth: 210,
+      pageHeight: 297,
+      margins,
+      headerHeight: 20,
+      footerHeight: 10,
+    });
+
+    // top: 15 + 20 = 35, bottom: 297 - 15 - 10 = 272
+    expect(cursor.y).toBe(35);
+    expect(cursor.contentTop).toBe(35);
+    expect(cursor.contentBottom).toBe(272);
+    expect(cursor.contentHeight).toBe(237); // 272 - 35
+    expect(cursor.remainingHeight).toBe(237);
+    expect(cursor.isAtTopOfPage).toBe(true);
+  });
+
+  it('break หน้าใหม่ → cursor กลับไปที่ contentTop (ใต้ header) ไม่ใช่ margin.top', () => {
+    const cursor = new PdfCursor({
+      pageWidth: 210,
+      pageHeight: 297,
+      margins,
+      headerHeight: 20,
+      footerHeight: 10,
+    });
+    cursor.advanceY(200);
+    cursor.ensureSpace(100); // ไม่พอ (remaining 37) → break
+
+    expect(cursor.pageIndex).toBe(1);
+    expect(cursor.y).toBe(35);
+  });
+
+  it('page-break decision เคารพ footer reserved (remainingHeight เล็กลง)', () => {
+    const cursor = new PdfCursor({
+      pageWidth: 210,
+      pageHeight: 297,
+      margins,
+      footerHeight: 50,
+    });
+    // contentBottom = 297 - 15 - 50 = 232, remaining เริ่ม = 232 - 15 = 217
+    expect(cursor.remainingHeight).toBe(217);
+    cursor.advanceY(200);
+    expect(cursor.ensureSpace(20)).toBe(true); // เหลือ 17 ไม่พอ → break
+  });
+
+  it('headerHeight/footerHeight ติดลบ → throw', () => {
+    expect(
+      () => new PdfCursor({ pageWidth: 210, pageHeight: 297, margins, headerHeight: -1 }),
+    ).toThrow(KapomLayoutError);
+    expect(
+      () => new PdfCursor({ pageWidth: 210, pageHeight: 297, margins, footerHeight: -1 }),
+    ).toThrow(KapomLayoutError);
+  });
+
+  it('header+footer+margin กินพื้นที่จนไม่เหลือ content → throw', () => {
+    expect(
+      () =>
+        new PdfCursor({
+          pageWidth: 210,
+          pageHeight: 297,
+          margins,
+          headerHeight: 140,
+          footerHeight: 140,
+        }),
+    ).toThrow(KapomLayoutError);
   });
 });
 

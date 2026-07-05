@@ -64,6 +64,8 @@ export { PdfCursor } from './core/cursor';
 export type { RenderEngineOptions } from './core/engine';
 export { RenderEngine, DEFAULT_PAGE_MARGINS } from './core/engine';
 
+export type { PageBand, PageBandContext, PageBandRenderer } from './core/page-band';
+
 export type { TextNormalizeOptions } from './core/text-normalizer';
 export { normalizeText } from './core/text-normalizer';
 export { drawText } from './core/draw-text';

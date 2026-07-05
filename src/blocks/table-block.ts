@@ -330,13 +330,15 @@ export class TableBlock<T> implements MeasurableBlock {
 
   /** เรียก autoTable ที่ตำแหน่ง cursor แล้ว sync cursor ตาม doc หลังวาด */
   private runAutoTable(ctx: RenderContext, options: UserOptions): void {
+    const pageHeight = ctx.doc.internal.pageSize.getHeight();
     autoTable(ctx.doc, {
       startY: ctx.cursor.y,
-      // margin ทั้งสี่ด้าน — AutoTable ใช้ top เป็นจุดเริ่มของหน้าถัดไปเวลาแบ่งหน้าเอง
+      // margin.top/bottom ต้องใช้ contentTop/contentBottom (หัก page header/footer reserved แล้ว)
+      // ไม่ใช่ margins ดิบ — ไม่งั้น AutoTable เวลาแบ่งหน้าเองจะวาดทับโซน band
       margin: {
-        top: ctx.margins.top,
+        top: ctx.contentTop,
         right: ctx.margins.right,
-        bottom: ctx.margins.bottom,
+        bottom: pageHeight - ctx.contentBottom,
         left: ctx.margins.left,
       },
       // AutoTable มี default font 'helvetica' ของตัวเอง ไม่สืบทอดจาก doc.getFont() —

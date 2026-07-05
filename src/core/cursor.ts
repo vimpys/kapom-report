@@ -6,6 +6,12 @@ export interface PdfCursorOptions {
   pageWidth: number;
   pageHeight: number;
   margins: PageMargins;
+  /**
+   * โซนสงวนของ page header/footer — หักจาก content area เสมอ (content เริ่มใต้ header
+   * จบเหนือ footer) ไม่ว่า band จะถูกวาดเมื่อไหร่; default 0 = ไม่มี band
+   */
+  headerHeight?: number;
+  footerHeight?: number;
   /** เรียกหลัง cursor ขึ้นหน้าใหม่แล้ว — engine ใช้ sync doc.addPage() */
   onPageBreak?: (newPageIndex: number) => void;
 }
@@ -22,10 +28,14 @@ export class PdfCursor implements CursorState {
   private readonly pageWidth: number;
   private readonly pageHeight: number;
   private readonly margins: Readonly<PageMargins>;
+  private readonly headerHeight: number;
+  private readonly footerHeight: number;
   private readonly onPageBreak: ((newPageIndex: number) => void) | undefined;
 
   constructor(options: PdfCursorOptions) {
     const { pageWidth, pageHeight, margins } = options;
+    const headerHeight = options.headerHeight ?? 0;
+    const footerHeight = options.footerHeight ?? 0;
 
     if (!Number.isFinite(pageWidth) || pageWidth <= 0) {
       throw new KapomLayoutError(`pageWidth ต้องเป็นค่าบวก (ได้ ${pageWidth})`);
@@ -39,19 +49,26 @@ export class PdfCursor implements CursorState {
         throw new KapomLayoutError(`margin.${side} ต้องเป็นค่า >= 0 (ได้ ${value})`);
       }
     }
+    for (const [name, value] of [['headerHeight', headerHeight], ['footerHeight', footerHeight]] as const) {
+      if (!Number.isFinite(value) || value < 0) {
+        throw new KapomLayoutError(`${name} ต้องเป็นค่า >= 0 (ได้ ${value})`);
+      }
+    }
     if (pageWidth - margins.left - margins.right <= 0) {
       throw new KapomLayoutError('margin ซ้าย+ขวา กินพื้นที่เกินความกว้างหน้า — ไม่เหลือ content area');
     }
-    if (pageHeight - margins.top - margins.bottom <= 0) {
-      throw new KapomLayoutError('margin บน+ล่าง กินพื้นที่เกินความสูงหน้า — ไม่เหลือ content area');
+    if (pageHeight - margins.top - margins.bottom - headerHeight - footerHeight <= 0) {
+      throw new KapomLayoutError('margin + header/footer reserved กินพื้นที่เกินความสูงหน้า — ไม่เหลือ content area');
     }
 
     this.pageWidth = pageWidth;
     this.pageHeight = pageHeight;
     this.margins = margins;
+    this.headerHeight = headerHeight;
+    this.footerHeight = footerHeight;
     this.onPageBreak = options.onPageBreak;
     this.currentX = margins.left;
-    this.currentY = margins.top;
+    this.currentY = margins.top + headerHeight;
   }
 
   get x(): number {
@@ -70,18 +87,28 @@ export class PdfCursor implements CursorState {
     return this.pageWidth - this.margins.left - this.margins.right;
   }
 
-  /** ความสูง content area เต็มหน้า (ไม่ขึ้นกับตำแหน่ง cursor) */
+  /** ขอบบนของ content area (ใต้ header reserved) — จุดเริ่ม y ของทุกหน้า */
+  get contentTop(): number {
+    return this.margins.top + this.headerHeight;
+  }
+
+  /** ขอบล่างของ content area (เหนือ footer reserved) */
+  get contentBottom(): number {
+    return this.pageHeight - this.margins.bottom - this.footerHeight;
+  }
+
+  /** ความสูง content area เต็มหน้า (ไม่ขึ้นกับตำแหน่ง cursor) — หัก header/footer reserved แล้ว */
   get contentHeight(): number {
-    return this.pageHeight - this.margins.top - this.margins.bottom;
+    return this.contentBottom - this.contentTop;
   }
 
   /** พื้นที่แนวตั้งที่เหลือจาก cursor ถึงขอบล่าง content area */
   get remainingHeight(): number {
-    return this.pageHeight - this.margins.bottom - this.currentY;
+    return this.contentBottom - this.currentY;
   }
 
   get isAtTopOfPage(): boolean {
-    return this.currentY === this.margins.top;
+    return this.currentY === this.contentTop;
   }
 
   advanceY(amount: number): void {
@@ -110,7 +137,7 @@ export class PdfCursor implements CursorState {
 
   breakPage(): void {
     this.currentPageIndex += 1;
-    this.currentY = this.margins.top;
+    this.currentY = this.contentTop;
     this.currentX = this.margins.left;
     this.onPageBreak?.(this.currentPageIndex);
   }

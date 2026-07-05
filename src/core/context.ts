@@ -32,6 +32,10 @@ export interface RenderContext {
   readonly cursor: CursorState;
   readonly margins: PageMargins;
   readonly contentWidth: number;
+  /** ขอบบน content area (ใต้ page-header reserved) — absolute Y; block ที่แบ่งหน้าเอง (AutoTable) ต้องใช้กันวาดทับ band */
+  readonly contentTop: number;
+  /** ขอบล่าง content area (เหนือ page-footer reserved) — absolute Y */
+  readonly contentBottom: number;
   readonly numeric: NumericStrategy;
   readonly typography: Typography;
   /** engine จัดการ page-break — block เรียกเพื่อ advance y */

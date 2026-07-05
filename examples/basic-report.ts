@@ -138,7 +138,33 @@ const outDir = join(here, 'output');
 const outFile = join(outDir, 'basic-report.pdf');
 
 const doc = new jsPDF();
-const engine = new RenderEngine(doc, { font: fontConfig });
+const engine = new RenderEngine(doc, {
+  font: fontConfig,
+  // page header — ซ้ำทุกหน้า, กินพื้นที่สงวน 16mm บนสุด (content เริ่มใต้เส้นนี้)
+  pageHeader: {
+    height: 16,
+    render: (c) => {
+      c.doc.setFontSize(9);
+      c.doc.setFont('Sarabun', 'bold');
+      c.doc.setTextColor(41, 128, 185);
+      c.drawText('Kapom Report — Demo', c.x, c.y + 8);
+      c.doc.setDrawColor(41, 128, 185);
+      c.doc.setLineWidth(0.3);
+      c.doc.line(c.x, c.y + c.height - 1, c.x + c.width, c.y + c.height - 1);
+    },
+  },
+  // page footer — เลขหน้า "X / total" (pageCount รู้ตอน finalize จริง)
+  pageFooter: {
+    height: 12,
+    render: (c) => {
+      c.doc.setFontSize(8);
+      c.doc.setFont('Sarabun', 'normal');
+      c.doc.setTextColor(120, 120, 120);
+      c.drawText(`หน้า ${c.pageIndex + 1} จาก ${c.pageCount}`, c.x + c.width - 40, c.y + 6);
+      c.drawText('สร้างโดย kapom-report', c.x, c.y + 6);
+    },
+  },
+});
 
 const repeatedParagraph =
   'ข้อความตัวอย่างสำหรับทดสอบการตัดบรรทัดอัตโนมัติ (word wrap) ของ PdfCursor engine เมื่อความกว้างไม่พอสำหรับหนึ่งบรรทัด engine จะคำนวณจำนวนบรรทัดจริงผ่าน jsPDF splitTextToSize แล้วเลื่อน cursor ลงตามความสูงที่วัดได้ ';
@@ -215,6 +241,8 @@ engine.render([
   createBlock({ type: 'spacer', height: 4 }),
   createBlock(ledgerTable),
 ]);
+
+engine.finalize(); // วาด page header/footer ทุกหน้า (ต้องเรียกหลัง render จบ)
 
 mkdirSync(outDir, { recursive: true });
 writeFileSync(outFile, Buffer.from(doc.output('arraybuffer')));
