@@ -2,11 +2,11 @@
  * Demo — grouped table (composite)
  * โฟกัส: group band ต่อกลุ่ม + per-group rowNumber + subtotal ต่อกลุ่ม + grand total
  * + keep-together (band ไม่ตกท้ายหน้าเดียวดาย)
+ * เรียกผ่าน createKapomReport({ blocks }) — ไม่ต้องแตะ jsPDF/RenderEngine เอง
  */
-import { jsPDF } from 'jspdf';
-import { RenderEngine, createBlock, nativeNumeric } from '../src/index';
+import { createKapomReport, nativeNumeric } from '../src/index';
 import type { TableNode } from '../src/index';
-import { fontConfig, save } from './shared';
+import { fontConfig, saveReport } from './shared';
 
 interface RegionSale {
   region: string;
@@ -49,17 +49,17 @@ const groupedTable: TableNode<RegionSale> = {
   },
 };
 
-const doc = new jsPDF();
-const engine = new RenderEngine(doc, { font: fontConfig });
+const report = createKapomReport<RegionSale>({
+  font: fontConfig,
+  blocks: [
+    {
+      type: 'text',
+      content: 'Grouped table — band + per-group rowNumber + subtotal + grand total',
+      style: { fontSize: 14, fontStyle: 'bold' },
+    },
+    { type: 'spacer', height: 4 },
+    groupedTable,
+  ],
+});
 
-engine.render([
-  createBlock({
-    type: 'text',
-    content: 'Grouped table — band + per-group rowNumber + subtotal + grand total',
-    style: { fontSize: 14, fontStyle: 'bold' },
-  }),
-  createBlock({ type: 'spacer', height: 4 }),
-  createBlock(groupedTable),
-]);
-
-save(doc, '03-grouped-report');
+saveReport(report, '03-grouped-report');

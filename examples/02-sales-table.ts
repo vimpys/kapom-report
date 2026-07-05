@@ -2,11 +2,11 @@
  * Demo — flat table (AutoTable wrapper)
  * โฟกัส: rowNumber / computed / runningTotal column + aggregate (sum/avg) + summary row
  * + auto page-break ภายในตาราง (ตารางยาวข้ามหน้าเอง)
+ * เรียกผ่าน createKapomReport({ blocks }) — ไม่ต้องแตะ jsPDF/RenderEngine เอง
  */
-import { jsPDF } from 'jspdf';
-import { RenderEngine, createBlock, nativeNumeric } from '../src/index';
+import { createKapomReport, nativeNumeric } from '../src/index';
 import type { TableNode } from '../src/index';
-import { fontConfig, save } from './shared';
+import { fontConfig, saveReport } from './shared';
 
 interface Sale {
   product: string;
@@ -54,22 +54,22 @@ const salesTable: TableNode<Sale> = {
   summaryLabel: 'Total',
 };
 
-const doc = new jsPDF();
-const engine = new RenderEngine(doc, { font: fontConfig });
+const report = createKapomReport<Sale>({
+  font: fontConfig,
+  blocks: [
+    {
+      type: 'text',
+      content: 'Sales table — rowNumber / computed / runningTotal + aggregate',
+      style: { fontSize: 14, fontStyle: 'bold' },
+    },
+    { type: 'spacer', height: 4 },
+    salesTable,
+    { type: 'spacer', height: 6 },
+    {
+      type: 'text',
+      content: 'บรรทัดนี้ต่อจากท้ายตารางบนหน้าสุดท้าย (พิสูจน์ cursor sync หลัง AutoTable แบ่งหน้าเอง)',
+    },
+  ],
+});
 
-engine.render([
-  createBlock({
-    type: 'text',
-    content: 'Sales table — rowNumber / computed / runningTotal + aggregate',
-    style: { fontSize: 14, fontStyle: 'bold' },
-  }),
-  createBlock({ type: 'spacer', height: 4 }),
-  createBlock(salesTable),
-  createBlock({ type: 'spacer', height: 6 }),
-  createBlock({
-    type: 'text',
-    content: 'บรรทัดนี้ต่อจากท้ายตารางบนหน้าสุดท้าย (พิสูจน์ cursor sync หลัง AutoTable แบ่งหน้าเอง)',
-  }),
-]);
-
-save(doc, '02-sales-table');
+saveReport(report, '02-sales-table');

@@ -1,11 +1,11 @@
 /**
  * Demo — Style resolver: zebra striping + conditional formatting + column-level style
  * โฟกัส: precedence conditional > zebra > column-level > row-type (Typography)
+ * เรียกผ่าน createKapomReport({ blocks }) — ไม่ต้องแตะ jsPDF/RenderEngine เอง
  */
-import { jsPDF } from 'jspdf';
-import { RenderEngine, createBlock } from '../src/index';
+import { createKapomReport } from '../src/index';
 import type { TableNode } from '../src/index';
-import { fontConfig, save } from './shared';
+import { fontConfig, saveReport } from './shared';
 
 interface LedgerEntry {
   description: string;
@@ -46,17 +46,17 @@ const ledgerTable: TableNode<LedgerEntry> = {
   },
 };
 
-const doc = new jsPDF();
-const engine = new RenderEngine(doc, { font: fontConfig });
+const report = createKapomReport<LedgerEntry>({
+  font: fontConfig,
+  blocks: [
+    {
+      type: 'text',
+      content: 'Ledger — zebra + conditional (negative = red); precedence conditional > zebra',
+      style: { fontSize: 14, fontStyle: 'bold' },
+    },
+    { type: 'spacer', height: 4 },
+    ledgerTable,
+  ],
+});
 
-engine.render([
-  createBlock({
-    type: 'text',
-    content: 'Ledger — zebra + conditional (negative = red); precedence conditional > zebra',
-    style: { fontSize: 14, fontStyle: 'bold' },
-  }),
-  createBlock({ type: 'spacer', height: 4 }),
-  createBlock(ledgerTable),
-]);
-
-save(doc, '04-styled-ledger');
+saveReport(report, '04-styled-ledger');

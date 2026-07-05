@@ -3,11 +3,10 @@
  * แต่ละ demo เป็นไฟล์ standalone รันตรงได้ (`tsx examples/01-text-blocks.ts`)
  * หรือรันทั้งหมดผ่าน `npm run demo`
  */
-import type { jsPDF } from 'jspdf';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { FontConfig } from '../src/index';
+import type { FontConfig, KapomReport } from '../src/index';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fontsDir = join(here, '../tests/fixtures/fonts');
@@ -21,10 +20,9 @@ export const fontConfig: FontConfig = {
   ],
 };
 
-/** เขียน PDF ลง examples/output/<name>.pdf แล้ว log จำนวนหน้า */
-export function save(doc: jsPDF, name: string): void {
+/** เขียน PDF ลง examples/output/<name>.pdf แล้ว log จำนวนหน้า — รับ KapomReport จาก createKapomReport() */
+export function saveReport(report: KapomReport, name: string): void {
   mkdirSync(outDir, { recursive: true });
-  const file = join(outDir, `${name}.pdf`);
-  writeFileSync(file, Buffer.from(doc.output('arraybuffer')));
-  console.log(`✓ ${name}.pdf (${doc.getNumberOfPages()} หน้า)`);
+  report.save(join(outDir, `${name}.pdf`));
+  console.log(`✓ ${name}.pdf (${report.doc.getNumberOfPages()} หน้า)`);
 }
