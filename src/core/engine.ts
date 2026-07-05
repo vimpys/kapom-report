@@ -3,6 +3,9 @@ import type { FontConfig } from '../font/font-config';
 import { registerFonts } from '../font/register-fonts';
 import { nativeNumeric } from '../numeric/numeric-strategy';
 import type { NumericStrategy } from '../numeric/numeric-strategy';
+import type { DeepPartial } from '../types/primitives';
+import type { Typography } from '../types/typography';
+import { resolveTypography } from '../types/typography';
 import type {
   MeasurableBlock,
   MeasureContext,
@@ -17,6 +20,8 @@ export interface RenderEngineOptions {
   numeric?: NumericStrategy;
   /** ลงทะเบียนก่อน block แรก render เสมอ (VFS timing) — ตั้งเป็น default font ของทั้ง doc ด้วย */
   font?: FontConfig;
+  /** font token ต่อ row-type (columnHeader/detailRow/groupHeader/...) — merge ทับ DEFAULT_TYPOGRAPHY ทีละ token */
+  typography?: DeepPartial<Typography>;
 }
 
 /** หน่วยตาม doc — 15 เหมาะกับ doc หน่วย mm (default ของ jsPDF); doc หน่วย pt ควร override */
@@ -36,11 +41,13 @@ export class RenderEngine {
   private readonly cursor: PdfCursor;
   private readonly margins: PageMargins;
   private readonly numeric: NumericStrategy;
+  private readonly typography: Typography;
 
   constructor(doc: jsPDF, options: RenderEngineOptions = {}) {
     this.doc = doc;
     this.margins = { ...DEFAULT_PAGE_MARGINS, ...options.margins };
     this.numeric = options.numeric ?? nativeNumeric;
+    this.typography = resolveTypography(options.typography);
 
     if (options.font) {
       // ต้องเกิดก่อน block แรก render เสมอ — constructor รันก่อน .render() ทุกครั้งอยู่แล้ว
@@ -77,6 +84,7 @@ export class RenderEngine {
       pageWidth: this.doc.internal.pageSize.getWidth(),
       contentWidth: this.cursor.contentWidth,
       numeric: this.numeric,
+      typography: this.typography,
       measureText: (text, fontSize, maxWidth) =>
         measureTextBlockHeight(this.doc, text, fontSize, maxWidth),
     };
@@ -90,6 +98,7 @@ export class RenderEngine {
       margins: this.margins,
       contentWidth: this.cursor.contentWidth,
       numeric: this.numeric,
+      typography: this.typography,
       advanceY: (amount) => {
         this.cursor.advanceY(amount);
       },

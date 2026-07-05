@@ -1,6 +1,6 @@
 import type { Decimalish } from '../numeric/numeric-strategy';
 import type { ReportColumn } from './column';
-import type { CellStyle, TextStyle } from './primitives';
+import type { CellStyle, RGB, TextStyle } from './primitives';
 
 export interface TextNode {
   type: 'text';
@@ -36,6 +36,21 @@ export interface GroupResolver<T> {
   keepTogether?: { minRowsWithHeader: number };
 }
 
+/** สีแถวสลับ — ใช้กับ body section เท่านั้น (rowIndex คู่/คี่) */
+export interface ZebraOption {
+  even?: RGB;
+  odd?: RGB;
+}
+
+/**
+ * zebra + conditional — precedence: conditional > zebra > row-type (Typography.detailRow)
+ * conditional คืน undefined = ไม่ override แถวนั้น (fall through ไป zebra/default)
+ */
+export interface TableStyleOptions<T> {
+  zebra?: ZebraOption;
+  conditional?: (row: T, rowIndex: number) => Partial<CellStyle> | undefined;
+}
+
 export interface TableNode<T> {
   type: 'table';
   columns: readonly ReportColumn<T>[];
@@ -44,6 +59,7 @@ export interface TableNode<T> {
   /** master-detail (2 ระดับ MVP); คืน sub-table ต่อ row */
   nested?: (row: T) => TableNode<unknown> | undefined;
   summaryLabel?: string;
+  style?: TableStyleOptions<T>;
 }
 
 export interface RawNode {

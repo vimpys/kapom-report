@@ -1,0 +1,44 @@
+import type { DeepPartial, TextStyle } from './primitives';
+
+/**
+ * font sizing เป็น theme-level token ต่อ row-type ไม่ set ทีละจุด — เปลี่ยนทั้ง report ที่เดียว
+ * pageHeaderFooter/reportTitle/reportSubtitle/sectionHeading รอ block ที่ใช้จริงในขั้น 6 (Composite Report)
+ */
+export interface Typography {
+  reportTitle: TextStyle;
+  reportSubtitle: TextStyle;
+  sectionHeading: TextStyle;
+  columnHeader: TextStyle;
+  detailRow: TextStyle;
+  groupHeader: TextStyle;
+  groupFooter: TextStyle;
+  summary: TextStyle;
+  pageHeaderFooter: TextStyle;
+}
+
+export const DEFAULT_TYPOGRAPHY: Typography = {
+  reportTitle: { fontSize: 18, fontStyle: 'bold' },
+  reportSubtitle: { fontSize: 11, fontStyle: 'normal', color: [100, 100, 100] },
+  sectionHeading: { fontSize: 13, fontStyle: 'bold' },
+  columnHeader: { fontSize: 10, fontStyle: 'bold', color: [255, 255, 255] },
+  detailRow: { fontSize: 10, fontStyle: 'normal' },
+  groupHeader: { fontSize: 10, fontStyle: 'bold' },
+  groupFooter: { fontSize: 10, fontStyle: 'bold' },
+  summary: { fontSize: 10, fontStyle: 'bold', color: [255, 255, 255] },
+  pageHeaderFooter: { fontSize: 8, fontStyle: 'normal', color: [120, 120, 120] },
+};
+
+const TOKEN_NAMES = Object.keys(DEFAULT_TYPOGRAPHY) as (keyof Typography)[];
+
+/** merge ทีละ token — precedence: override token → DEFAULT_TYPOGRAPHY token (ไม่ merge ข้าม token) */
+export function resolveTypography(override?: DeepPartial<Typography>): Typography {
+  if (!override) return DEFAULT_TYPOGRAPHY;
+
+  const resolved = {} as Typography;
+  for (const name of TOKEN_NAMES) {
+    const base = DEFAULT_TYPOGRAPHY[name];
+    const partial = override[name];
+    resolved[name] = partial ? { ...base, ...partial } : base;
+  }
+  return resolved;
+}

@@ -37,11 +37,16 @@ export type {
   DividerNode,
   ImageNode,
   GroupResolver,
+  ZebraOption,
+  TableStyleOptions,
   TableNode,
   RawNode,
   ReportNode,
   SummaryValue,
 } from './types/node';
+
+export type { Typography } from './types/typography';
+export { DEFAULT_TYPOGRAPHY, resolveTypography } from './types/typography';
 
 export type {
   PageMargins,
@@ -92,3 +97,5 @@ export { computeAggregate, asDecimalish } from './table/aggregate';
 export type { ResolvedGroup } from './table/group-resolver';
 export { splitGroups, groupHeaderLabel, groupFooterLabel } from './table/group-resolver';
 export { computeColumnWidths } from './table/column-width';
+
+export { resolveRowStyle } from './style/resolve-cell-style';

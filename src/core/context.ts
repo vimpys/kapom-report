@@ -1,5 +1,6 @@
 import type { jsPDF } from 'jspdf';
 import type { NumericStrategy } from '../numeric/numeric-strategy';
+import type { Typography } from '../types/typography';
 
 export interface PageMargins {
   top: number;
@@ -20,6 +21,7 @@ export interface MeasureContext {
   readonly pageWidth: number;
   readonly contentWidth: number;
   readonly numeric: NumericStrategy;
+  readonly typography: Typography;
   /** วัด text จริงผ่าน jsPDF โดยไม่วาด (splitTextToSize/getTextWidth) */
   readonly measureText: (text: string, fontSize: number, maxWidth: number) => number;
 }
@@ -31,6 +33,7 @@ export interface RenderContext {
   readonly margins: PageMargins;
   readonly contentWidth: number;
   readonly numeric: NumericStrategy;
+  readonly typography: Typography;
   /** engine จัดการ page-break — block เรียกเพื่อ advance y */
   readonly advanceY: (amount: number) => void;
   readonly ensureSpace: (requiredHeight: number) => void;

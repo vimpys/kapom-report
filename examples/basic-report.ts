@@ -72,6 +72,35 @@ const groupedTable: TableNode<RegionSale> = {
   },
 };
 
+interface LedgerEntry {
+  description: string;
+  amount: number;
+}
+
+const ledgerEntries: LedgerEntry[] = [
+  { description: 'Opening balance', amount: 5000 },
+  { description: 'Client payment — Invoice #101', amount: 1200 },
+  { description: 'Office rent', amount: -800 },
+  { description: 'Software subscription', amount: -150 },
+  { description: 'Client payment — Invoice #102', amount: 2400 },
+  { description: 'Refund — Invoice #099', amount: -300 },
+  { description: 'Consulting fee', amount: 900 },
+];
+
+const ledgerTable: TableNode<LedgerEntry> = {
+  type: 'table',
+  columns: [
+    { type: 'data', key: 'description', header: 'Description' },
+    { type: 'data', key: 'amount', header: 'Amount', align: 'right', numberFormat: {}, aggregate: 'sum' },
+  ],
+  data: ledgerEntries,
+  summaryLabel: 'Net',
+  style: {
+    zebra: { even: [255, 255, 255], odd: [245, 247, 250] },
+    conditional: (row) => (row.amount < 0 ? { textColor: [220, 38, 38] } : undefined),
+  },
+};
+
 const salesTable: TableNode<Sale> = {
   type: 'table',
   columns: [
@@ -177,6 +206,14 @@ engine.render([
   }),
   createBlock({ type: 'spacer', height: 4 }),
   createBlock(groupedTable),
+  createBlock({ type: 'spacer', height: 8 }),
+  createBlock({
+    type: 'text',
+    content: 'Ledger — zebra striping + conditional formatting (negative = red), precedence: conditional > zebra',
+    style: { fontSize: 12, fontStyle: 'bold' },
+  }),
+  createBlock({ type: 'spacer', height: 4 }),
+  createBlock(ledgerTable),
 ]);
 
 mkdirSync(outDir, { recursive: true });
