@@ -1,0 +1,32 @@
+{
+  "name": "kapom-report",
+  "version": "0.0.1",
+  "description": "Declarative PDF report library wrapping jsPDF + AutoTable — auto grouping, subtotals, composite reports, strict TypeScript",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": ["dist"],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "keywords": ["pdf", "report", "jspdf", "autotable", "typescript", "declarative", "thai"],
+  "license": "MIT",
+  "peerDependencies": {
+    "jspdf": "^2.5.0 || ^3.0.0",
+    "jspdf-autotable": "^3.8.0 || ^5.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  }
+}
