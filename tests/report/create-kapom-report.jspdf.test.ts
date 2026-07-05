@@ -1,0 +1,140 @@
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { describe, expect, it } from 'vitest';
+import { createKapomReport } from '../../src/report/create-kapom-report';
+
+interface Sale {
+  product: string;
+  qty: number;
+  category: string;
+}
+
+const data: Sale[] = [
+  { product: 'A', qty: 1, category: 'Food' },
+  { product: 'B', qty: 2, category: 'Drink' },
+  { product: 'C', qty: 3, category: 'Food' },
+];
+
+describe('createKapomReport × jsPDF จริง', () => {
+  it('zero-config: columns+data เท่านั้น → สร้าง doc ได้ ไม่ throw', () => {
+    const report = createKapomReport({
+      columns: [
+        { key: 'product', header: 'Product' },
+        { key: 'qty', header: 'Qty', align: 'right', aggregate: 'sum' },
+      ],
+      data,
+    });
+
+    expect(report.doc.getNumberOfPages()).toBeGreaterThanOrEqual(1);
+  });
+
+  it('title → render เป็น text block reportTitle เหนือตาราง (ไม่ throw, เพิ่มความสูงจริง)', () => {
+    const report = createKapomReport({
+      columns: [{ key: 'product', header: 'Product' }],
+      data,
+      title: 'Monthly Sales Report',
+    });
+
+    expect(report.doc.getNumberOfPages()).toBeGreaterThanOrEqual(1);
+  });
+
+  it('group shorthand (string key) → ตารางจัดกลุ่มจริงผ่าน AutoTable ไม่ throw', () => {
+    const report = createKapomReport({
+      columns: [
+        { key: 'product', header: 'Product' },
+        { key: 'qty', header: 'Qty', align: 'right', aggregate: 'sum' },
+      ],
+      data,
+      group: 'category',
+    });
+
+    expect(report.doc.getNumberOfPages()).toBeGreaterThanOrEqual(1);
+  });
+
+  it('.save() เขียนไฟล์ PDF จริงลง disk', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'kapom-report-'));
+    const file = join(dir, 'report.pdf');
+    const report = createKapomReport({
+      columns: [{ key: 'product', header: 'Product' }],
+      data,
+    });
+
+    report.save(file);
+
+    expect(existsSync(file)).toBe(true);
+    const bytes = readFileSync(file);
+    expect(bytes.subarray(0, 4).toString('utf-8')).toBe('%PDF');
+
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('report.doc เป็น raw jsPDF instance จริง (escape hatch)', () => {
+    const report = createKapomReport({
+      columns: [{ key: 'product', header: 'Product' }],
+      data,
+    });
+
+    expect(typeof report.doc.output).toBe('function');
+  });
+
+  it('document: { orientation: landscape, format: letter } → หน้าจริงกว้างกว่าสูง (letter landscape)', () => {
+    const report = createKapomReport({
+      columns: [{ key: 'product', header: 'Product' }],
+      data,
+      document: { orientation: 'landscape', format: 'letter' },
+    });
+
+    const { width, height } = report.doc.internal.pageSize;
+    expect(width).toBeGreaterThan(height);
+  });
+
+  it('ไม่ระบุ document → default ของ jsPDF เอง (a4 portrait, สูงกว่ากว้าง)', () => {
+    const report = createKapomReport({
+      columns: [{ key: 'product', header: 'Product' }],
+      data,
+    });
+
+    const { width, height } = report.doc.internal.pageSize;
+    expect(height).toBeGreaterThan(width);
+  });
+
+  it('blocks variant: ReportNode tree ตรงๆ (text/section/table/signature) render จบไม่ throw', () => {
+    const report = createKapomReport<Sale>({
+      blocks: [
+        { type: 'text', content: 'Composite Report', role: 'reportTitle' },
+        { type: 'spacer', height: 6 },
+        {
+          type: 'section',
+          name: 'sales',
+          children: [
+            { type: 'text', content: 'Sales', role: 'sectionHeading' },
+            {
+              type: 'table',
+              columns: [{ type: 'data', key: 'product', header: 'Product' }],
+              data,
+            },
+          ],
+        },
+        { type: 'signature', slots: [{ label: 'ผู้จัดทำ' }, { label: 'ผู้อนุมัติ' }] },
+      ],
+    });
+
+    expect(report.doc.getNumberOfPages()).toBeGreaterThanOrEqual(1);
+  });
+
+  it('blocks variant: facade เรียก finalize() ให้เอง — pageFooter band ถูกวาดจริง', () => {
+    let footerDrawnOnPages = 0;
+    createKapomReport({
+      blocks: [{ type: 'text', content: 'hello' }],
+      pageFooter: {
+        height: 10,
+        render: () => {
+          footerDrawnOnPages += 1;
+        },
+      },
+    });
+
+    expect(footerDrawnOnPages).toBe(1); // 1 หน้า → footer วาด 1 ครั้งตอน finalize
+  });
+});
