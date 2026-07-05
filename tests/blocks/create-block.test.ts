@@ -3,6 +3,7 @@ import { createBlock } from '../../src/blocks/create-block';
 import { TextBlock } from '../../src/blocks/text-block';
 import { SpacerBlock } from '../../src/blocks/spacer-block';
 import { DividerBlock } from '../../src/blocks/divider-block';
+import { ImageBlock } from '../../src/blocks/image-block';
 import { KapomError } from '../../src/core/errors';
 
 describe('createBlock', () => {
@@ -18,14 +19,20 @@ describe('createBlock', () => {
     expect(createBlock({ type: 'divider' })).toBeInstanceOf(DividerBlock);
   });
 
-  it('node type ที่ยังไม่รองรับ (เช่น image) → throw KapomError', () => {
+  it('image node → ImageBlock', () => {
+    expect(
+      createBlock({ type: 'image', data: '', format: 'PNG', width: 10, height: 10 }),
+    ).toBeInstanceOf(ImageBlock);
+  });
+
+  it('node type ที่ยังไม่รองรับ (เช่น raw) → throw KapomError', () => {
     expect(() =>
       createBlock({
-        type: 'image',
-        data: '',
-        format: 'PNG',
-        width: 1,
-        height: 1,
+        type: 'raw',
+        measure: () => 0,
+        draw: () => {
+          /* no-op */
+        },
       }),
     ).toThrow(KapomError);
   });

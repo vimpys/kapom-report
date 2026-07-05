@@ -1,5 +1,5 @@
 /**
- * Demo — สร้าง PDF จริงด้วย RenderEngine + Text/Spacer/Divider blocks
+ * Demo — สร้าง PDF จริงด้วย RenderEngine + Text/Spacer/Divider/Image blocks
  * รัน: npm run demo
  * ผลลัพธ์: examples/output/basic-report.pdf
  */
@@ -19,6 +19,10 @@ const engine = new RenderEngine(doc);
 const repeatedParagraph =
   'ข้อความตัวอย่างสำหรับทดสอบการตัดบรรทัดอัตโนมัติ (word wrap) ของ PdfCursor engine เมื่อความกว้างไม่พอสำหรับหนึ่งบรรทัด engine จะคำนวณจำนวนบรรทัดจริงผ่าน jsPDF splitTextToSize แล้วเลื่อน cursor ลงตามความสูงที่วัดได้ ';
 
+/** 1x1 PNG โปร่งใส — ใช้แทนโลโก้จริงเพื่อทดสอบ addImage() + auto-scale ลง contentWidth */
+const TINY_PNG_BASE64 =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+
 engine.render([
   createBlock({
     type: 'text',
@@ -33,6 +37,14 @@ engine.render([
   }),
   createBlock({ type: 'spacer', height: 6 }),
   createBlock({ type: 'divider' }),
+  createBlock({ type: 'spacer', height: 6 }),
+  createBlock({
+    type: 'image',
+    data: TINY_PNG_BASE64,
+    format: 'PNG',
+    width: 400, // เกิน contentWidth ~180mm ตั้งใจ → ทดสอบ auto-scale ลง
+    height: 400,
+  }),
   createBlock({ type: 'spacer', height: 6 }),
   createBlock({ type: 'text', content: repeatedParagraph.repeat(3) }),
   createBlock({ type: 'spacer', height: 10 }),

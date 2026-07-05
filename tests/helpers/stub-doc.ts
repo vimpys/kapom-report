@@ -32,6 +32,7 @@ export function makeStubDoc(splitInto: string[] = ['line1']) {
     setLineWidth: vi.fn(),
     line: vi.fn(),
     text: vi.fn(),
+    addImage: vi.fn(),
   };
 
   return { stub, doc: stub as unknown as jsPDF };

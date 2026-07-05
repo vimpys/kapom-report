@@ -66,4 +66,5 @@ export {
   DEFAULT_DIVIDER_COLOR,
   DividerBlock,
 } from './blocks/divider-block';
+export { ImageBlock } from './blocks/image-block';
 export { createBlock } from './blocks/create-block';
