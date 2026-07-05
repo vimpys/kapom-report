@@ -82,6 +82,9 @@ export { ImageBlock } from './blocks/image-block';
 export { TableBlock } from './blocks/table-block';
 export { createBlock } from './blocks/create-block';
 
+export type { BlockFactory } from './blocks/block-registry';
+export { registerBlockType } from './blocks/block-registry';
+
 export { DEFAULT_NUMBER_FORMAT, formatNumber, getNumberFormatter } from './format/number-format';
 
 export type { ResolvedTableContent, SegmentState } from './table/column-resolver';
