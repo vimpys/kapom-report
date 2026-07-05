@@ -50,3 +50,11 @@ export type {
   RenderContext,
   MeasurableBlock,
 } from './core/context';
+
+export { KapomError, KapomLayoutError } from './core/errors';
+
+export type { PdfCursorOptions } from './core/cursor';
+export { PdfCursor } from './core/cursor';
+
+export type { RenderEngineOptions } from './core/engine';
+export { RenderEngine, DEFAULT_PAGE_MARGINS } from './core/engine';
