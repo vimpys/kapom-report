@@ -1,10 +1,13 @@
 import type { Decimalish } from '../numeric/numeric-strategy';
 import type { ReportColumn } from './column';
 import type { CellStyle, RGB, TextStyle } from './primitives';
+import type { Typography } from './typography';
 
 export interface TextNode {
   type: 'text';
   content: string;
+  /** ใช้ Typography token (เช่น 'reportTitle'/'reportSubtitle'/'sectionHeading') เป็น base style แทน DEFAULT_TEXT_STYLE — style ทับได้ทีละ property */
+  role?: keyof Typography;
   style?: Partial<TextStyle>;
 }
 
@@ -28,12 +31,36 @@ export interface ImageNode {
   height: number;
 }
 
+export interface SignatureSlot {
+  /** label ใต้เส้น เช่น 'ผู้จัดทำ' / 'ผู้อนุมัติ' */
+  label: string;
+}
+
+/** เส้นเซ็นชื่อ + label หลาย slot เรียงแนวนอนแบ่งพื้นที่เท่ากัน (Report Footer, roadmap 6d) */
+export interface SignatureNode {
+  type: 'signature';
+  slots: readonly SignatureSlot[];
+  /** พื้นที่ว่างเหนือเส้นไว้เซ็นจริง (mm) — default DEFAULT_SIGNATURE_SIGN_HEIGHT */
+  signHeight?: number;
+  /** ระยะห่างจากเส้นถึง label (mm) — default DEFAULT_SIGNATURE_LABEL_GAP */
+  labelGap?: number;
+  /** ช่องว่างระหว่าง slot (mm) — default DEFAULT_SIGNATURE_SLOT_GAP */
+  slotGap?: number;
+  style?: Partial<TextStyle>;
+}
+
 export interface GroupResolver<T> {
   by: keyof T | ((row: T) => string);
   headerLabel?: (groupKey: string, rows: readonly T[]) => string;
   footerLabel?: (groupKey: string, rows: readonly T[]) => string;
   sortGroups?: (a: string, b: string) => number;
   keepTogether?: { minRowsWithHeader: number };
+  /**
+   * group ซ้อนข้างในกลุ่มนี้อีกชั้น (recursive composition — roadmap 10) เช่น group by region
+   * แล้ว subGroup by category; ซ้อนได้ N ระดับ, แต่ละระดับมี band/subtotal/keepTogether ของตัวเอง
+   * — คนละเรื่องกับ `TableNode.nested` (master-detail ที่คืน sub-table ต่อ row)
+   */
+  subGroup?: GroupResolver<T>;
 }
 
 /** สีแถวสลับ — ใช้กับ body section เท่านั้น (rowIndex คู่/คี่) */
@@ -69,6 +96,21 @@ export interface RawNode {
   draw: (doc: unknown, cursor: { x: number; y: number }) => void;
 }
 
+/** composite: render children ตามลำดับ, measureHeight รวมแบบ recursive */
+export interface StackNode<T> {
+  type: 'stack';
+  children: readonly ReportNode<T>[];
+}
+
+/** เหมือน stack แต่มี `name` ไว้อ้างอิง (เช่น Report Registry เลือก section ด้วยชื่อ — roadmap 6c) */
+export interface SectionNode<T> {
+  type: 'section';
+  name: string;
+  children: readonly ReportNode<T>[];
+  /** บังคับขึ้นหน้าใหม่ก่อน section นี้เสมอ (no-op ถ้า cursor อยู่หัวหน้าอยู่แล้ว) — page-break policy ระหว่าง section (roadmap 6c) */
+  breakBefore?: boolean;
+}
+
 /**
  * declarative tree — single source of truth
  * generic T ผูก data type; children เป็น recursive สำหรับ composite/section
@@ -78,10 +120,11 @@ export type ReportNode<T = unknown> =
   | SpacerNode
   | DividerNode
   | ImageNode
+  | SignatureNode
   | TableNode<T>
   | RawNode
-  | { type: 'stack'; children: readonly ReportNode<T>[] }
-  | { type: 'section'; name: string; children: readonly ReportNode<T>[] };
+  | StackNode<T>
+  | SectionNode<T>;
 
 export interface SummaryValue {
   columnKey: string;

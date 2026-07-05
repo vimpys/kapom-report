@@ -16,6 +16,7 @@ import { PdfCursor } from './cursor';
 import { drawText } from './draw-text';
 import type { PageBand } from './page-band';
 import { measureTextBlockHeight } from './text-metrics';
+import type { Watermark } from './watermark';
 
 export interface RenderEngineOptions {
   margins?: Partial<PageMargins>;
@@ -28,6 +29,8 @@ export interface RenderEngineOptions {
   pageHeader?: PageBand;
   /** page footer ซ้ำทุกหน้า — กินพื้นที่สงวนล่างสุด; วาดตอน finalize() */
   pageFooter?: PageBand;
+  /** watermark ซ้ำทุกหน้า — ไม่หัก content area (ต่าง page header/footer); วาดตอน finalize() ก่อน band */
+  watermark?: Watermark;
 }
 
 /** หน่วยตาม doc — 15 เหมาะกับ doc หน่วย mm (default ของ jsPDF); doc หน่วย pt ควร override */
@@ -50,6 +53,7 @@ export class RenderEngine {
   private readonly typography: Typography;
   private readonly pageHeader: PageBand | undefined;
   private readonly pageFooter: PageBand | undefined;
+  private readonly watermark: Watermark | undefined;
 
   constructor(doc: jsPDF, options: RenderEngineOptions = {}) {
     this.doc = doc;
@@ -58,6 +62,7 @@ export class RenderEngine {
     this.typography = resolveTypography(options.typography);
     this.pageHeader = options.pageHeader;
     this.pageFooter = options.pageFooter;
+    this.watermark = options.watermark;
 
     if (options.font) {
       // ต้องเกิดก่อน block แรก render เสมอ — constructor รันก่อน .render() ทุกครั้งอยู่แล้ว
@@ -122,6 +127,11 @@ export class RenderEngine {
       syncCursor: (pageIndex, y) => {
         this.cursor.syncTo(pageIndex, y);
       },
+      forcePageBreak: () => {
+        if (!this.cursor.isAtTopOfPage) {
+          this.cursor.breakPage();
+        }
+      },
     };
   }
 
@@ -132,7 +142,7 @@ export class RenderEngine {
    * no-op ถ้าไม่มี band; ปลอดภัยแม้ไม่มี — facade/ผู้ใช้เรียกได้เสมอ
    */
   finalize(): void {
-    if (!this.pageHeader && !this.pageFooter) return;
+    if (!this.pageHeader && !this.pageFooter && !this.watermark) return;
 
     const pageCount = this.doc.getNumberOfPages();
     const pageWidth = this.doc.internal.pageSize.getWidth();
@@ -144,6 +154,17 @@ export class RenderEngine {
       const pageIndex = page - 1;
       this.doc.setPage(page);
 
+      // watermark ก่อน header/footer เสมอ — ให้ header/footer (ทึบ) ยังคมชัดอยู่บนสุด
+      if (this.watermark && (page > 1 || this.watermark.showOnFirstPage !== false)) {
+        this.watermark.render({
+          doc: this.doc,
+          pageIndex,
+          pageCount,
+          pageWidth,
+          pageHeight,
+          drawText: (text, x, y) => drawText(this.doc, text, x, y),
+        });
+      }
       if (this.pageHeader && (page > 1 || this.pageHeader.showOnFirstPage !== false)) {
         this.drawBand(this.pageHeader, this.margins.top, bandWidth, pageIndex, pageCount);
       }

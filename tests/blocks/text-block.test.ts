@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { RenderEngine } from '../../src/core/engine';
 import { TextBlock, DEFAULT_TEXT_STYLE } from '../../src/blocks/text-block';
+import { DEFAULT_TYPOGRAPHY } from '../../src/types/typography';
 import { makeStubDoc, SCALE_FACTOR } from '../helpers/stub-doc';
 
 describe('TextBlock — measureHeight', () => {
@@ -77,6 +78,34 @@ describe('TextBlock — render', () => {
 
     expect(stub.setFontSize).toHaveBeenCalledWith(14);
     expect(stub.setFont).toHaveBeenCalledWith('THSarabun', 'bold');
+    expect(stub.setTextColor).toHaveBeenCalledWith(255, 0, 0);
+  });
+
+  it('role ใช้ Typography token เป็น base style แทน DEFAULT_TEXT_STYLE', () => {
+    const { stub, doc } = makeStubDoc(['line1']);
+    const engine = new RenderEngine(doc);
+    const block = new TextBlock({ type: 'text', content: 'Report Title', role: 'reportTitle' });
+
+    block.render(engine.createRenderContext());
+
+    expect(stub.setFontSize).toHaveBeenCalledWith(DEFAULT_TYPOGRAPHY.reportTitle.fontSize);
+    expect(stub.setFont).toHaveBeenCalledWith('helvetica', DEFAULT_TYPOGRAPHY.reportTitle.fontStyle);
+  });
+
+  it('style override ทับ role token ทีละ property เท่านั้น', () => {
+    const { stub, doc } = makeStubDoc(['line1']);
+    const engine = new RenderEngine(doc);
+    const block = new TextBlock({
+      type: 'text',
+      content: 'Report Title',
+      role: 'reportTitle',
+      style: { color: [255, 0, 0] },
+    });
+
+    block.render(engine.createRenderContext());
+
+    // fontSize/fontStyle ยังมาจาก token — override เฉพาะ color
+    expect(stub.setFontSize).toHaveBeenCalledWith(DEFAULT_TYPOGRAPHY.reportTitle.fontSize);
     expect(stub.setTextColor).toHaveBeenCalledWith(255, 0, 0);
   });
 });

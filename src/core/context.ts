@@ -46,6 +46,12 @@ export interface RenderContext {
    * ว่า doc ไปจบที่หน้า/ตำแหน่งไหน; pageIndex เป็น 0-based ถอยหลังไม่ได้
    */
   readonly syncCursor: (pageIndex: number, y: number) => void;
+  /**
+   * บังคับขึ้นหน้าใหม่ไม่ว่าจะเหลือพื้นที่พอไหม (ต่าง ensureSpace ที่ break แค่ตอนไม่พอ) —
+   * no-op ถ้า cursor อยู่หัวหน้าอยู่แล้ว (กันหน้าเปล่าซ้อน); ใช้กับ page-break policy
+   * ระหว่าง section ของ Composite Report (roadmap 6c)
+   */
+  readonly forcePageBreak: () => void;
 }
 
 /**

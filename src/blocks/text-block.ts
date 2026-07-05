@@ -4,6 +4,7 @@ import { splitTextLines, lineHeightOf } from '../core/text-metrics';
 import { normalizeText } from '../core/text-normalizer';
 import type { TextStyle } from '../types/primitives';
 import type { TextNode } from '../types/node';
+import type { Typography } from '../types/typography';
 
 export const DEFAULT_TEXT_STYLE: TextStyle = {
   fontSize: 10,
@@ -11,8 +12,20 @@ export const DEFAULT_TEXT_STYLE: TextStyle = {
   color: [0, 0, 0],
 };
 
-function resolveTextStyle(override?: Partial<TextStyle>): TextStyle {
-  return { ...DEFAULT_TEXT_STYLE, ...override };
+/**
+ * role เลือก Typography token เป็น base แทน DEFAULT_TEXT_STYLE; node.style ทับทีละ property เสมอ
+ * DEFAULT_TEXT_STYLE เป็น fallback ชั้นในสุดเสมอ (ไม่ใช่แค่ตอน role undefined) — บาง token
+ * (เช่น sectionHeading/detailRow/groupHeader/groupFooter/reportTitle) ไม่ได้กำหนด `color` ไว้
+ * ถ้าไม่ fallback แบบนี้ TextBlock จะข้าม doc.setTextColor() แล้วเหลือสีจาก block ก่อนหน้าติดค้างอยู่
+ * (สังเกตได้จริงตอน demo: sectionHeading เรนเดอร์เป็นสีเทาเพราะสืบสีจาก reportSubtitle ก่อนหน้า)
+ */
+function resolveTextStyle(
+  typography: Typography,
+  role: keyof Typography | undefined,
+  override?: Partial<TextStyle>,
+): TextStyle {
+  const base = role ? typography[role] : DEFAULT_TEXT_STYLE;
+  return { ...DEFAULT_TEXT_STYLE, ...base, ...override };
 }
 
 export class TextBlock implements MeasurableBlock {
@@ -24,12 +37,12 @@ export class TextBlock implements MeasurableBlock {
   }
 
   measureHeight(ctx: MeasureContext): number {
-    const style = resolveTextStyle(this.node.style);
+    const style = resolveTextStyle(ctx.typography, this.node.role, this.node.style);
     return ctx.measureText(this.content, style.fontSize, ctx.contentWidth);
   }
 
   render(ctx: RenderContext): void {
-    const style = resolveTextStyle(this.node.style);
+    const style = resolveTextStyle(ctx.typography, this.node.role, this.node.style);
     const { doc, cursor, contentWidth } = ctx;
 
     doc.setFontSize(style.fontSize);
