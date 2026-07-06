@@ -1,13 +1,23 @@
 import { describe, expect, it } from 'vitest';
 import { createBlock, registerBlockType } from '../../src/blocks/block-registry';
-import '../../src/blocks/register-builtin-blocks'; // ensure built-ins registered เหมือน create-block.ts จริง
+import { registerBuiltinBlocks } from '../../src/blocks/register-builtin-blocks';
 import { KapomError } from '../../src/core/errors';
 import type { MeasurableBlock } from '../../src/core/context';
 import { TextBlock } from '../../src/blocks/text-block';
 
+// เรียกตรงเหมือน create-block.ts จริง (named call ไม่ใช่ bare import — กัน tree-shake ตัด, ดู sideEffects)
+registerBuiltinBlocks();
+
 describe('block-registry — built-in types ผ่าน registry จริง', () => {
   it('createBlock dispatch built-in ผ่าน registry ได้ (ไม่ใช่ switch แล้ว)', () => {
     expect(createBlock({ type: 'text', content: 'x' })).toBeInstanceOf(TextBlock);
+  });
+
+  it('registerBuiltinBlocks เรียกซ้ำ = no-op (idempotent) ไม่ throw ชื่อซ้ำ', () => {
+    expect(() => {
+      registerBuiltinBlocks();
+      registerBuiltinBlocks();
+    }).not.toThrow();
   });
 
   it('type ที่ไม่เคยลงทะเบียน → throw KapomError', () => {
