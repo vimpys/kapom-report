@@ -38,27 +38,27 @@ export class PdfCursor implements CursorState {
     const footerHeight = options.footerHeight ?? 0;
 
     if (!Number.isFinite(pageWidth) || pageWidth <= 0) {
-      throw new KapomLayoutError(`pageWidth ต้องเป็นค่าบวก (ได้ ${pageWidth})`);
+      throw new KapomLayoutError(`pageWidth must be a positive number (got ${pageWidth})`);
     }
     if (!Number.isFinite(pageHeight) || pageHeight <= 0) {
-      throw new KapomLayoutError(`pageHeight ต้องเป็นค่าบวก (ได้ ${pageHeight})`);
+      throw new KapomLayoutError(`pageHeight must be a positive number (got ${pageHeight})`);
     }
     for (const side of ['top', 'bottom', 'left', 'right'] as const) {
       const value = margins[side];
       if (!Number.isFinite(value) || value < 0) {
-        throw new KapomLayoutError(`margin.${side} ต้องเป็นค่า >= 0 (ได้ ${value})`);
+        throw new KapomLayoutError(`margin.${side} must be >= 0 (got ${value})`);
       }
     }
     for (const [name, value] of [['headerHeight', headerHeight], ['footerHeight', footerHeight]] as const) {
       if (!Number.isFinite(value) || value < 0) {
-        throw new KapomLayoutError(`${name} ต้องเป็นค่า >= 0 (ได้ ${value})`);
+        throw new KapomLayoutError(`${name} must be >= 0 (got ${value})`);
       }
     }
     if (pageWidth - margins.left - margins.right <= 0) {
-      throw new KapomLayoutError('margin ซ้าย+ขวา กินพื้นที่เกินความกว้างหน้า — ไม่เหลือ content area');
+      throw new KapomLayoutError('left+right margins exceed the page width — no content area left');
     }
     if (pageHeight - margins.top - margins.bottom - headerHeight - footerHeight <= 0) {
-      throw new KapomLayoutError('margin + header/footer reserved กินพื้นที่เกินความสูงหน้า — ไม่เหลือ content area');
+      throw new KapomLayoutError('margins + reserved header/footer heights exceed the page height — no content area left');
     }
 
     this.pageWidth = pageWidth;
@@ -113,7 +113,7 @@ export class PdfCursor implements CursorState {
 
   advanceY(amount: number): void {
     if (!Number.isFinite(amount) || amount < 0) {
-      throw new KapomLayoutError(`advanceY ต้องเป็นค่า >= 0 (ได้ ${amount})`);
+      throw new KapomLayoutError(`advanceY requires a value >= 0 (got ${amount})`);
     }
     this.currentY += amount;
   }
@@ -127,7 +127,7 @@ export class PdfCursor implements CursorState {
    */
   ensureSpace(requiredHeight: number): boolean {
     if (!Number.isFinite(requiredHeight) || requiredHeight < 0) {
-      throw new KapomLayoutError(`ensureSpace ต้องเป็นค่า >= 0 (ได้ ${requiredHeight})`);
+      throw new KapomLayoutError(`ensureSpace requires a value >= 0 (got ${requiredHeight})`);
     }
     if (requiredHeight <= this.remainingHeight) return false;
     if (this.isAtTopOfPage) return false;
@@ -150,11 +150,11 @@ export class PdfCursor implements CursorState {
   syncTo(pageIndex: number, y: number): void {
     if (!Number.isInteger(pageIndex) || pageIndex < this.currentPageIndex) {
       throw new KapomLayoutError(
-        `syncTo: pageIndex ต้องเป็นจำนวนเต็ม >= หน้าปัจจุบัน ${this.currentPageIndex} (ได้ ${pageIndex})`,
+        `syncTo: pageIndex must be an integer >= current page ${this.currentPageIndex} (got ${pageIndex})`,
       );
     }
     if (!Number.isFinite(y) || y < 0) {
-      throw new KapomLayoutError(`syncTo: y ต้องเป็นค่า >= 0 (ได้ ${y})`);
+      throw new KapomLayoutError(`syncTo: y must be >= 0 (got ${y})`);
     }
     this.currentPageIndex = pageIndex;
     this.currentY = y;

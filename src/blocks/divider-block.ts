@@ -13,7 +13,7 @@ export class DividerBlock implements MeasurableBlock {
     this.thickness = node.thickness ?? DEFAULT_DIVIDER_THICKNESS;
     if (!Number.isFinite(this.thickness) || this.thickness <= 0) {
       throw new KapomLayoutError(
-        `DividerNode.thickness ต้องเป็นค่า > 0 (ได้ ${this.thickness})`,
+        `DividerNode.thickness must be > 0 (got ${this.thickness})`,
       );
     }
   }

@@ -85,7 +85,7 @@ function resolveGroup<T>(input: KapomGroupInput<T> | undefined): GroupResolver<T
   // array = nested group chain เรียงนอก→ใน เช่น ['region','category'] → {by:'region', subGroup:{by:'category'}}
   if (isGroupKeyArray(input)) {
     if (input.length === 0) {
-      throw new KapomError('group: array ต้องมี key อย่างน้อย 1 ตัว (fail-fast กัน config เงียบๆ)');
+      throw new KapomError('group: array must contain at least 1 key (fail-fast against silently ignored config)');
     }
     return input.reduceRight<GroupResolver<T> | undefined>(
       (subGroup, by) => ({ by, ...(subGroup !== undefined ? { subGroup } : {}) }),

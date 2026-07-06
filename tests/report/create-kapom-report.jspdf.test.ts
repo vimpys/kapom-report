@@ -49,7 +49,7 @@ describe('createKapomReport × jsPDF จริง', () => {
         ],
         data,
       }),
-    ).toThrow(/ภาษาไทย/);
+    ).toThrow(/Thai text/);
   });
 
   it('aggregate + summaryLabel อังกฤษ → ผ่านได้โดยไม่ต้องลงทะเบียนฟอนต์', () => {

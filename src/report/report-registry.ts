@@ -24,7 +24,7 @@ export class ReportRegistry<C> {
    */
   register<T>(name: string, builder: (context: C) => SectionNode<T>): void {
     if (this.builders.has(name)) {
-      throw new KapomError(`ReportRegistry: section '${name}' ลงทะเบียนซ้ำ`);
+      throw new KapomError(`ReportRegistry: section '${name}' is already registered`);
     }
     this.builders.set(name, builder as unknown as SectionBuilder<C>);
   }
@@ -34,7 +34,7 @@ export class ReportRegistry<C> {
     return order.map((name) => {
       const builder = this.builders.get(name);
       if (!builder) {
-        throw new KapomError(`ReportRegistry: ไม่พบ section '${name}' ที่ลงทะเบียนไว้`);
+        throw new KapomError(`ReportRegistry: section '${name}' is not registered`);
       }
       return builder(context);
     });

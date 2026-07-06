@@ -30,24 +30,24 @@ function vfsFilename(font: FontSource): string {
 
 function validateFontConfig(config: FontConfig): void {
   if (config.fonts.length === 0) {
-    throw new KapomFontError('FontConfig.fonts ต้องมีอย่างน้อย 1 ตัว');
+    throw new KapomFontError('FontConfig.fonts must contain at least 1 font');
   }
 
   const families = new Set(config.fonts.map((font) => font.family));
 
   if (config.defaultFamily !== undefined && !families.has(config.defaultFamily)) {
     throw new KapomFontError(
-      `FontConfig.defaultFamily '${config.defaultFamily}' ไม่มีใน fonts ที่ลงทะเบียน (${[...families].join(', ')})`,
+      `FontConfig.defaultFamily '${config.defaultFamily}' is not one of the registered fonts (${[...families].join(', ')})`,
     );
   }
 
   for (const font of config.fonts) {
     if (font.family.trim() === '') {
-      throw new KapomFontError('FontSource.family ห้ามเป็นค่าว่าง');
+      throw new KapomFontError('FontSource.family must not be empty');
     }
     if (typeof font.data === 'string' && !isValidBase64(font.data)) {
       throw new KapomFontError(
-        `FontSource '${font.family}': data ไม่ใช่ base64 ที่ถูกต้อง (เช็ค data URI prefix ที่หลงเหลืออยู่ไหม)`,
+        `FontSource '${font.family}': data is not valid base64 (check for a leftover data URI prefix)`,
       );
     }
   }

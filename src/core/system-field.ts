@@ -33,7 +33,7 @@ function resolveSystemFieldToken(
     case 'dateTime':
       return formatDateTime(values.now, dateFormat);
     default:
-      throw new KapomError(`SystemField: token '{${token}}' ไม่รู้จัก`);
+      throw new KapomError(`SystemField: unknown token '{${token}}'`);
   }
 }
 

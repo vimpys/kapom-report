@@ -50,7 +50,7 @@ export function visibleColumns<T>(
 ): ReportColumn<T>[] {
   const visible = columns.filter(isColumnVisible);
   if (visible.length === 0) {
-    throw new KapomError('table ต้องมี column ที่ visible อย่างน้อย 1 ตัว');
+    throw new KapomError('table requires at least 1 visible column');
   }
   return visible;
 }
@@ -62,7 +62,7 @@ function stringifyCell(value: unknown): string {
 function asDecimalishCell(value: unknown, columnHeader: string): Decimalish {
   if (typeof value === 'number' || typeof value === 'string') return value;
   throw new KapomError(
-    `column '${columnHeader}': numberFormat ต้องการค่า number|string แต่ได้ ${typeof value}`,
+    `column '${columnHeader}': numberFormat requires a number|string value (got ${typeof value})`,
   );
 }
 
@@ -118,7 +118,7 @@ function resolveCell<T>(
       const mode = col.mode ?? 'continuous';
       if (mode === 'per-page') {
         // per-page ต้องรู้ page break จริง → two-pass (roadmap ขั้น 7)
-        throw new KapomError(`rowNumber mode 'per-page' ยังไม่รองรับ — ต้องรอ two-pass (ขั้น 7)`);
+        throw new KapomError(`rowNumber mode 'per-page' is not supported yet — requires a two-pass layout`);
       }
       const base = mode === 'continuous' ? state.rowOffset : 0;
       const n = (col.startAt ?? 1) + base + localIndex;

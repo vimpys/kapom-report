@@ -18,7 +18,7 @@ const registry = new Map<string, BlockFactory>();
 export function registerBlockType(type: string, factory: BlockFactory): void {
   if (registry.has(type)) {
     throw new KapomError(
-      `Block type '${type}' ลงทะเบียนซ้ำ — เช็คว่า register ซ้ำหรือชื่อชนกับ built-in`,
+      `Block type '${type}' is already registered — check for duplicate registration or a name clash with a built-in`,
     );
   }
   registry.set(type, factory);
@@ -29,7 +29,7 @@ export function createBlock<T>(node: ReportNode<T>): MeasurableBlock {
   const factory = registry.get(node.type);
   if (!factory) {
     throw new KapomError(
-      `Block type '${node.type}' ยังไม่รองรับ (ดู roadmap ใน CLAUDE.md)`,
+      `Block type '${node.type}' is not registered (see roadmap in CLAUDE.md)`,
     );
   }
   return factory(node as ReportNode<unknown>);

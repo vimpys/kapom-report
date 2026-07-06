@@ -51,7 +51,7 @@ export function createAnchoredBand(options: AnchoredBandOptions): PageBand {
   const seenAlign = new Set<HAlign>();
   for (const anchor of options.anchors) {
     if (seenAlign.has(anchor.align)) {
-      throw new KapomError(`Anchor: ตำแหน่ง '${anchor.align}' ถูกใช้ซ้ำในหนึ่ง band`);
+      throw new KapomError(`Anchor: position '${anchor.align}' is used more than once in a single band`);
     }
     seenAlign.add(anchor.align);
   }

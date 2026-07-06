@@ -9,7 +9,7 @@ import type { AggregateFn } from '../types/column';
 export function asDecimalish(value: unknown, context: string): Decimalish {
   if (typeof value === 'number' || typeof value === 'string') return value;
   throw new KapomError(
-    `${context}: aggregate ต้องการค่า number|string แต่ได้ ${typeof value}`,
+    `${context}: aggregate requires a number|string value (got ${typeof value})`,
   );
 }
 

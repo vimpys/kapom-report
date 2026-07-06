@@ -80,7 +80,7 @@ function partialTextStyleToAutoTableStyles(style: Partial<TextStyle> | undefined
 export class TableBlock<T> implements MeasurableBlock {
   constructor(private readonly node: TableNode<T>) {
     if (node.nested) {
-      throw new KapomError('nested table ยังไม่รองรับ — จะมาพร้อม group integration (roadmap)');
+      throw new KapomError('nested tables are not supported yet — coming with group integration (roadmap)');
     }
   }
 
@@ -460,7 +460,7 @@ export class TableBlock<T> implements MeasurableBlock {
     const finalY = ctx.doc.lastAutoTable?.finalY;
     if (typeof finalY !== 'number') {
       throw new KapomError(
-        'AutoTable ไม่ได้ตั้ง lastAutoTable.finalY หลัง render — ตรวจ jspdf-autotable version',
+        'AutoTable did not set lastAutoTable.finalY after render — check the jspdf-autotable version',
       );
     }
     // AutoTable แบ่งหน้าเอง → doc อาจไปอยู่คนละหน้ากับ cursor แล้ว ต้อง sync กลับ

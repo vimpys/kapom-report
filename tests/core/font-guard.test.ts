@@ -51,7 +51,7 @@ describe('Thai font guard × drawText (ค้างแก้ #1 — กัน mo
   it('ข้อความไทย + helvetica (default) → throw KapomFontError พร้อมทางแก้', () => {
     const doc = new jsPDF();
     expect(() => drawText(doc, 'รายงานประจำเดือน', 10, 10)).toThrow(KapomFontError);
-    expect(() => drawText(doc, 'รายงานประจำเดือน', 10, 10)).toThrow(/ลงทะเบียนฟอนต์ไทย/);
+    expect(() => drawText(doc, 'รายงานประจำเดือน', 10, 10)).toThrow(/Register a Thai font/);
   });
 
   it('ข้อความอังกฤษ + helvetica → ผ่านปกติ', () => {

@@ -5,7 +5,7 @@ import type { SpacerNode } from '../types/node';
 export class SpacerBlock implements MeasurableBlock {
   constructor(private readonly node: SpacerNode) {
     if (!Number.isFinite(node.height) || node.height < 0) {
-      throw new KapomLayoutError(`SpacerNode.height ต้องเป็นค่า >= 0 (ได้ ${node.height})`);
+      throw new KapomLayoutError(`SpacerNode.height must be >= 0 (got ${node.height})`);
     }
   }
 

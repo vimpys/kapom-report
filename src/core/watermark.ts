@@ -82,13 +82,13 @@ export function resolveWatermark(input: WatermarkInput): Watermark {
   const color = input.color ?? DEFAULT_WATERMARK_COLOR;
 
   if (text.trim() === '') {
-    throw new KapomError('watermark: text ต้องไม่ว่าง');
+    throw new KapomError('watermark: text must not be empty');
   }
   if (!Number.isFinite(opacity) || opacity < 0 || opacity > 1) {
-    throw new KapomError(`watermark: opacity ต้องอยู่ในช่วง 0-1 (ได้ ${opacity})`);
+    throw new KapomError(`watermark: opacity must be between 0 and 1 (got ${opacity})`);
   }
   if (!Number.isFinite(fontSize) || fontSize <= 0) {
-    throw new KapomError(`watermark: fontSize ต้องเป็นค่าบวก (ได้ ${fontSize})`);
+    throw new KapomError(`watermark: fontSize must be a positive number (got ${fontSize})`);
   }
 
   return {

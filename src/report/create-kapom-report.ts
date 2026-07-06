@@ -26,7 +26,7 @@ function openInNewTab(url: string): void {
   const opener = (globalThis as { open?: (url: string) => unknown }).open;
   if (typeof opener !== 'function') {
     throw new KapomError(
-      'preview(): ไม่พบทั้ง Node runtime และ window.open — environment นี้ต้องใช้ report.doc.output(...) เอง',
+      'preview(): neither a Node runtime nor window.open is available — use report.doc.output(...) directly in this environment',
     );
   }
   opener(url);

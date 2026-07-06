@@ -114,7 +114,7 @@ describe('resolveReportConfig — group shorthand', () => {
         data,
         group: [],
       }),
-    ).toThrow(/อย่างน้อย 1/);
+    ).toThrow(/at least 1 key/);
   });
 });
 

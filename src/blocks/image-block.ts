@@ -17,10 +17,10 @@ function resolveImageSize(
 export class ImageBlock implements MeasurableBlock {
   constructor(private readonly node: ImageNode) {
     if (!Number.isFinite(node.width) || node.width <= 0) {
-      throw new KapomLayoutError(`ImageNode.width ต้องเป็นค่า > 0 (ได้ ${node.width})`);
+      throw new KapomLayoutError(`ImageNode.width must be > 0 (got ${node.width})`);
     }
     if (!Number.isFinite(node.height) || node.height <= 0) {
-      throw new KapomLayoutError(`ImageNode.height ต้องเป็นค่า > 0 (ได้ ${node.height})`);
+      throw new KapomLayoutError(`ImageNode.height must be > 0 (got ${node.height})`);
     }
   }
 

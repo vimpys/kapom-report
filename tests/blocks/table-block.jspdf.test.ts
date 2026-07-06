@@ -632,6 +632,6 @@ describe('TableBlock × No-Data fallback (data ว่าง — ค้างแ�
 
     const node = emptyNode();
     delete node.noDataText;
-    expect(() => engine.render([createBlock(node)])).toThrow(/ภาษาไทย/);
+    expect(() => engine.render([createBlock(node)])).toThrow(/Thai text/);
   });
 });

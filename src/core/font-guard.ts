@@ -19,10 +19,10 @@ export function isBuiltinStandardFont(fontName: string): boolean {
 export function thaiGlyphError(fontName: string, sample: string): KapomFontError {
   const preview = sample.length > 40 ? `${sample.slice(0, 40)}…` : sample;
   return new KapomFontError(
-    `พบข้อความภาษาไทย ("${preview}") แต่ font ปัจจุบันคือ '${fontName}' ซึ่งเป็น built-in ของ jsPDF ` +
-      `ที่ไม่มี glyph ไทย — ผลลัพธ์จะเป็นตัวอักษรเละโดยไม่มี error จาก jsPDF เอง; ` +
-      `ลงทะเบียนฟอนต์ไทยผ่าน font config (เช่น Sarabun) หรือเปลี่ยนข้อความ/label เป็นภาษาที่ font รองรับ ` +
-      `(เช่น summaryLabel/footerLabel default เป็น 'รวม' — override เป็นภาษาอังกฤษได้)`,
+    `Thai text ("${preview}") is about to be rendered with '${fontName}', a jsPDF built-in font ` +
+      `with no Thai glyphs — the output would be garbled without any error from jsPDF itself. ` +
+      `Register a Thai font via the font config (e.g. Sarabun), or change the text/label to a ` +
+      `language the font supports (note: summaryLabel/footerLabel default to Thai 'รวม' — override them in English).`,
   );
 }
 
