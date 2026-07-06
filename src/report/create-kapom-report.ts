@@ -1,34 +1,35 @@
 import { jsPDF } from 'jspdf';
-import { spawn } from 'node:child_process';
-import { writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { RenderEngine } from '../core/engine';
 import { createBlock } from '../blocks/create-block';
+import { KapomError } from '../core/errors';
+import { isNodeRuntime, openWithDefaultViewer, writeFile, writeTempPdf } from './node-io';
 import type { KapomReportInput } from './resolve-report-config';
 import { resolveReportConfig } from './resolve-report-config';
 
 export interface KapomReport {
   /** raw jsPDF instance — escape hatch ระดับเดียวกับ Watermark/PageBand (ต่อ doc.output()/doc.save() เองได้) */
   readonly doc: jsPDF;
-  /** เขียนไฟล์ลง disk (Node เท่านั้น — เหมือน examples/shared.ts save()) */
+  /**
+   * Node: เขียนไฟล์ลง disk; browser: สั่ง download ผ่าน `doc.save()` ของ jsPDF
+   * (ชื่อไฟล์เดียวกัน ใช้ได้ทั้งสองฝั่งโดยไม่ต้องแก้โค้ด)
+   */
   save(filename: string): void;
   /**
-   * เขียน temp file แล้วเปิดด้วย PDF viewer default ของ OS (Node เท่านั้น) — คืน path ของ temp file;
-   * ฝั่ง browser ใช้ `report.doc.output('dataurlnewwindow')` ของ jsPDF ตรงๆ แทน (มี overload พร้อมอยู่แล้ว)
+   * Node: เขียน temp file แล้วเปิดด้วย PDF viewer default ของ OS — คืน path ของ temp file;
+   * browser: เปิด PDF ใน tab ใหม่ผ่าน blob URL — คืน URL นั้น
    */
   preview(): string;
 }
 
-/** เปิดไฟล์ด้วยโปรแกรม default ของ OS — detach process ไม่บล็อก/ไม่ผูก lifetime กับ Node */
-function openWithDefaultViewer(file: string): void {
-  const command =
-    process.platform === 'win32'
-      ? { cmd: 'cmd', args: ['/c', 'start', '', file] }
-      : process.platform === 'darwin'
-        ? { cmd: 'open', args: [file] }
-        : { cmd: 'xdg-open', args: [file] };
-  spawn(command.cmd, command.args, { detached: true, stdio: 'ignore' }).unref();
+/** window.open โดยไม่ต้องเปิด DOM lib ใน tsconfig — มีจริงเฉพาะฝั่ง browser */
+function openInNewTab(url: string): void {
+  const opener = (globalThis as { open?: (url: string) => unknown }).open;
+  if (typeof opener !== 'function') {
+    throw new KapomError(
+      'preview(): ไม่พบทั้ง Node runtime และ window.open — environment นี้ต้องใช้ report.doc.output(...) เอง',
+    );
+  }
+  opener(url);
 }
 
 /**
@@ -38,7 +39,9 @@ function openWithDefaultViewer(file: string): void {
  * เต็มรูปสำหรับชั้น 2/3 ล้วนแปลงผ่าน resolveReportConfig() เป็น ReportNode tree เดียวกัน;
  * `{ blocks: [...] }` variant = ชั้น 3 เต็มรูป ส่ง ReportNode tree ตรงๆ (multi-section/composite ได้)
  * โดยยังไม่ต้องแตะ jsPDF/RenderEngine/finalize เอง;
- * config.document (orientation/format/unit ฯลฯ) ส่งตรงเข้า `new jsPDF(options)` — ไม่ใส่ = default ของ jsPDF (a4/portrait/mm)
+ * config.document (orientation/format/unit ฯลฯ) ส่งตรงเข้า `new jsPDF(options)` — ไม่ใส่ = default ของ jsPDF (a4/portrait/mm);
+ * universal: ไฟล์นี้ไม่มี static `node:` import — bundle ฝั่ง browser ได้ (Node I/O อยู่ใน node-io.ts
+ * โหลดผ่าน process.getBuiltinModule เฉพาะเมื่อรันบน Node จริง)
  */
 export function createKapomReport<T>(config: KapomReportInput<T>): KapomReport {
   const { blocks, engineOptions, documentOptions } = resolveReportConfig(config);
@@ -48,19 +51,28 @@ export function createKapomReport<T>(config: KapomReportInput<T>): KapomReport {
   engine.render(blocks.map((node) => createBlock(node)));
   engine.finalize();
 
-  const writeTo = (filename: string): void => {
-    writeFileSync(filename, Buffer.from(doc.output('arraybuffer')));
-  };
+  const pdfBytes = (): Uint8Array => new Uint8Array(doc.output('arraybuffer'));
 
   return {
     doc,
-    save: writeTo,
+    save(filename: string): void {
+      if (isNodeRuntime()) {
+        // jsPDF native doc.save() ใช้ไม่ได้ฝั่ง Node — เขียนไฟล์เองตาม pattern เดิม
+        writeFile(filename, pdfBytes());
+        return;
+      }
+      doc.save(filename); // browser: trigger download
+    },
     preview(): string {
-      // timestamp กันชนกันเมื่อ preview ซ้ำหลายรอบ (viewer บางตัว lock ไฟล์เดิมค้างไว้)
-      const file = join(tmpdir(), `kapom-report-${Date.now()}.pdf`);
-      writeTo(file);
-      openWithDefaultViewer(file);
-      return file;
+      if (isNodeRuntime()) {
+        const file = writeTempPdf(pdfBytes());
+        openWithDefaultViewer(file);
+        return file;
+      }
+      // browser: blob URL + เปิด tab ใหม่ (คืน URL เผื่อ embed ใน <iframe> เอง)
+      const url = String(doc.output('bloburl'));
+      openInNewTab(url);
+      return url;
     },
   };
 }

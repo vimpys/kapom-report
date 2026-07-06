@@ -1,14 +1,16 @@
-import { spawn } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { createKapomReport } from '../../src/report/create-kapom-report';
+import { openWithDefaultViewer } from '../../src/report/node-io';
 
-// กัน .preview() เปิด PDF viewer จริงระหว่างรันเทสต์ — mock spawn ทั้งไฟล์
-vi.mock('node:child_process', () => ({
-  spawn: vi.fn(() => ({ unref: vi.fn() })),
-}));
+// กัน .preview() เปิด PDF viewer จริงระหว่างรันเทสต์ — mock เฉพาะตัวเปิด viewer
+// (writeFile/writeTempPdf ใช้ของจริง เพื่อยืนยันว่าไฟล์ถูกเขียนจริง)
+vi.mock('../../src/report/node-io', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/report/node-io')>();
+  return { ...actual, openWithDefaultViewer: vi.fn() };
+});
 
 interface Sale {
   product: string;
@@ -169,11 +171,7 @@ describe('createKapomReport × jsPDF จริง', () => {
 
     expect(existsSync(file)).toBe(true);
     expect(readFileSync(file).subarray(0, 4).toString('utf-8')).toBe('%PDF');
-    expect(vi.mocked(spawn)).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.arrayContaining([file]),
-      expect.objectContaining({ detached: true }),
-    );
+    expect(vi.mocked(openWithDefaultViewer)).toHaveBeenCalledWith(file);
 
     rmSync(file, { force: true });
   });
