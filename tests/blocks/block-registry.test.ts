@@ -56,3 +56,18 @@ describe('block-registry — registerBlockType (plugin API)', () => {
     );
   });
 });
+
+describe('createBlock — text shorthand (ไม่ต้องส่ง type)', () => {
+  it('string ตรงๆ → TextBlock', () => {
+    expect(createBlock('ข้อความ shorthand')).toBeInstanceOf(TextBlock);
+  });
+
+  it('object ไม่ใส่ type ({ content, role?, style? }) → TextBlock', () => {
+    expect(createBlock({ content: 'หัวข้อ', role: 'reportTitle' })).toBeInstanceOf(TextBlock);
+    expect(createBlock({ content: 'x', style: { fontSize: 14 } })).toBeInstanceOf(TextBlock);
+  });
+
+  it('node เต็มรูป (มี type) ยังทำงานเหมือนเดิมทุกประการ', () => {
+    expect(createBlock({ type: 'text', content: 'x' })).toBeInstanceOf(TextBlock);
+  });
+});

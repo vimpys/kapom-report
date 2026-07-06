@@ -41,7 +41,10 @@ export type {
   StackNode,
   SectionNode,
   ReportNode,
+  TextNodeShorthand,
+  ReportNodeInput,
 } from './types/node';
+export { resolveNodeInput } from './types/node';
 
 export type { Typography } from './types/typography';
 export { DEFAULT_TYPOGRAPHY, resolveTypography } from './types/typography';

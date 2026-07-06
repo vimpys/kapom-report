@@ -1,6 +1,7 @@
 import type { MeasurableBlock } from '../core/context';
 import { KapomError } from '../core/errors';
-import type { ReportNode } from '../types/node';
+import type { ReportNode, ReportNodeInput } from '../types/node';
+import { resolveNodeInput } from '../types/node';
 
 /**
  * T ที่นี่คือ boundary จริง — registry เก็บ factory ของหลาย node variant ปนกัน
@@ -24,8 +25,12 @@ export function registerBlockType(type: string, factory: BlockFactory): void {
   registry.set(type, factory);
 }
 
-/** แปลง ReportNode หนึ่ง node เป็น MeasurableBlock ผ่าน registry ที่ลงทะเบียนไว้ */
-export function createBlock<T>(node: ReportNode<T>): MeasurableBlock {
+/**
+ * แปลง node หนึ่งตัวเป็น MeasurableBlock ผ่าน registry ที่ลงทะเบียนไว้ —
+ * รับ text shorthand (string / object ไม่ใส่ `type`) แล้ว normalize ก่อน dispatch เสมอ
+ */
+export function createBlock<T>(input: ReportNodeInput<T>): MeasurableBlock {
+  const node = resolveNodeInput(input);
   const factory = registry.get(node.type);
   if (!factory) {
     throw new KapomError(

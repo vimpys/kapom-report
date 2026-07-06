@@ -97,17 +97,17 @@ export interface RawNode {
   draw: (doc: unknown, cursor: { x: number; y: number }) => void;
 }
 
-/** composite: render children ตามลำดับ, measureHeight รวมแบบ recursive */
+/** composite: render children ตามลำดับ, measureHeight รวมแบบ recursive — children รับ text shorthand ได้ */
 export interface StackNode<T> {
   type: 'stack';
-  children: readonly ReportNode<T>[];
+  children: readonly ReportNodeInput<T>[];
 }
 
 /** เหมือน stack แต่มี `name` ไว้อ้างอิง (เช่น Report Registry เลือก section ด้วยชื่อ — roadmap 6c) */
 export interface SectionNode<T> {
   type: 'section';
   name: string;
-  children: readonly ReportNode<T>[];
+  children: readonly ReportNodeInput<T>[];
   /** บังคับขึ้นหน้าใหม่ก่อน section นี้เสมอ (no-op ถ้า cursor อยู่หัวหน้าอยู่แล้ว) — page-break policy ระหว่าง section (roadmap 6c) */
   breakBefore?: boolean;
 }
@@ -126,4 +126,22 @@ export type ReportNode<T = unknown> =
   | RawNode
   | StackNode<T>
   | SectionNode<T>;
+
+/** TextNode ที่ไม่ต้องใส่ `type` — ใช้เป็น input shorthand (`{ content: 'x', role?, style? }`) */
+export type TextNodeShorthand = Omit<TextNode, 'type'>;
+
+/**
+ * รูปแบบที่ยอมรับทุกจุดที่เขียน node (facade `blocks` / children ของ stack/section):
+ * string ตรงๆ หรือ object ไม่ใส่ `type` = text node — normalize เป็น ReportNode เต็มรูป
+ * ที่ `resolveNodeInput()` ก่อนเข้า registry เสมอ (`type` ใน ReportNode ยังเป็น required
+ * เพราะเป็น discriminant ของ union — default ที่ type level ตรงๆ ทำไม่ได้)
+ */
+export type ReportNodeInput<T = unknown> = ReportNode<T> | TextNodeShorthand | string;
+
+/** แปลง shorthand เป็น ReportNode เต็มรูป — string/object ไม่มี `type` → text node */
+export function resolveNodeInput<T>(input: ReportNodeInput<T>): ReportNode<T> {
+  if (typeof input === 'string') return { type: 'text', content: input };
+  if (!('type' in input)) return { type: 'text', ...input };
+  return input;
+}
 

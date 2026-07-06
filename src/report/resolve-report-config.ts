@@ -9,7 +9,7 @@ import type { FontConfig } from '../font/font-config';
 import type { DeepPartial } from '../types/primitives';
 import type { Typography } from '../types/typography';
 import type { DataColumn, ReportColumn } from '../types/column';
-import type { GroupResolver, ReportNode, TableNode, TableStyleOptions } from '../types/node';
+import type { GroupResolver, ReportNode, ReportNodeInput, TableNode, TableStyleOptions } from '../types/node';
 
 /** ไม่ใส่ `type` → normalize เป็น DataColumn ใน resolveReportConfig() (progressive disclosure ชั้น 1) */
 export type DataColumnShorthand<T> = Omit<DataColumn<T>, 'type'>;
@@ -55,14 +55,16 @@ export interface KapomReportConfig<T> extends KapomReportBaseOptions {
  * เหมือน config แบบ single-table ทุกประการ ต่างแค่ไม่ประกอบ tree ให้
  */
 export interface KapomBlocksConfig<T = unknown> extends KapomReportBaseOptions {
-  blocks: readonly ReportNode<T>[];
+  /** รับ text shorthand ด้วย — string ตรงๆ หรือ `{ content, role?, style? }` ไม่ใส่ type = text node */
+  blocks: readonly ReportNodeInput<T>[];
 }
 
 /** config ที่ createKapomReport รับ — single-table (columns+data) หรือ blocks tree ตรงๆ */
 export type KapomReportInput<T> = KapomReportConfig<T> | KapomBlocksConfig<T>;
 
 export interface ResolvedReportConfig<T> {
-  blocks: readonly ReportNode<T>[];
+  /** อาจมี text shorthand ปน — createBlock() normalize ให้ตอน dispatch */
+  blocks: readonly ReportNodeInput<T>[];
   engineOptions: RenderEngineOptions;
   documentOptions: jsPDFOptions | undefined;
 }

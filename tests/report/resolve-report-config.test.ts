@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { resolveReportConfig } from '../../src/report/resolve-report-config';
+import { resolveNodeInput } from '../../src/types/node';
 import type { TableNode, TextNode } from '../../src/types/node';
 
 interface Sale {
@@ -126,7 +127,7 @@ describe('resolveReportConfig — title / blocks composition', () => {
     });
 
     expect(blocks).toHaveLength(1);
-    expect(blocks[0]?.type).toBe('table');
+    expect(resolveNodeInput(blocks[0] ?? '').type).toBe('table');
   });
 
   it('มี title → text(reportTitle) + spacer + table ตามลำดับ', () => {
@@ -139,7 +140,7 @@ describe('resolveReportConfig — title / blocks composition', () => {
     expect(blocks).toHaveLength(3);
     expect(blocks[0]).toEqual({ type: 'text', content: 'Monthly Report', role: 'reportTitle' } satisfies TextNode);
     expect(blocks[1]).toEqual({ type: 'spacer', height: 6 });
-    expect(blocks[2]?.type).toBe('table');
+    expect(resolveNodeInput(blocks[2] ?? '').type).toBe('table');
   });
 });
 

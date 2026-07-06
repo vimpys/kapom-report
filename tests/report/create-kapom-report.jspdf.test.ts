@@ -191,6 +191,22 @@ describe('createKapomReport × jsPDF จริง', () => {
     rmSync(second, { force: true });
   });
 
+  it('blocks variant: text shorthand — string ตรงๆ / object ไม่ใส่ type ใช้ได้ทั้งใน blocks และ children', () => {
+    const report = createKapomReport({
+      blocks: [
+        'plain string line', // string = text node
+        { content: 'Title without type', role: 'reportTitle' }, // object ไม่ใส่ type = text node
+        {
+          type: 'section',
+          name: 's',
+          children: ['child shorthand line', { content: 'styled', style: { fontSize: 8 } }],
+        },
+      ],
+    });
+
+    expect(report.doc.getNumberOfPages()).toBeGreaterThanOrEqual(1);
+  });
+
   it('blocks variant: facade เรียก finalize() ให้เอง — pageFooter band ถูกวาดจริง', () => {
     let footerDrawnOnPages = 0;
     createKapomReport({

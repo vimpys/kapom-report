@@ -35,8 +35,9 @@ const report = createKapomReport<Sale>({
     {
       type: 'stack',
       children: [
-        { type: 'text', content: 'Monthly Sales Report', role: 'reportTitle' },
-        { type: 'text', content: 'January 2026 — All Regions', role: 'reportSubtitle' },
+        // text shorthand ใน children: ไม่ต้องใส่ type: 'text'
+        { content: 'Monthly Sales Report', role: 'reportTitle' },
+        { content: 'January 2026 — All Regions', role: 'reportSubtitle' },
       ],
     },
     { type: 'spacer', height: 6 },
@@ -45,7 +46,7 @@ const report = createKapomReport<Sale>({
       type: 'section',
       name: 'sales-summary',
       children: [
-        { type: 'text', content: 'Sales Summary', role: 'sectionHeading' },
+        { content: 'Sales Summary', role: 'sectionHeading' },
         { type: 'spacer', height: 3 },
         salesTable,
       ],
