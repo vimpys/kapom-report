@@ -5,7 +5,7 @@ import type { Typography } from './typography';
 export interface TextNode {
   type: 'text';
   content: string;
-  /** ใช้ Typography token (เช่น 'reportTitle'/'reportSubtitle'/'sectionHeading') เป็น base style แทน DEFAULT_TEXT_STYLE — style ทับได้ทีละ property */
+  /** use a Typography token (e.g. 'reportTitle'/'reportSubtitle'/'sectionHeading') as the base style instead of DEFAULT_TEXT_STYLE — style overrides one property at a time */
   role?: keyof Typography;
   style?: Partial<TextStyle>;
 }
@@ -23,7 +23,7 @@ export interface DividerNode {
 
 export interface ImageNode {
   type: 'image';
-  /** base64 (ไม่มี data URI prefix) หรือ binary */
+  /** base64 (no data URI prefix) or binary */
   data: string | Uint8Array;
   format: 'PNG' | 'JPEG' | 'WEBP';
   width: number;
@@ -31,19 +31,19 @@ export interface ImageNode {
 }
 
 export interface SignatureSlot {
-  /** label ใต้เส้น เช่น 'ผู้จัดทำ' / 'ผู้อนุมัติ' */
+  /** label under the line, e.g. 'Prepared by' / 'Approved by' */
   label: string;
 }
 
-/** เส้นเซ็นชื่อ + label หลาย slot เรียงแนวนอนแบ่งพื้นที่เท่ากัน (Report Footer, roadmap 6d) */
+/** a signature line + label, multiple slots laid out horizontally in equal widths (Report Footer, roadmap 6d) */
 export interface SignatureNode {
   type: 'signature';
   slots: readonly SignatureSlot[];
-  /** พื้นที่ว่างเหนือเส้นไว้เซ็นจริง (mm) — default DEFAULT_SIGNATURE_SIGN_HEIGHT */
+  /** blank space above the line, left for an actual signature (mm) — default DEFAULT_SIGNATURE_SIGN_HEIGHT */
   signHeight?: number;
-  /** ระยะห่างจากเส้นถึง label (mm) — default DEFAULT_SIGNATURE_LABEL_GAP */
+  /** gap from the line to the label (mm) — default DEFAULT_SIGNATURE_LABEL_GAP */
   labelGap?: number;
-  /** ช่องว่างระหว่าง slot (mm) — default DEFAULT_SIGNATURE_SLOT_GAP */
+  /** gap between slots (mm) — default DEFAULT_SIGNATURE_SLOT_GAP */
   slotGap?: number;
   style?: Partial<TextStyle>;
 }
@@ -55,14 +55,15 @@ export interface GroupResolver<T> {
   sortGroups?: (a: string, b: string) => number;
   keepTogether?: { minRowsWithHeader: number };
   /**
-   * group ซ้อนข้างในกลุ่มนี้อีกชั้น (recursive composition — roadmap 10) เช่น group by region
-   * แล้ว subGroup by category; ซ้อนได้ N ระดับ, แต่ละระดับมี band/subtotal/keepTogether ของตัวเอง
-   * — คนละเรื่องกับ `TableNode.nested` (master-detail ที่คืน sub-table ต่อ row)
+   * a group nested one level inside this one (recursive composition — roadmap 10), e.g. group by
+   * region, then subGroup by category; nests to N levels, each level has its own band/subtotal/
+   * keepTogether — a different concept from `TableNode.nested` (master-detail, which returns a
+   * sub-table per row)
    */
   subGroup?: GroupResolver<T>;
 }
 
-/** สีแถวสลับ — ใช้กับ body section เท่านั้น (rowIndex คู่/คี่) */
+/** alternating row colors — body section only (even/odd rowIndex) */
 export interface ZebraOption {
   even?: RGB;
   odd?: RGB;
@@ -70,7 +71,7 @@ export interface ZebraOption {
 
 /**
  * zebra + conditional — precedence: conditional > zebra > row-type (Typography.detailRow)
- * conditional คืน undefined = ไม่ override แถวนั้น (fall through ไป zebra/default)
+ * conditional returning undefined = don't override that row (falls through to zebra/default)
  */
 export interface TableStyleOptions<T> {
   zebra?: ZebraOption;
@@ -82,10 +83,10 @@ export interface TableNode<T> {
   columns: readonly ReportColumn<T>[];
   data: readonly T[];
   group?: GroupResolver<T>;
-  /** master-detail (2 ระดับ MVP); คืน sub-table ต่อ row */
+  /** master-detail (2 levels, MVP); returns a sub-table per row */
   nested?: (row: T) => TableNode<unknown> | undefined;
   summaryLabel?: string;
-  /** ข้อความแถวเดียวกลางตารางเมื่อ `data` ว่าง (No-Data fallback) — default 'ไม่มีข้อมูล' */
+  /** single-row message centered in the table when `data` is empty (No-Data fallback) — default DEFAULT_NO_DATA_TEXT */
   noDataText?: string;
   style?: TableStyleOptions<T>;
 }
@@ -93,28 +94,28 @@ export interface TableNode<T> {
 export interface RawNode {
   type: 'raw';
   measure: (contentWidth: number) => number;
-  /** escape hatch: วาด jsPDF เอง ใน scope ที่ engine คุม cursor ให้ */
+  /** escape hatch: draw with jsPDF directly, within the scope where the engine manages the cursor for you */
   draw: (doc: unknown, cursor: { x: number; y: number }) => void;
 }
 
-/** composite: render children ตามลำดับ, measureHeight รวมแบบ recursive — children รับ text shorthand ได้ */
+/** composite: renders children in order, measureHeight sums recursively — children accept text shorthand */
 export interface StackNode<T> {
   type: 'stack';
   children: readonly ReportNodeInput<T>[];
 }
 
-/** เหมือน stack แต่มี `name` ไว้อ้างอิง (เช่น Report Registry เลือก section ด้วยชื่อ — roadmap 6c) */
+/** like stack but carries a `name` for reference (e.g. Report Registry selects a section by name — roadmap 6c) */
 export interface SectionNode<T> {
   type: 'section';
   name: string;
   children: readonly ReportNodeInput<T>[];
-  /** บังคับขึ้นหน้าใหม่ก่อน section นี้เสมอ (no-op ถ้า cursor อยู่หัวหน้าอยู่แล้ว) — page-break policy ระหว่าง section (roadmap 6c) */
+  /** always force a new page before this section (no-op if the cursor is already at the top of a page) — a page-break policy between sections (roadmap 6c) */
   breakBefore?: boolean;
 }
 
 /**
  * declarative tree — single source of truth
- * generic T ผูก data type; children เป็น recursive สำหรับ composite/section
+ * generic T binds the data type; children are recursive for composite/section
  */
 export type ReportNode<T = unknown> =
   | TextNode
@@ -127,21 +128,20 @@ export type ReportNode<T = unknown> =
   | StackNode<T>
   | SectionNode<T>;
 
-/** TextNode ที่ไม่ต้องใส่ `type` — ใช้เป็น input shorthand (`{ content: 'x', role?, style? }`) */
+/** a TextNode without the need for `type` — used as input shorthand (`{ content: 'x', role?, style? }`) */
 export type TextNodeShorthand = Omit<TextNode, 'type'>;
 
 /**
- * รูปแบบที่ยอมรับทุกจุดที่เขียน node (facade `blocks` / children ของ stack/section):
- * string ตรงๆ หรือ object ไม่ใส่ `type` = text node — normalize เป็น ReportNode เต็มรูป
- * ที่ `resolveNodeInput()` ก่อนเข้า registry เสมอ (`type` ใน ReportNode ยังเป็น required
- * เพราะเป็น discriminant ของ union — default ที่ type level ตรงๆ ทำไม่ได้)
+ * the shape accepted everywhere a node is written (facade `blocks` / children of stack/section):
+ * a plain string, or an object without `type`, is a text node — always normalized into a full
+ * ReportNode by `resolveNodeInput()` before it reaches the registry (`type` on ReportNode stays
+ * required because it's the union's discriminant — defaulting it at the type level isn't possible)
  */
 export type ReportNodeInput<T = unknown> = ReportNode<T> | TextNodeShorthand | string;
 
-/** แปลง shorthand เป็น ReportNode เต็มรูป — string/object ไม่มี `type` → text node */
+/** convert shorthand into a full ReportNode — a string/object without `type` becomes a text node */
 export function resolveNodeInput<T>(input: ReportNodeInput<T>): ReportNode<T> {
   if (typeof input === 'string') return { type: 'text', content: input };
   if (!('type' in input)) return { type: 'text', ...input };
   return input;
 }
-

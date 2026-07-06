@@ -11,19 +11,19 @@ import type { Typography } from '../types/typography';
 import type { DataColumn, ReportColumn } from '../types/column';
 import type { GroupResolver, ReportNode, ReportNodeInput, TableNode, TableStyleOptions } from '../types/node';
 
-/** ไม่ใส่ `type` → normalize เป็น DataColumn ใน resolveReportConfig() (progressive disclosure ชั้น 1) */
+/** without `type`, normalized into a DataColumn inside resolveReportConfig() (Progressive Disclosure layer 1) */
 export type DataColumnShorthand<T> = Omit<DataColumn<T>, 'type'>;
 
-/** ชั้น 1: shorthand `{ key, header }`; ชั้น 3: ReportColumn เต็มรูป (rowNumber/computed/runningTotal ก็ยังต้องระบุ type) */
+/** layer 1: the shorthand `{ key, header }`; layer 3: a full ReportColumn (rowNumber/computed/runningTotal still need `type`) */
 export type KapomColumnInput<T> = ReportColumn<T> | DataColumnShorthand<T>;
 
 /**
- * ชั้น 2: string key group ง่ายๆ หรือ array ของ key = nested group เรียงนอก→ใน (roadmap 10);
- * ชั้น 3: GroupResolver เต็มรูป (function by + label/sort/keepTogether + subGroup chain เอง)
+ * layer 2: a simple string key group, or an array of keys = a nested group ordered outer→inner (roadmap 10);
+ * layer 3: a full GroupResolver (function `by` + label/sort/keepTogether + its own subGroup chain)
  */
 export type KapomGroupInput<T> = keyof T | readonly (keyof T)[] | GroupResolver<T>;
 
-/** option ระดับ report ที่ใช้ร่วมกันทั้ง config แบบ single-table และแบบ blocks */
+/** report-level options shared by both the single-table config and the blocks config */
 export interface KapomReportBaseOptions {
   typography?: DeepPartial<Typography>;
   font?: FontConfig;
@@ -31,39 +31,39 @@ export interface KapomReportBaseOptions {
   numeric?: NumericStrategy;
   pageHeader?: PageBand;
   pageFooter?: PageBand;
-  /** preset `{ text: 'DRAFT', ... }` หรือ render callback เต็มรูป (escape hatch) */
+  /** a preset `{ text: 'DRAFT', ... }` or a full render callback (escape hatch) */
   watermark?: WatermarkInput;
-  /** ส่งตรงเข้า `new jsPDF(options)` — orientation/format/unit ฯลฯ (ไม่ใส่ = default ของ jsPDF เอง คือ a4/portrait/mm) */
+  /** passed straight into `new jsPDF(options)` — orientation/format/unit etc. (omit = jsPDF's own default, a4/portrait/mm) */
   document?: jsPDFOptions;
 }
 
 export interface KapomReportConfig<T> extends KapomReportBaseOptions {
   columns: readonly KapomColumnInput<T>[];
   data: readonly T[];
-  /** แสดงเป็น text block role: 'reportTitle' เหนือตาราง — ไม่ใส่ = ไม่มี title */
+  /** rendered as a text block with role: 'reportTitle' above the table — omit for no title */
   title?: string;
   group?: KapomGroupInput<T>;
   style?: TableStyleOptions<T>;
   summaryLabel?: string;
-  /** ข้อความเมื่อ `data` ว่าง — default 'ไม่มีข้อมูล' */
+  /** message shown when `data` is empty — default 'No data' (DEFAULT_NO_DATA_TEXT) */
   noDataText?: string;
 }
 
 /**
- * ชั้น 3 เต็มรูป: ส่ง ReportNode tree ตรงๆ (text/stack/section/signature/table ผสมกันอิสระ
- * รวมถึง SectionNode[] จาก ReportRegistry.build) — facade ยัง wire jsPDF/RenderEngine/finalize ให้
- * เหมือน config แบบ single-table ทุกประการ ต่างแค่ไม่ประกอบ tree ให้
+ * Full layer 3: pass a ReportNode tree directly (text/stack/section/signature/table freely
+ * mixed, including a SectionNode[] from ReportRegistry.build) — the facade still wires up
+ * jsPDF/RenderEngine/finalize exactly like the single-table config, just without composing the tree for you.
  */
 export interface KapomBlocksConfig<T = unknown> extends KapomReportBaseOptions {
-  /** รับ text shorthand ด้วย — string ตรงๆ หรือ `{ content, role?, style? }` ไม่ใส่ type = text node */
+  /** also accepts text shorthand — a plain string, or `{ content, role?, style? }` without `type`, is a text node */
   blocks: readonly ReportNodeInput<T>[];
 }
 
-/** config ที่ createKapomReport รับ — single-table (columns+data) หรือ blocks tree ตรงๆ */
+/** the config createKapomReport accepts — either single-table (columns+data) or a blocks tree directly */
 export type KapomReportInput<T> = KapomReportConfig<T> | KapomBlocksConfig<T>;
 
 export interface ResolvedReportConfig<T> {
-  /** อาจมี text shorthand ปน — createBlock() normalize ให้ตอน dispatch */
+  /** may contain text shorthand — createBlock() normalizes it at dispatch time */
   blocks: readonly ReportNodeInput<T>[];
   engineOptions: RenderEngineOptions;
   documentOptions: jsPDFOptions | undefined;
@@ -77,14 +77,14 @@ function resolveColumn<T>(input: KapomColumnInput<T>): ReportColumn<T> {
   return isShorthandColumn(input) ? { ...input, type: 'data' } : input;
 }
 
-/** Array.isArray narrow readonly array ออกจาก union เองไม่ได้ (TS limitation) — ต้องมี predicate */
+/** Array.isArray can't narrow a readonly array out of a union on its own (a TS limitation) — needs an explicit predicate */
 function isGroupKeyArray<T>(input: KapomGroupInput<T>): input is readonly (keyof T)[] {
   return Array.isArray(input);
 }
 
 function resolveGroup<T>(input: KapomGroupInput<T> | undefined): GroupResolver<T> | undefined {
   if (input === undefined) return undefined;
-  // array = nested group chain เรียงนอก→ใน เช่น ['region','category'] → {by:'region', subGroup:{by:'category'}}
+  // an array = a nested group chain ordered outer→inner, e.g. ['region','category'] → {by:'region', subGroup:{by:'category'}}
   if (isGroupKeyArray(input)) {
     if (input.length === 0) {
       throw new KapomError('group: array must contain at least 1 key (fail-fast against silently ignored config)');
@@ -123,15 +123,15 @@ function resolveEngineOptions(config: KapomReportBaseOptions): RenderEngineOptio
   };
 }
 
-/** blocks variant ไม่มี columns — ใช้แยกสองรูปแบบ config ตอน runtime (mutually exclusive โดย type) */
+/** the blocks variant has no columns — used to distinguish the two config shapes at runtime (mutually exclusive by type) */
 function isBlocksConfig<T>(config: KapomReportInput<T>): config is KapomBlocksConfig<T> {
   return 'blocks' in config;
 }
 
 /**
- * ชั้น 1/2/3 ของ Progressive Disclosure แปลงเป็น ReportNode tree เดียวกันเสมอ — pure,
- * ไม่แตะ jsPDF (createKapomReport() เป็นชั้นที่ wire jsPDF/RenderEngine จริงต่อจากนี้);
- * blocks variant ผ่าน tree ตรงโดยไม่ประกอบเพิ่ม (ชั้น 3 เต็มรูป)
+ * Progressive Disclosure layers 1/2/3 always convert into the same ReportNode tree — pure,
+ * doesn't touch jsPDF (createKapomReport() is the layer that wires up the real jsPDF/RenderEngine after this);
+ * the blocks variant passes the tree through directly without composing anything further (full layer 3)
  */
 export function resolveReportConfig<T>(config: KapomReportInput<T>): ResolvedReportConfig<T> {
   const engineOptions = resolveEngineOptions(config);

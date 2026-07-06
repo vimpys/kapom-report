@@ -2,8 +2,9 @@ import type { MeasurableBlock, MeasureContext, RenderContext } from '../core/con
 import { StackBlock } from './stack-block';
 
 /**
- * เหมือน StackBlock ทุกประการ (render ลูกตามลำดับ) แต่เก็บ `name` ไว้อ้างอิง —
- * ยังไม่ใช้ตอน render (รอ Report Registry เลือก section ด้วยชื่อ, roadmap 6c)
+ * Identical to StackBlock in every way (renders children in order) but keeps a `name` around
+ * for reference — not used during rendering itself (awaits the Report Registry selecting a
+ * section by name, roadmap 6c)
  */
 export class SectionBlock implements MeasurableBlock {
   private readonly stack: StackBlock;

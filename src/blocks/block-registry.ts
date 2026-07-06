@@ -4,17 +4,19 @@ import type { ReportNode, ReportNodeInput } from '../types/node';
 import { resolveNodeInput } from '../types/node';
 
 /**
- * T ที่นี่คือ boundary จริง — registry เก็บ factory ของหลาย node variant ปนกัน
- * (TextNode, TableNode<Sale>, TableNode<Order>, ...) ไม่มีทางประกาศ type เดียวที่ตรงทุกตัว
- * แคบ narrow กลับที่จุด register ของแต่ละ built-in/plugin เอง (ดู register-builtin-blocks.ts)
+ * `unknown` here is a real boundary — the registry holds factories for many different node
+ * variants mixed together (TextNode, TableNode<Sale>, TableNode<Order>, ...); there's no single
+ * type that fits all of them. Narrowing happens back at each built-in/plugin's own registration
+ * site (see register-builtin-blocks.ts).
  */
 export type BlockFactory = (node: ReportNode<unknown>) => MeasurableBlock;
 
 const registry = new Map<string, BlockFactory>();
 
 /**
- * ลงทะเบียน block type ใหม่ — core ไม่ต้องแก้เพื่อเพิ่ม type (Open/Closed)
- * ชื่อซ้ำ → throw ทันที ไม่ silent overwrite (กัน plugin ทับ built-in โดยไม่ตั้งใจ)
+ * Registers a new block type — core doesn't need to change to add a type (Open/Closed)
+ * a duplicate name throws immediately, never a silent overwrite (prevents a plugin from
+ * accidentally shadowing a built-in)
  */
 export function registerBlockType(type: string, factory: BlockFactory): void {
   if (registry.has(type)) {
@@ -26,8 +28,8 @@ export function registerBlockType(type: string, factory: BlockFactory): void {
 }
 
 /**
- * แปลง node หนึ่งตัวเป็น MeasurableBlock ผ่าน registry ที่ลงทะเบียนไว้ —
- * รับ text shorthand (string / object ไม่ใส่ `type`) แล้ว normalize ก่อน dispatch เสมอ
+ * Converts a single node into a MeasurableBlock via the registered registry —
+ * accepts text shorthand (a string / an object without `type`) and always normalizes it before dispatching
  */
 export function createBlock<T>(input: ReportNodeInput<T>): MeasurableBlock {
   const node = resolveNodeInput(input);

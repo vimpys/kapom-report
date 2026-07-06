@@ -1,13 +1,13 @@
 /**
- * ค่าที่รับได้ในระบบคำนวณ — number หรือ string (จาก DECIMAL column ของ DB)
- * mysql2/pg คืน DECIMAL เป็น string เพื่อคง precision → รับตรงๆ ไม่แปลง number
+ * The value type accepted by the calculation system — a number or a string (from a DB's
+ * DECIMAL column). mysql2/pg return DECIMAL as a string to preserve precision → accepted as-is, never converted to number.
  */
 export type Decimalish = number | string;
 
 /**
- * Boundary ของ arithmetic ทั้งหมดใน Kapom Report
- * ห้ามเขียน `a + b` ตรงๆ ใน aggregate/computed/runningTotal — ต้องผ่าน strategy นี้
- * MVP ใช้ nativeNumeric; migrate decimal.js ทีหลังโดยไม่แตะ logic ที่เรียกใช้
+ * The boundary for all arithmetic in Kapom Report.
+ * Never write `a + b` directly in aggregate/computed/runningTotal — it must go through this strategy.
+ * The MVP uses nativeNumeric; migrating to decimal.js later won't need to touch the calling logic.
  */
 export interface NumericStrategy {
   add(a: Decimalish, b: Decimalish): Decimalish;
@@ -15,7 +15,7 @@ export interface NumericStrategy {
   multiply(a: Decimalish, b: Decimalish): Decimalish;
   divide(a: Decimalish, b: Decimalish): Decimalish;
   sum(values: readonly Decimalish[]): Decimalish;
-  /** แปลงเป็น number สำหรับ jsPDF/Intl.NumberFormat ที่จุดสุดท้าย */
+  /** converts to a number, for jsPDF/Intl.NumberFormat at the very last point */
   toNumber(value: Decimalish): number;
 }
 

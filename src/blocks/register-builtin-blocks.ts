@@ -21,12 +21,13 @@ import type {
 let registered = false;
 
 /**
- * built-in blocks ลงทะเบียนผ่าน registry API เดียวกับที่ plugin ใช้ (ไม่มีสิทธิพิเศษ)
- * เป็น named function ไม่ใช่ side-effect import — bundler ที่เห็น `sideEffects: false`
- * จะตัด bare import ทิ้งได้เงียบๆ (เจอจริงตอน bundle ฝั่ง browser: esbuild เตือน
- * "Ignoring this import" → createBlock throw ไม่รู้จัก type ทุกตัวตอน runtime);
- * การเรียกฟังก์ชันตรงๆ จาก create-block.ts เป็น side effect ใน module ที่ถูกใช้งานจริง
- * bundler ตัดไม่ได้; idempotent — เรียกซ้ำเป็น no-op (registerBlockType throw ถ้าชื่อซ้ำ)
+ * Built-in blocks register through the same registry API a plugin would use (no special
+ * privilege). This is a named function, not a side-effect import — a bundler that sees
+ * `sideEffects: false` can silently drop a bare import (seen for real when bundling for the
+ * browser: esbuild warns "Ignoring this import" → createBlock then throws "unknown type" for
+ * every type at runtime). Calling the function directly from create-block.ts is a side effect
+ * inside a module whose exports are actually used, which a bundler can't drop; idempotent —
+ * calling it again is a no-op (registerBlockType throws on a duplicate name).
  */
 export function registerBuiltinBlocks(): void {
   if (registered) return;

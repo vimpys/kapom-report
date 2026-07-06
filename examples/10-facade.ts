@@ -1,9 +1,10 @@
 /**
  * Demo — createKapomReport facade (roadmap 8)
- * โฟกัส: public API จริงที่ user จะใช้ — ไม่ต้อง new jsPDF()/RenderEngine/createBlock ตรงเหมือน
- * demo 01-09; column shorthand ({ key, header } ไม่ใส่ type) + group shorthand (string key)
- * + title → แปลงเป็น ReportNode tree เดียวกันหลังบ้านผ่าน resolveReportConfig()
- * + document: { orientation, format } ส่งตรงเข้า new jsPDF() — letter/landscape แทน default a4/portrait
+ * Focus: the real public API a user reaches for — no need to call new jsPDF()/RenderEngine/
+ * createBlock directly like demos 01-09 do; column shorthand ({ key, header } without `type`)
+ * + group shorthand (a string key) + title — all converted into the same ReportNode tree
+ * under the hood via resolveReportConfig()
+ * + document: { orientation, format } passed straight into new jsPDF() — letter/landscape instead of the a4/portrait default
  */
 import { createKapomReport } from '../src/index';
 import { fontConfig, saveReport } from './shared';
@@ -23,10 +24,10 @@ const sales: Sale[] = Array.from({ length: 20 }, (_, i) => ({
 const report = createKapomReport({
   title: 'Monthly Sales Report',
   font: fontConfig,
-  document: { orientation: 'landscape', format: 'letter' }, // ไม่ระบุ = default a4/portrait ของ jsPDF เอง
-  group: 'category', // ชั้น 2 shorthand — เทียบกับ examples/03-grouped-report.ts ที่ต้องเขียน GroupResolver เต็มรูปเอง
+  document: { orientation: 'landscape', format: 'letter' }, // omit this = jsPDF's own a4/portrait default
+  group: 'category', // layer 2 shorthand — compare with examples/03-grouped-report.ts, which writes a full GroupResolver by hand
   columns: [
-    // ชั้น 1 shorthand — ไม่ใส่ type เลย normalize เป็น DataColumn ให้เอง
+    // layer 1 shorthand — no `type` at all, normalized into a DataColumn for you
     { key: 'product', header: 'Product' },
     { key: 'qty', header: 'Qty', align: 'right', aggregate: 'sum' },
   ],

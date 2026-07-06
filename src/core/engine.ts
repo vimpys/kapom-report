@@ -22,22 +22,22 @@ import { resolveWatermark } from './watermark';
 export interface RenderEngineOptions {
   margins?: Partial<PageMargins>;
   numeric?: NumericStrategy;
-  /** ลงทะเบียนก่อน block แรก render เสมอ (VFS timing) — ตั้งเป็น default font ของทั้ง doc ด้วย */
+  /** always registered before the first block renders (VFS timing) — also becomes the doc's default font */
   font?: FontConfig;
-  /** font token ต่อ row-type (columnHeader/detailRow/groupHeader/...) — merge ทับ DEFAULT_TYPOGRAPHY ทีละ token */
+  /** font token per row-type (columnHeader/detailRow/groupHeader/...) — merges over DEFAULT_TYPOGRAPHY one token at a time */
   typography?: DeepPartial<Typography>;
-  /** page header ซ้ำทุกหน้า — กินพื้นที่สงวนบนสุด (หัก content area); วาดตอน finalize() */
+  /** page header repeated on every page — reserves space at the top (subtracted from the content area); drawn at finalize() */
   pageHeader?: PageBand;
-  /** page footer ซ้ำทุกหน้า — กินพื้นที่สงวนล่างสุด; วาดตอน finalize() */
+  /** page footer repeated on every page — reserves space at the bottom; drawn at finalize() */
   pageFooter?: PageBand;
   /**
-   * watermark ซ้ำทุกหน้า — ไม่หัก content area (ต่าง page header/footer); วาดตอน finalize() ก่อน band
-   * รับ preset `{ text: 'DRAFT', ... }` หรือ render callback เต็มรูป (escape hatch)
+   * watermark repeated on every page — doesn't reserve content-area space (unlike page header/footer); drawn at finalize() before the bands
+   * accepts a preset `{ text: 'DRAFT', ... }` or a full render callback (escape hatch)
    */
   watermark?: WatermarkInput;
 }
 
-/** หน่วยตาม doc — 15 เหมาะกับ doc หน่วย mm (default ของ jsPDF); doc หน่วย pt ควร override */
+/** in the doc's units — 15 suits a doc in mm (jsPDF's default); a doc in pt units should override this */
 export const DEFAULT_PAGE_MARGINS: PageMargins = {
   top: 15,
   bottom: 15,
@@ -46,8 +46,8 @@ export const DEFAULT_PAGE_MARGINS: PageMargins = {
 };
 
 /**
- * ครอบ jsPDF doc หนึ่งตัว — คุม cursor/page-break กลาง, inject context ให้ทุก block
- * block ห้ามเรียก doc.addPage() เอง; ขอพื้นที่ผ่าน ctx.ensureSpace เท่านั้น
+ * Wraps a single jsPDF doc — manages the cursor/page-breaks centrally, injects context into every block.
+ * Blocks must never call doc.addPage() themselves; request space only through ctx.ensureSpace.
  */
 export class RenderEngine {
   private readonly doc: jsPDF;
@@ -69,7 +69,7 @@ export class RenderEngine {
     this.watermark = options.watermark !== undefined ? resolveWatermark(options.watermark) : undefined;
 
     if (options.font) {
-      // ต้องเกิดก่อน block แรก render เสมอ — constructor รันก่อน .render() ทุกครั้งอยู่แล้ว
+      // must happen before the first block renders — the constructor always runs before .render() anyway
       const defaultFamily = registerFonts(doc, options.font);
       doc.setFont(defaultFamily, 'normal');
     }
@@ -87,8 +87,8 @@ export class RenderEngine {
   }
 
   /**
-   * render ตามลำดับ: measure → ensureSpace (auto page-break) → render
-   * keep-together ระดับ composite เป็นหน้าที่ของ block (measureHeight recursive)
+   * renders in order: measure → ensureSpace (auto page-break) → render
+   * keep-together at the composite level is the block's own responsibility (recursive measureHeight)
    */
   render(blocks: readonly MeasurableBlock[]): void {
     const measureCtx = this.createMeasureContext();
@@ -100,7 +100,7 @@ export class RenderEngine {
     }
   }
 
-  /** delegate ไป deriveMeasureContext — logic สร้าง MeasureContext มีที่เดียว (single source) */
+  /** delegates to deriveMeasureContext — MeasureContext construction logic lives in one place (single source) */
   createMeasureContext(): MeasureContext {
     return deriveMeasureContext(this.createRenderContext());
   }
@@ -108,7 +108,7 @@ export class RenderEngine {
   createRenderContext(): RenderContext {
     return {
       doc: this.doc,
-      // PdfCursor เป็น live view — block อ่าน x/y/pageIndex ล่าสุดผ่าน getter เสมอ
+      // PdfCursor is a live view — a block always reads the latest x/y/pageIndex via its getters
       cursor: this.cursor,
       margins: this.margins,
       contentWidth: this.cursor.contentWidth,
@@ -134,10 +134,11 @@ export class RenderEngine {
   }
 
   /**
-   * วาด page header/footer band ทุกหน้า — ต้องเรียกครั้งเดียวหลัง render() ทุก block จบ
-   * (band วาดตอนนี้ไม่ใช่ตอน page-break เพราะ AutoTable สร้างหน้าเองข้าม onPageBreak ของเรา —
-   * iterate ทุกหน้าใน doc จริงตอนจบจึงครอบทุกหน้าไม่ว่าใครสร้าง + รู้ pageCount แล้ว)
-   * no-op ถ้าไม่มี band; ปลอดภัยแม้ไม่มี — facade/ผู้ใช้เรียกได้เสมอ
+   * Draws the page header/footer band on every page — must be called once, after every block's
+   * render() has finished (the band is drawn now rather than on page-break, because AutoTable
+   * creates pages of its own, bypassing our onPageBreak — iterating every page in the real doc
+   * at the end covers every page no matter who created it, and pageCount is known by then).
+   * No-op if there's no band; safe to call even without one — the facade/user can always call it.
    */
   finalize(): void {
     if (!this.pageHeader && !this.pageFooter && !this.watermark) return;
@@ -152,7 +153,7 @@ export class RenderEngine {
       const pageIndex = page - 1;
       this.doc.setPage(page);
 
-      // watermark ก่อน header/footer เสมอ — ให้ header/footer (ทึบ) ยังคมชัดอยู่บนสุด
+      // watermark always before header/footer — so the (opaque) header/footer stays crisp on top
       if (this.watermark && (page > 1 || this.watermark.showOnFirstPage !== false)) {
         this.watermark.render({
           doc: this.doc,
@@ -172,7 +173,7 @@ export class RenderEngine {
       }
     }
 
-    this.doc.setPage(currentPage); // คืน active page เดิม กัน caller งงถ้าวาดต่อ
+    this.doc.setPage(currentPage); // restore the original active page, so the caller isn't confused if they draw more
   }
 
   private drawBand(

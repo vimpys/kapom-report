@@ -8,10 +8,10 @@ function isValidBase64(value: string): boolean {
   return value.length > 0 && value.length % 4 === 0 && BASE64_PATTERN.test(value);
 }
 
-/** jsPDF btoa/atob เป็น global ทั้งใน browser และ Node >=18 — ไม่ผูกกับ Buffer ให้ lib รันได้ทั้งสองฝั่ง */
+/** btoa/atob are globals in both the browser and Node >=18 — avoiding Buffer lets the lib run on both */
 function uint8ArrayToBase64(bytes: Uint8Array): string {
   let binary = '';
-  const CHUNK_SIZE = 0x8000; // กัน call stack overflow กับ font ไฟล์ใหญ่
+  const CHUNK_SIZE = 0x8000; // avoids a call stack overflow with large font files
   for (let offset = 0; offset < bytes.length; offset += CHUNK_SIZE) {
     const chunk = bytes.subarray(offset, offset + CHUNK_SIZE);
     binary += String.fromCharCode(...chunk);
@@ -23,7 +23,7 @@ function toBase64(data: FontSource['data']): string {
   return typeof data === 'string' ? data : uint8ArrayToBase64(data);
 }
 
-/** VFS filename ต้อง unique ต่อ family+style กัน overwrite กันเวลามีหลาย weight ของ family เดียวกัน */
+/** the VFS filename must be unique per family+style, to prevent overwrites when a family has multiple weights */
 function vfsFilename(font: FontSource): string {
   return `${font.family}-${font.style ?? 'normal'}.ttf`;
 }
@@ -54,8 +54,8 @@ function validateFontConfig(config: FontConfig): void {
 }
 
 /**
- * ลงทะเบียน font เข้า VFS ของ doc — ต้องเรียกก่อน block แรก render (VFS timing)
- * คืน default font family ที่ resolve แล้ว (defaultFamily หรือ fallback fonts[0])
+ * Registers fonts into the doc's VFS — must be called before the first block renders (VFS timing)
+ * returns the resolved default font family (defaultFamily, or fonts[0] as a fallback)
  */
 export function registerFonts(doc: jsPDF, config: FontConfig): string {
   validateFontConfig(config);

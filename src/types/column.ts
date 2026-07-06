@@ -6,14 +6,14 @@ export type RowNumberMode = 'continuous' | 'per-group' | 'per-page';
 
 interface ColumnBase {
   header: string;
-  /** align ของ data cell; default 'left' */
+  /** data cell alignment; default 'left' */
   align?: HAlign;
-  /** align ของ header cell; default = ค่า align */
+  /** header cell alignment; default = the `align` value */
   headerAlign?: HAlign;
   width?: number;
   headerStyle?: Partial<TextStyle>;
   cellStyle?: Partial<TextStyle>;
-  /** ซ่อน/แสดงตามเงื่อนไข; default true */
+  /** conditionally show/hide; default true */
   visible?: boolean | (() => boolean);
 }
 
@@ -21,18 +21,18 @@ export interface DataColumn<T> extends ColumnBase {
   type: 'data';
   key: keyof T;
   numberFormat?: NumberFormat;
-  /** engine รวมยอด column นี้ให้ใน group footer + summary อัตโนมัติ */
+  /** the engine automatically sums this column in the group footer + summary */
   aggregate?: AggregateFn | ((rows: readonly T[]) => Decimalish);
   formatter?: (value: T[keyof T], row: T) => string;
-  /** render override — คืน string; conditional style ผ่าน resolver แยก */
+  /** render override — returns a string; conditional styling is handled by a separate resolver */
   cellRenderer?: (value: T[keyof T], row: T) => string;
 }
 
 export interface RowNumberColumn extends ColumnBase {
   type: 'rowNumber';
-  /** เริ่มนับจาก; default 1 */
+  /** starting number; default 1 */
   startAt?: number;
-  /** continuous = ต่อทั้ง report, per-group = reset ทุกกลุ่ม, per-page = reset ทุกหน้า (two-pass) */
+  /** continuous = counts across the whole report, per-group = resets every group, per-page = resets every page (two-pass) */
   mode?: RowNumberMode;
   formatter?: (n: number) => string;
 }
@@ -59,7 +59,7 @@ export type ReportColumn<T> =
   | ComputedColumn<T>
   | RunningTotalColumn<T>;
 
-/** resolve alignment: header fallback → data, data fallback → 'left' */
+/** resolve alignment: header falls back to data, data falls back to 'left' */
 export interface ResolvedAlign {
   header: HAlign;
   data: HAlign;

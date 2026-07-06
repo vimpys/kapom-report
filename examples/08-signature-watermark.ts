@@ -1,10 +1,10 @@
 /**
  * Demo — Signature Block + Watermark (roadmap 6d)
- * โฟกัส: { type: 'signature' } เส้นเซ็นชื่อ+label หลาย slot เป็น Report Footer
- * และ watermark preset `{ text: 'DRAFT' }` — แค่ระบุข้อความก็ได้ตราจางกลางหน้า
- * ทุกหน้า (opacity/fontSize/สี default ให้; ต้องการ custom เต็มรูปยังเขียน
- * render callback + withOpacity() เองได้ — ดู core/watermark.ts)
- * เรียกผ่าน createKapomReport({ blocks, watermark }) — facade เรียก finalize() ให้เอง
+ * Focus: { type: 'signature' } — signature line + label, multiple slots, as a Report Footer
+ * and the watermark preset `{ text: 'DRAFT' }` — just give a string and get a faint stamp
+ * centered on every page (opacity/fontSize/color are defaulted for you; for full custom
+ * control you can still write a render callback + withOpacity() yourself — see core/watermark.ts)
+ * Uses createKapomReport({ blocks, watermark }) — the facade calls finalize() for you
  */
 import { createKapomReport } from '../src/index';
 import type { TableNode } from '../src/index';
@@ -31,7 +31,7 @@ const salesTable: TableNode<Sale> = {
 
 const report = createKapomReport<Sale>({
   font: fontConfig,
-  // preset — จัดกึ่งกลางหน้า + opacity 0.15 + fontSize 60 + สีเทาให้เอง (override ได้ทุกค่า)
+  // preset — centers on the page + opacity 0.15 + fontSize 60 + gray color, all provided for you (each is overridable)
   watermark: { text: 'DRAFT' },
   blocks: [
     { type: 'text', content: 'Monthly Sales Report', role: 'reportTitle' },
@@ -40,7 +40,7 @@ const report = createKapomReport<Sale>({
     { type: 'spacer', height: 20 },
     {
       type: 'signature',
-      slots: [{ label: 'ผู้จัดทำ' }, { label: 'ผู้ตรวจสอบ' }, { label: 'ผู้อนุมัติ' }],
+      slots: [{ label: 'Prepared by' }, { label: 'Reviewed by' }, { label: 'Approved by' }],
     },
   ],
 });

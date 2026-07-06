@@ -2,23 +2,24 @@ import type { CursorState, PageMargins } from './context';
 import { KapomLayoutError } from './errors';
 
 export interface PdfCursorOptions {
-  /** ขนาดหน้าในหน่วยของ doc (จาก doc.internal.pageSize) */
+  /** page size in the doc's units (from doc.internal.pageSize) */
   pageWidth: number;
   pageHeight: number;
   margins: PageMargins;
   /**
-   * โซนสงวนของ page header/footer — หักจาก content area เสมอ (content เริ่มใต้ header
-   * จบเหนือ footer) ไม่ว่า band จะถูกวาดเมื่อไหร่; default 0 = ไม่มี band
+   * reserved zone for the page header/footer — always subtracted from the content area
+   * (content starts below the header, ends above the footer) regardless of when the band
+   * is actually drawn; default 0 = no band
    */
   headerHeight?: number;
   footerHeight?: number;
-  /** เรียกหลัง cursor ขึ้นหน้าใหม่แล้ว — engine ใช้ sync doc.addPage() */
+  /** called after the cursor moves to a new page — the engine uses this to sync doc.addPage() */
   onPageBreak?: (newPageIndex: number) => void;
 }
 
 /**
- * x/y tracking + page-break decision — pure logic ไม่แตะ jsPDF
- * engine เชื่อมกับ doc ผ่าน onPageBreak เท่านั้น → test ได้โดยไม่ mock jsPDF
+ * x/y tracking + page-break decisions — pure logic, doesn't touch jsPDF
+ * the engine connects to the doc only via onPageBreak → testable without mocking jsPDF
  */
 export class PdfCursor implements CursorState {
   private currentX: number;
@@ -87,22 +88,22 @@ export class PdfCursor implements CursorState {
     return this.pageWidth - this.margins.left - this.margins.right;
   }
 
-  /** ขอบบนของ content area (ใต้ header reserved) — จุดเริ่ม y ของทุกหน้า */
+  /** top edge of the content area (below the reserved header) — the starting y on every page */
   get contentTop(): number {
     return this.margins.top + this.headerHeight;
   }
 
-  /** ขอบล่างของ content area (เหนือ footer reserved) */
+  /** bottom edge of the content area (above the reserved footer) */
   get contentBottom(): number {
     return this.pageHeight - this.margins.bottom - this.footerHeight;
   }
 
-  /** ความสูง content area เต็มหน้า (ไม่ขึ้นกับตำแหน่ง cursor) — หัก header/footer reserved แล้ว */
+  /** full-page content area height (independent of the cursor's position) — already net of the reserved header/footer */
   get contentHeight(): number {
     return this.contentBottom - this.contentTop;
   }
 
-  /** พื้นที่แนวตั้งที่เหลือจาก cursor ถึงขอบล่าง content area */
+  /** remaining vertical space from the cursor to the bottom edge of the content area */
   get remainingHeight(): number {
     return this.contentBottom - this.currentY;
   }
@@ -119,11 +120,12 @@ export class PdfCursor implements CursorState {
   }
 
   /**
-   * ขึ้นหน้าใหม่ถ้าพื้นที่ที่เหลือไม่พอ requiredHeight
-   * @returns true ถ้าขึ้นหน้าใหม่
+   * moves to a new page if the remaining space is less than requiredHeight
+   * @returns true if a new page was started
    *
-   * block ที่สูงเกิน content area ทั้งหน้า (เช่น table ยาว) จะไม่ break ที่นี่ —
-   * ถ้า cursor อยู่หัวหน้าแล้ว break ก็ไม่ช่วย → block ต้องจัดการ break ภายในเอง
+   * a block taller than a full content area (e.g. a long table) won't break here —
+   * if the cursor is already at the top of a page, breaking wouldn't help, so the
+   * block must handle breaking internally
    */
   ensureSpace(requiredHeight: number): boolean {
     if (!Number.isFinite(requiredHeight) || requiredHeight < 0) {
@@ -143,9 +145,9 @@ export class PdfCursor implements CursorState {
   }
 
   /**
-   * sync state ตาม doc จริง หลัง block วาดข้ามหน้าเอง (เช่น AutoTable)
-   * ไม่ fire onPageBreak — หน้าใน doc ถูกเพิ่มไปแล้วโดยตัว block
-   * ถอยหลังไม่ได้ (pageIndex ต้อง >= ปัจจุบัน) — render เดินหน้าอย่างเดียว
+   * sync state to match the real doc after a block has paginated itself (e.g. AutoTable)
+   * doesn't fire onPageBreak — the page was already added by the block itself
+   * can't go backwards (pageIndex must be >= current) — rendering only ever moves forward
    */
   syncTo(pageIndex: number, y: number): void {
     if (!Number.isInteger(pageIndex) || pageIndex < this.currentPageIndex) {

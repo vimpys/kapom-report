@@ -7,30 +7,30 @@ import { resolveAggregateRow, resolveSegmentBody } from './column-resolver';
 import { groupFooterLabel, groupHeaderLabel, splitGroups } from './group-resolver';
 
 /**
- * หนึ่ง node ใน group tree (roadmap 10 — nested group)
- * leaf (ไม่มี subGroup) มี `body` ไว้วาดเป็น AutoTable segment; non-leaf มี `children`
- * ไว้ recurse ต่อ — ทั้งสองแบบมี `foot` (subtotal) ของกลุ่มตัวเองถ้า column มี aggregate
+ * A single node in the group tree (roadmap 10 — nested group)
+ * A leaf (no subGroup) has a `body` to draw as an AutoTable segment; a non-leaf has `children`
+ * to recurse into — both kinds have their own `foot` (subtotal) if a column has an aggregate.
  */
 export interface GroupTreeNode<T> {
   label: string;
-  /** 0 = ระดับนอกสุด — ใช้ indent band label ตามชั้น */
+  /** 0 = the outermost level — used to indent the band label per level */
   depth: number;
-  /** ทุก row ในกลุ่มนี้ (รวม sub-group) — ฐานของ subtotal ระดับนี้ */
+  /** every row in this group (including sub-groups) — the basis for this level's subtotal */
   rows: readonly T[];
-  /** keepTogether ของ resolver ระดับนี้ (default 1) */
+  /** this level's resolver's keepTogether (default 1) */
   minRowsWithHeader: number;
-  /** subtotal ของกลุ่มนี้ — undefined เมื่อไม่มี column ไหนประกาศ aggregate */
+  /** this group's subtotal — undefined when no column declares an aggregate */
   foot: string[] | undefined;
-  /** มีเมื่อ resolver ระดับนี้ประกาศ subGroup (non-leaf) */
+  /** present when this level's resolver declares a subGroup (non-leaf) */
   children: GroupTreeNode<T>[] | undefined;
-  /** cell strings ของ segment — เฉพาะ leaf (non-leaf วาดผ่าน children แทน) */
+  /** the segment's cell strings — leaf only (a non-leaf draws through children instead) */
   body: string[][] | undefined;
 }
 
 /**
- * แปลง GroupResolver chain (subGroup ซ้อนกัน N ระดับ) เป็น tree — pure, ไม่แตะ jsPDF
- * เดิน depth-first ตามลำดับ render จริง เพื่อให้ rowNumber/runningTotal 'continuous'
- * สะสมผ่าน state ข้าม leaf segment ถูกลำดับ (per-group reset ที่หัว segment เหมือนเดิม)
+ * Converts a GroupResolver chain (subGroup nested N levels deep) into a tree — pure, doesn't touch jsPDF
+ * walks depth-first in the actual render order, so 'continuous' rowNumber/runningTotal
+ * accumulate through state across leaf segments in the right order (per-group reset at the start of a segment, same as before)
  */
 export function buildGroupTree<T>(
   columns: readonly ReportColumn<T>[],
@@ -77,8 +77,8 @@ export function buildGroupTree<T>(
 }
 
 /**
- * รวม cell rows ทั้ง tree ตามลำดับ render (body ของ leaf + foot ทุกระดับ) —
- * ใช้คำนวณ column widths ชุดเดียวข้ามทุก segment (เส้น column ตรงกันทั้งตาราง)
+ * Flattens every cell row across the whole tree in render order (each leaf's body + every
+ * level's foot) — used to compute a single set of column widths across every segment (keeps column lines aligned across the whole table)
  */
 export function flattenGroupTreeRows<T>(tree: readonly GroupTreeNode<T>[]): string[][] {
   const rows: string[][] = [];
@@ -93,7 +93,7 @@ export function flattenGroupTreeRows<T>(tree: readonly GroupTreeNode<T>[]): stri
   return rows;
 }
 
-/** จำนวนกลุ่มทั้ง tree ทุกระดับรวมกัน (ใช้ estimate ความสูงใน measureHeight) */
+/** total group count across every level of the tree (used to estimate height in measureHeight) */
 export function countGroupBands<T>(resolver: GroupResolver<T>, data: readonly T[]): number {
   const groups = splitGroups(data, resolver);
   if (!resolver.subGroup) return groups.length;

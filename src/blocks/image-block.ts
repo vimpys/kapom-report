@@ -2,7 +2,7 @@ import type { MeasurableBlock, MeasureContext, RenderContext } from '../core/con
 import { KapomLayoutError } from '../core/errors';
 import type { ImageNode } from '../types/node';
 
-/** width เกิน contentWidth → scale ลงตามอัตราส่วนเดิม (คง aspect ratio) แทนบังคับ user คำนวณเอง */
+/** width exceeding contentWidth → scales down proportionally (keeps aspect ratio) instead of forcing the user to compute it themselves */
 function resolveImageSize(
   node: ImageNode,
   contentWidth: number,

@@ -1,10 +1,10 @@
 export type HAlign = 'left' | 'center' | 'right';
 export type FontStyle = 'normal' | 'bold' | 'italic';
 
-/** RGB 0–255 — jsPDF ใช้ tuple สามค่า */
+/** RGB 0–255 — jsPDF uses a three-value tuple */
 export type RGB = readonly [r: number, g: number, b: number];
 
-/** utility: override เฉพาะ field ที่ต้องการในโครงสร้างซ้อน */
+/** utility: override just the fields you need in a nested structure */
 export type DeepPartial<T> = {
   [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K];
 };

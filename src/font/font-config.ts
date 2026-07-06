@@ -1,17 +1,17 @@
-/** jsPDF setFont รับค่าเหล่านี้เป็น fontStyle ตอนวาด (ต่างชุดกับ primitives.FontStyle ที่ไม่มี bolditalic) */
+/** jsPDF's setFont accepts these as fontStyle when drawing (a different set from primitives.FontStyle, which has no bolditalic) */
 export type FontVariantStyle = 'normal' | 'bold' | 'italic' | 'bolditalic';
 
 export interface FontSource {
   family: string;
-  /** ข้อมูลไฟล์ font (.ttf) — base64 (ไม่มี data URI prefix) หรือ binary */
+  /** font file data (.ttf) — base64 (no data URI prefix) or binary */
   data: string | Uint8Array;
-  /** default 'normal' — ต้อง match กับ fontStyle ที่ report เรียกใช้จริงทุกจุด */
+  /** default 'normal' — must match the fontStyle actually used everywhere in the report */
   style?: FontVariantStyle;
 }
 
 export interface FontConfig {
-  /** non-empty tuple — บังคับมีอย่างน้อย 1 ตัวที่ระดับ type, fonts[0] จึง type-safe */
+  /** a non-empty tuple — enforces at least 1 entry at the type level, so fonts[0] is type-safe */
   fonts: readonly [FontSource, ...FontSource[]];
-  /** optional → fallback fonts[0].family ถ้าไม่ระบุ (option B, กัน silent helvetica fallback) */
+  /** optional → falls back to fonts[0].family if unset (option B, prevents a silent helvetica fallback) */
   defaultFamily?: string;
 }

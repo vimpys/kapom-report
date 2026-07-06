@@ -2,10 +2,11 @@ import type { MeasurableBlock, MeasureContext, RenderContext } from '../core/con
 import { deriveMeasureContext } from '../core/measure-context';
 
 /**
- * composite: render ลูกตามลำดับ — measureHeight รวมแบบ recursive (เผื่อ stack ซ้อน stack/section)
- * render ทำ per-child ensureSpace เอง (เหมือน engine.render loop ระดับบนสุด) เพราะ
- * text/spacer/divider/image ไม่ ensureSpace ตัวเอง — ถ้าไม่ทำที่นี่ ลูกที่ตกขอบหน้ากลาง
- * stack จะไม่ break และวาดทับ footer/ล้นหน้าไป
+ * composite: renders children in order — measureHeight sums recursively (in case a stack nests
+ * another stack/section); render does per-child ensureSpace itself (like the top-level
+ * engine.render loop), because text/spacer/divider/image don't call ensureSpace themselves —
+ * without this, a child that overflows the page in the middle of a stack wouldn't break and
+ * would draw over the footer or spill off the page
  */
 export class StackBlock implements MeasurableBlock {
   constructor(private readonly children: readonly MeasurableBlock[]) {}

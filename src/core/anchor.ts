@@ -15,8 +15,9 @@ const DEFAULT_ANCHOR_STYLE: TextStyle = {
 };
 
 /**
- * ตำแหน่งหนึ่งจุดใน band — grid 3×2 (top/bottom มาจากว่าใช้เป็น pageHeader หรือ pageFooter,
- * left/center/right คือ align ตรงนี้); format เป็น template string ใช้ {token} (ดู system-field.ts)
+ * One position within a band — a 3×2 grid (top/bottom comes from whether it's used as a
+ * pageHeader or pageFooter; left/center/right is this `align`); format is a template string
+ * using {token} (see system-field.ts)
  */
 export interface Anchor {
   align: HAlign;
@@ -29,7 +30,7 @@ export interface AnchoredBandOptions {
   anchors: readonly Anchor[];
   showOnFirstPage?: boolean;
   dateFormat?: DateFormat;
-  /** inject เวลาได้เอง (เช่น test) — default new Date() ตอน render จริงแต่ละหน้า */
+  /** inject the time yourself (e.g. for testing) — defaults to new Date() at each page's real render */
   now?: () => Date;
 }
 
@@ -44,9 +45,9 @@ function anchorX(align: HAlign, ctx: PageBandContext, textWidth: number): number
 }
 
 /**
- * แปลง Anchor[] เป็น PageBand — ไม่ต้องแก้ core/engine.ts เลย เพราะประกอบเป็น PageBand ธรรมดา
- * (assign ให้ RenderEngineOptions.pageHeader = top, pageFooter = bottom); ชน align เดียวกัน
- * ใน band เดียวกัน → throw ตอนสร้าง (fail-fast แบบเดียวกับ registerBlockType/ReportRegistry)
+ * Converts an Anchor[] into a PageBand — no need to touch core/engine.ts at all, since it just
+ * composes a plain PageBand (assign it to RenderEngineOptions.pageHeader = top, pageFooter =
+ * bottom); the same align used twice in one band → throws at creation time (fail-fast, same as registerBlockType/ReportRegistry)
  */
 export function createAnchoredBand(options: AnchoredBandOptions): PageBand {
   const seenAlign = new Set<HAlign>();

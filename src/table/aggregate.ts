@@ -3,8 +3,8 @@ import type { Decimalish, NumericStrategy } from '../numeric/numeric-strategy';
 import type { AggregateFn } from '../types/column';
 
 /**
- * ค่าใน cell ที่จะเข้าระบบคำนวณต้องเป็น Decimalish — data จาก user เป็น unknown
- * ที่ boundary จึงต้อง narrow + fail-fast (ห้าม coerce เงียบ กัน NaN โผล่ใน total)
+ * A cell value entering the calculation system must be Decimalish — data from the user is
+ * unknown, so it must be narrowed + fail-fast at the boundary (never coerce silently, to prevent NaN from showing up in a total)
  */
 export function asDecimalish(value: unknown, context: string): Decimalish {
   if (typeof value === 'number' || typeof value === 'string') return value;
@@ -13,7 +13,7 @@ export function asDecimalish(value: unknown, context: string): Decimalish {
   );
 }
 
-/** arithmetic ทุกจุดผ่าน NumericStrategy ตาม decision — ห้าม a+b ตรงในไฟล์นี้ */
+/** all arithmetic goes through NumericStrategy per decision — never write a+b directly in this file */
 export function computeAggregate(
   fn: AggregateFn,
   values: readonly Decimalish[],

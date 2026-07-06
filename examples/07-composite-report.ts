@@ -1,8 +1,9 @@
 /**
- * Demo — Composite Report ผ่าน ReportRegistry (roadmap 6c)
- * โฟกัส: ประกอบหลาย section ด้วยชื่อ + shared context (hotelName/month) เดียวกันทุก builder
- * + breakBefore บังคับขึ้นหน้าใหม่ก่อน section รายจ่าย (page-break policy ระหว่าง section)
- * เรียกผ่าน createKapomReport({ blocks: registry.build(...) }) — ไม่ต้องแตะ jsPDF/RenderEngine เอง
+ * Demo — Composite Report via ReportRegistry (roadmap 6c)
+ * Focus: composing multiple sections by name + the same shared context (hotelName/month)
+ * across every builder + breakBefore forcing a new page before the expenses section
+ * (a page-break policy between sections)
+ * Uses createKapomReport({ blocks: registry.build(...) }) — no need to touch jsPDF/RenderEngine directly
  */
 import { createKapomReport, ReportRegistry } from '../src/index';
 import type { TableNode } from '../src/index';
@@ -72,7 +73,7 @@ registry.register('sales-section', () => {
   };
 });
 
-// breakBefore: true — รายจ่ายขึ้นหน้าใหม่เสมอ ไม่ต้องพึ่ง ensureSpace เดาเอง
+// breakBefore: true — expenses always starts on a new page, no need to rely on ensureSpace guessing
 registry.register('expenses-section', () => {
   const expensesTable: TableNode<Expense> = {
     type: 'table',

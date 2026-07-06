@@ -27,12 +27,12 @@ import { resolveColumnAlign } from '../types/column';
 import type { GroupResolver, TableNode, TableStyleOptions } from '../types/node';
 import type { CellStyle, RGB, TextStyle } from '../types/primitives';
 
-/** row สูง ≈ line-height + cellPadding บนล่างของ AutoTable — สัดส่วนโดยประมาณ */
+/** row height ≈ line-height + AutoTable's top/bottom cellPadding — an approximate ratio */
 const ESTIMATED_ROW_HEIGHT_RATIO = 1.9;
-/** แถบ group header สูงเป็นสัดส่วนของ line-height */
+/** group header band height as a ratio of line-height */
 const GROUP_BAND_HEIGHT_RATIO = 1.6;
 
-/** พื้นหลัง band/grand-total เป็น convention ของ composite pattern นี้เอง — ยังไม่เปิดให้ theme override (ดู CLAUDE.md) */
+/** the band/grand-total background is this composite pattern's own convention — not yet open to theme override (see CLAUDE.md) */
 const GROUP_BAND_FILL: RGB = [236, 240, 241];
 const GRAND_TOTAL_FILL: RGB = [41, 128, 185];
 
@@ -47,7 +47,7 @@ function cellStyleToAutoTableStyles(style: Partial<CellStyle>): Partial<Styles> 
   return styles;
 }
 
-/** ดึง string จาก cell ของ AutoTable — รองรับทั้ง string ตรงและ CellDef object ({content}, เช่น no-data colSpan row) */
+/** extracts a string from an AutoTable cell — handles both a plain string and a CellDef object ({content}, e.g. the no-data colSpan row) */
 function cellStringContent(cell: unknown): string | undefined {
   if (typeof cell === 'string') return cell;
   if (typeof cell === 'object' && cell !== null && 'content' in cell) {
@@ -57,7 +57,7 @@ function cellStringContent(cell: unknown): string | undefined {
   return undefined;
 }
 
-/** TextStyle (Typography token / column-level headerStyle/cellStyle) → AutoTable Partial<Styles> — font family ไม่ set ถ้าไม่ระบุ (สืบทอดจาก styles.font base แทน) */
+/** TextStyle (a Typography token / column-level headerStyle/cellStyle) → AutoTable Partial<Styles> — font family isn't set unless specified (inherits from the base styles.font instead) */
 function partialTextStyleToAutoTableStyles(style: Partial<TextStyle> | undefined): Partial<Styles> {
   if (!style) return {};
   const styles: Partial<Styles> = {};
@@ -76,9 +76,10 @@ export class TableBlock<T> implements MeasurableBlock {
   }
 
   /**
-   * ค่าประมาณ ไม่ใช่ค่าเป๊ะ — ใช้แค่ตัดสินใจว่าควร break ก่อนเริ่มตารางไหม
-   * (wrap ในเซลล์/สไตล์จริงรู้ตอน AutoTable วาด); ตารางที่ยาวเกินหน้า
-   * AutoTable แบ่งหน้าภายในเองอยู่แล้ว engine ไม่ต้องรู้ความสูงจริง
+   * An estimate, not an exact figure — used only to decide whether to break before starting the
+   * table (wrapping within cells / the real style is only known once AutoTable draws); a table
+   * longer than a page already paginates itself within AutoTable, so the engine doesn't need to
+   * know the real height.
    */
   measureHeight(ctx: MeasureContext): number {
     const fontSize = ctx.typography.detailRow.fontSize;
@@ -86,15 +87,15 @@ export class TableBlock<T> implements MeasurableBlock {
     const rowHeight = lineHeight * ESTIMATED_ROW_HEIGHT_RATIO;
     const footRows = this.hasAggregate() ? 1 : 0;
 
-    // No-Data fallback: head + แถวข้อความเดียว
+    // No-Data fallback: header + a single message row
     if (this.node.data.length === 0) return 2 * rowHeight;
 
     if (!this.node.group) {
       return (1 + this.node.data.length + footRows) * rowHeight;
     }
 
-    // grouped: ทุกกลุ่มทุกระดับมี band + subtotal (ถ้ามี aggregate); leaf segment มี head ของตัวเอง
-    // countGroupBands นับรวมทุกระดับของ subGroup chain (nested group, roadmap 10)
+    // grouped: every group at every level has a band + subtotal (if there's an aggregate); a leaf segment has its own head
+    // countGroupBands counts across every level of the subGroup chain (nested group, roadmap 10)
     const groupCount = countGroupBands(this.node.group, this.node.data);
     const bandHeight = lineHeight * GROUP_BAND_HEIGHT_RATIO;
     return (
@@ -116,9 +117,9 @@ export class TableBlock<T> implements MeasurableBlock {
     }
   }
 
-  // ── No-Data fallback (data ว่าง — ค้างแก้ #5) ────────────────────────
+  // ── No-Data fallback (empty data — review fix #5) ────────────────────────
 
-  /** หัวตาราง + แถวข้อความเดียว colSpan เต็มความกว้าง — แทนหัวตารางเปล่าเงียบๆ แบบเดิม */
+  /** header + a single message row, colSpan across the full width — replaces the old silent empty header */
   private renderNoData(ctx: RenderContext): void {
     const columns = visibleColumns(this.node.columns);
     const aligns = columns.map(resolveColumnAlign);
@@ -135,8 +136,8 @@ export class TableBlock<T> implements MeasurableBlock {
   }
 
   /**
-   * columnStyles ต่อ index: halign + fix width + column-level cellStyle — cellStyle ต้องมาก่อน
-   * didParseCell เสมอ (zebra/conditional apply ทีหลังจึงทับได้ตาม precedence ที่ล็อกไว้)
+   * columnStyles per index: halign + fixed width + column-level cellStyle — cellStyle must
+   * always come before didParseCell (zebra/conditional apply later, so they can override it per the locked-in precedence)
    */
   private buildColumnStyles(
     aligns: readonly ResolvedAlign[],
@@ -154,7 +155,7 @@ export class TableBlock<T> implements MeasurableBlock {
     return columnStyles;
   }
 
-  // ── flat (ไม่ group) ────────────────────────────────────────────────
+  // ── flat (ungrouped) ────────────────────────────────────────────────
 
   private renderFlat(ctx: RenderContext): void {
     const columns = visibleColumns(this.node.columns);
@@ -176,7 +177,7 @@ export class TableBlock<T> implements MeasurableBlock {
     });
   }
 
-  // ── grouped (composite: band + segment ต่อกลุ่ม + grand total; recursive เมื่อมี subGroup) ──────
+  // ── grouped (composite: a band + segment per group + grand total; recursive when there's a subGroup) ──────
 
   private renderGrouped(ctx: RenderContext, resolver: GroupResolver<T>): void {
     const columns = visibleColumns(this.node.columns);
@@ -184,7 +185,7 @@ export class TableBlock<T> implements MeasurableBlock {
     const head = columns.map((col) => normalizeText(col.header));
     const state = createSegmentState(columns.length);
 
-    // tree ครอบทุกระดับของ subGroup chain — leaf มี body, non-leaf มี children (roadmap 10)
+    // a tree covering every level of the subGroup chain — a leaf has a body, a non-leaf has children (roadmap 10)
     const tree = buildGroupTree(columns, this.node.data, resolver, ctx.numeric, state);
     const grandFoot = resolveAggregateRow(
       columns,
@@ -193,7 +194,7 @@ export class TableBlock<T> implements MeasurableBlock {
       this.node.summaryLabel ?? DEFAULT_SUMMARY_LABEL,
     );
 
-    // fix column widths ชุดเดียวจากเนื้อหาทุกกลุ่มทุกระดับ — เส้น column ตรงกันข้าม segment
+    // fix a single set of column widths from every group's content at every level — keeps the column lines aligned across segments
     const allRows: (readonly string[])[] = [
       head,
       ...flattenGroupTreeRows(tree),
@@ -204,7 +205,7 @@ export class TableBlock<T> implements MeasurableBlock {
       allRows,
       columns.map((col) => col.width),
       ctx.contentWidth,
-      ctx.typography.detailRow.fontSize, // วัดที่ fontSize เดียวกับ body จริง (ค้างแก้ #3)
+      ctx.typography.detailRow.fontSize, // measured at the same fontSize the body actually uses (review fix #3)
     );
 
     const columnStyles = this.buildColumnStyles(aligns, columns, (index) => ({
@@ -226,13 +227,14 @@ export class TableBlock<T> implements MeasurableBlock {
 
     if (grandFoot) {
       ctx.ensureSpace(rowEstimate);
-      // grand total เป็น body แถวเดียวสไตล์เข้ม — ไม่ใช้ foot ของ AutoTable
-      // เพราะตารางที่มีแต่ foot ไม่มี body เป็น edge case ที่ lib ไม่การันตี
+      // the grand total is a single, boldly-styled body row — not AutoTable's own foot, because
+      // a table with only a foot and no body is an edge case the library doesn't guarantee
       this.runAutoTable(ctx, {
-        // 'striped' (default theme) ตั้ง alternateRow.fillColor ให้ body row index คู่เสมอ
-        // (แถวนี้มีแถวเดียว = index 0 = คู่เสมอ) แล้ว merge ทับ bodyStyles.fillColor ของเราแบบเงียบๆ
-        // (สังเกตได้ตอนตรวจ demo จริง — พื้นหลังจางเป็นสีเทาแทนที่จะเป็นสีน้ำเงินที่ตั้งใจ)
-        // 'plain' ไม่นิยาม alternateRow เลยเป็นค่า default → ตัดปัญหานี้ทิ้ง
+        // The default theme ('striped') always sets alternateRow.fillColor for even body row
+        // indexes (this row is the only one = index 0 = always even), which silently merges over
+        // our bodyStyles.fillColor (observed while checking a real demo — the background faded to
+        // gray instead of the intended blue). 'plain' doesn't define alternateRow at all as its
+        // default, which sidesteps the problem entirely.
         theme: 'plain',
         body: [grandFoot],
         columnStyles,
@@ -245,7 +247,7 @@ export class TableBlock<T> implements MeasurableBlock {
     }
   }
 
-  /** context คงที่ที่ส่งลงทุกชั้นของ renderGroupTree (คำนวณครั้งเดียวใน renderGrouped) */
+  /** the shared context passed down every level of renderGroupTree (computed once in renderGrouped) */
   private renderGroupTree(
     ctx: RenderContext,
     tree: readonly GroupTreeNode<T>[],
@@ -259,13 +261,13 @@ export class TableBlock<T> implements MeasurableBlock {
     },
   ): void {
     for (const node of tree) {
-      // keep-together: band (+band ลูกซ้อนลงไปจนถึง leaf) + head + N แถวแรกต้องอยู่หน้าเดียวกัน
+      // keep-together: the band (+ any child bands nested below it) + head + the first N rows must all land on the same page
       ctx.ensureSpace(this.requiredSpaceFor(node, shared.bandHeight, shared.rowEstimate));
       this.drawGroupBand(ctx, node.label, shared.bandHeight, node.depth);
 
       if (node.children) {
         this.renderGroupTree(ctx, node.children, shared);
-        // subtotal ระดับ non-leaf ไม่มี segment ให้ฝากเป็น foot — วาดเป็นแถวเดี่ยวแยก
+        // a non-leaf subtotal has no segment to attach a foot to — drawn as a separate single row instead
         if (node.foot) this.renderSubtotalRow(ctx, node.foot, shared);
         continue;
       }
@@ -283,7 +285,7 @@ export class TableBlock<T> implements MeasurableBlock {
     }
   }
 
-  /** พื้นที่ขั้นต่ำก่อนวาด band ของ node นี้ — non-leaf ต้องเผื่อ band ลูกซ้อนลงไปจนถึง leaf แรก */
+  /** minimum space needed before drawing this node's band — a non-leaf must account for the child bands nested down to the first leaf */
   private requiredSpaceFor(
     node: GroupTreeNode<T>,
     bandHeight: number,
@@ -298,9 +300,10 @@ export class TableBlock<T> implements MeasurableBlock {
   }
 
   /**
-   * subtotal ของกลุ่ม non-leaf (nested group) — แถวเดี่ยว theme 'plain' เหตุผลเดียวกับ grand total
-   * (foot-only table เป็น edge case ที่ AutoTable ไม่การันตี + กัน alternateRow ทับ fillColor);
-   * ใช้พื้น GROUP_BAND_FILL เดียวกับ band ให้จับคู่กับหัวกลุ่มทางสายตา ต่างจาก grand total สีเข้ม
+   * a non-leaf group's subtotal (nested group) — a single row with theme 'plain', for the same
+   * reason as the grand total (a foot-only table is an edge case AutoTable doesn't guarantee,
+   * and it avoids alternateRow overriding fillColor); uses the same GROUP_BAND_FILL background
+   * as the band, to visually pair with the group's header, unlike the grand total's darker color
    */
   private renderSubtotalRow(
     ctx: RenderContext,
@@ -331,11 +334,11 @@ export class TableBlock<T> implements MeasurableBlock {
     applyTextStyle(doc, {
       ...token,
       fontStyle: this.resolveSupportedFontStyle(doc, fontName, token.fontStyle),
-      color: token.color ?? [0, 0, 0], // band ต้องได้สีดำ default เสมอ ไม่สืบสีจาก block ก่อนหน้า
+      color: token.color ?? [0, 0, 0], // a band must always get the default black — never inherit color from the previous block
     });
 
-    const inset = 5 / doc.internal.scaleFactor; // ล้อ cellPadding ของ AutoTable
-    // nested group: indent label ตามชั้นให้เห็นลำดับชั้น (band เต็มความกว้างเท่ากันทุกระดับ)
+    const inset = 5 / doc.internal.scaleFactor; // mirrors AutoTable's cellPadding
+    // nested group: indent the label according to depth, to make the hierarchy visible (bands are the same full width at every level)
     const indent = inset * 2 * depth;
     const lineHeight = lineHeightOf(doc, token.fontSize);
     drawText(doc, label, cursor.x + inset + indent, cursor.y + lineHeight * 1.15);
@@ -345,7 +348,7 @@ export class TableBlock<T> implements MeasurableBlock {
 
   // ── style resolution ──────────────────────────────────────────────────
 
-  /** Typography token → AutoTable styles พร้อม fallback fontStyle ถ้า font ที่ใช้ไม่มี variant นั้นจริง */
+  /** Typography token → AutoTable styles with a fontStyle fallback if the font in use doesn't actually have that variant */
   private resolveTokenStyles(ctx: RenderContext, token: TextStyle): Partial<Styles> {
     const styles = partialTextStyleToAutoTableStyles(token);
     if (styles.fontStyle) {
@@ -356,9 +359,10 @@ export class TableBlock<T> implements MeasurableBlock {
   }
 
   /**
-   * ทุก built-in theme ของ AutoTable ตั้ง head/foot เป็น 'bold' โดย default — ถ้า font
-   * ที่ใช้ไม่มี variant นั้นลงทะเบียนไว้ jsPDF จะ warn เงียบๆ แล้ว fallback (silent failure
-   * ที่ decision เรื่อง font บอกไว้ว่าต้องกันเอง) เช็คจาก getFontList ก่อนใช้เสมอ
+   * Every one of AutoTable's built-in themes sets head/foot to 'bold' by default — if the font
+   * in use doesn't have that variant registered, jsPDF warns silently and falls back (the exact
+   * silent failure the font decision says we must guard against ourselves); always checks
+   * getFontList first before using it.
    */
   private resolveSupportedFontStyle<S extends AutoTableFontStyle>(
     doc: RenderContext['doc'],
@@ -371,11 +375,11 @@ export class TableBlock<T> implements MeasurableBlock {
   }
 
   /**
-   * columnStyles.halign มีผลแค่ body — head/foot ต่าง column ต้อง set ราย cell
-   * precedence เต็ม: conditional > zebra > column-level (headerStyle/cellStyle) > row-type (Typography)
-   * cellStyle ถูก merge เข้า columnStyles ไปแล้วก่อนถึงจุดนี้ (ดู renderFlat/renderGrouped) —
-   * ที่นี่จัดการ headerStyle (head section เท่านั้น เพราะ columnStyles ไม่มีผลกับ head)
-   * กับ zebra/conditional (body section เท่านั้น) ซึ่งต้องมาทีหลังสุดเพื่อทับ cellStyle ได้
+   * columnStyles.halign only affects the body — head/foot need each column's alignment set per cell
+   * full precedence: conditional > zebra > column-level (headerStyle/cellStyle) > row-type (Typography)
+   * cellStyle is already merged into columnStyles before this point (see renderFlat/renderGrouped) —
+   * this handles headerStyle (head section only, since columnStyles has no effect on head)
+   * and zebra/conditional (body section only), which must run last so they can override cellStyle
    */
   private cellHook(
     aligns: readonly ResolvedAlign[],
@@ -405,7 +409,7 @@ export class TableBlock<T> implements MeasurableBlock {
     };
   }
 
-  /** align เท่านั้น — ใช้กับ grand total ที่ไม่มี typed row ต้นทางให้ resolveRowStyle อ้างอิง */
+  /** alignment only — used for the grand total, which has no typed source row for resolveRowStyle to reference */
   private alignHook(aligns: readonly ResolvedAlign[]): NonNullable<UserOptions['didParseCell']> {
     return (data) => {
       const align = aligns[data.column.index];
@@ -416,9 +420,10 @@ export class TableBlock<T> implements MeasurableBlock {
   }
 
   /**
-   * fail-fast กัน silent mojibake ใน cell — AutoTable วาด cell เองข้าม drawText facade
-   * (guard ใน drawText จับไม่ได้) ต้อง scan เองก่อนส่งเข้า autoTable; เช็ค font ครั้งเดียว
-   * นอก loop — user ที่ลงทะเบียน font แล้ว (ทางปกติ) ข้าม scan ทั้งก้อนไม่มีต้นทุน
+   * Fail fast against silent mojibake in a cell — AutoTable draws cells itself, bypassing the
+   * drawText facade (the guard inside drawText can't catch it), so we must scan them ourselves
+   * before handing off to autoTable; the font is checked once outside the loop — a user who has
+   * registered a font (the normal path) skips the whole scan at no cost.
    */
   private assertThaiCellsRenderable(ctx: RenderContext, options: UserOptions): void {
     const fontName = ctx.doc.getFont().fontName;
@@ -438,22 +443,23 @@ export class TableBlock<T> implements MeasurableBlock {
     }
   }
 
-  /** เรียก autoTable ที่ตำแหน่ง cursor แล้ว sync cursor ตาม doc หลังวาด */
+  /** calls autoTable at the cursor's position, then syncs the cursor to the doc afterward */
   private runAutoTable(ctx: RenderContext, options: UserOptions): void {
     this.assertThaiCellsRenderable(ctx, options);
     const pageHeight = ctx.doc.internal.pageSize.getHeight();
     autoTable(ctx.doc, {
       startY: ctx.cursor.y,
-      // margin.top/bottom ต้องใช้ contentTop/contentBottom (หัก page header/footer reserved แล้ว)
-      // ไม่ใช่ margins ดิบ — ไม่งั้น AutoTable เวลาแบ่งหน้าเองจะวาดทับโซน band
+      // margin.top/bottom must use contentTop/contentBottom (already net of the reserved
+      // page header/footer) rather than the raw margins — otherwise, when AutoTable paginates
+      // itself, it would draw over the band's zone
       margin: {
         top: ctx.contentTop,
         right: ctx.margins.right,
         bottom: pageHeight - ctx.contentBottom,
         left: ctx.margins.left,
       },
-      // AutoTable มี default font 'helvetica' ของตัวเอง ไม่สืบทอดจาก doc.getFont() —
-      // ต้องส่ง font ปัจจุบันของ doc ตรงๆ ไม่งั้น font ไทยที่ลงทะเบียนไว้จะไม่มีผลกับตาราง
+      // AutoTable has its own default font, 'helvetica', and doesn't inherit from doc.getFont() —
+      // the doc's current font must be passed explicitly, or a registered Thai font would have no effect on the table at all
       styles: { font: ctx.doc.getFont().fontName },
       ...options,
     });
@@ -464,7 +470,7 @@ export class TableBlock<T> implements MeasurableBlock {
         'AutoTable did not set lastAutoTable.finalY after render — check the jspdf-autotable version',
       );
     }
-    // AutoTable แบ่งหน้าเอง → doc อาจไปอยู่คนละหน้ากับ cursor แล้ว ต้อง sync กลับ
+    // AutoTable paginates on its own → the doc may now be on a different page than the cursor, so it must be synced back
     const pageIndex = ctx.doc.getCurrentPageInfo().pageNumber - 1;
     ctx.syncCursor(pageIndex, finalY);
   }

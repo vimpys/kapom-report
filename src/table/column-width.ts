@@ -1,22 +1,23 @@
 import type { jsPDF } from 'jspdf';
 
-/** fallback เมื่อไม่ส่ง fontSize — ตรง default ของ AutoTable และ DEFAULT_TYPOGRAPHY.detailRow */
+/** fallback when fontSize isn't provided — matches AutoTable's default and DEFAULT_TYPOGRAPHY.detailRow */
 const AUTOTABLE_FONT_SIZE = 10;
-/** cellPadding ซ้าย+ขวา โดยประมาณของ AutoTable default (5pt ต่อข้าง) ในหน่วย doc */
+/** left+right cellPadding, approximating AutoTable's default (5pt per side) in the doc's units */
 function paddingAllowance(doc: jsPDF): number {
   return (2 * 5) / doc.internal.scaleFactor;
 }
 
 /**
- * fix ความกว้าง column ล่วงหน้าชุดเดียว — จำเป็นกับ grouped table ที่แต่ละกลุ่ม
- * เป็น autoTable แยกกัน (ปล่อยให้แต่ละตัวคำนวณ auto เอง column จะเหลื่อมข้ามกลุ่ม)
+ * Fixes a single set of column widths up front — necessary for a grouped table, where each
+ * group is a separate autoTable (letting each one compute its own auto widths would make
+ * columns misalign across groups).
  *
- * ไม่จำเป็นต้องแจกความกว้างเหมือนอัลกอริทึมภายในของ AutoTable เป๊ะ —
- * แค่ทุก segment ใช้ค่าชุดเดียวกัน เส้นแบ่ง column ก็ตรงกันทั้ง report;
- * ข้อความที่กว้างกว่าที่วัด AutoTable ตัดบรรทัดให้เอง (แถวสูงขึ้น ไม่ล้น)
+ * No need to distribute widths exactly like AutoTable's internal algorithm does —
+ * as long as every segment uses the same set of values, the column lines stay aligned across the whole report;
+ * text wider than what was measured, AutoTable wraps on its own (the row gets taller, it doesn't overflow)
  *
- * @param fontSize ต้องตรงกับ fontSize ที่ body ใช้จริง (typography.detailRow ที่ resolve แล้ว —
- *   ค้างแก้ #3: เดิม hardcode 10 ทำให้วัดผิดเมื่อ user override typography)
+ * @param fontSize must match the fontSize the body actually uses (typography.detailRow once resolved —
+ *   review fix #3: it used to be hardcoded to 10, which measured wrong whenever a user overrode typography)
  */
 export function computeColumnWidths(
   doc: jsPDF,
@@ -40,7 +41,7 @@ export function computeColumnWidths(
     for (const row of rows) {
       const cell = row[i];
       if (cell === undefined || cell === '') continue;
-      // cell อาจมีหลายบรรทัด — ความกว้างธรรมชาติ = บรรทัดที่ยาวสุด
+      // a cell can have multiple lines — its natural width is the longest line
       for (const line of cell.split('\n')) {
         widest = Math.max(widest, doc.getTextWidth(line));
       }
@@ -49,8 +50,9 @@ export function computeColumnWidths(
   }
   doc.setFontSize(previousSize);
 
-  // scale เฉพาะ column ที่ user ไม่ fix ให้รวมพอดี contentWidth (ทั้งหดและยืด —
-  // AutoTable default ยืดตารางเต็มความกว้างเสมอ ทำให้ look สอดคล้องตาราง ungrouped)
+  // scale only the columns the user didn't fix, so the total fits contentWidth exactly (both
+  // shrinking and stretching — AutoTable's default always stretches a table to full width,
+  // so this keeps the look consistent with an ungrouped table)
   let fixedSum = 0;
   let flexSum = 0;
   natural.forEach((width, i) => {

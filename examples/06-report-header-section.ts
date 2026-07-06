@@ -1,9 +1,9 @@
 /**
  * Demo — Report Header + Section/Stack composite (roadmap 6b)
- * โฟกัส: TextNode.role ใช้ Typography token (reportTitle/reportSubtitle/sectionHeading)
- * เป็น base style + { type: 'section' }/{ type: 'stack' } render children ตามลำดับ
- * (measureHeight รวมแบบ recursive, per-child ensureSpace กันลูกตกขอบหน้า)
- * เรียกผ่าน createKapomReport({ blocks }) — ไม่ต้องแตะ jsPDF/RenderEngine เอง
+ * Focus: TextNode.role uses a Typography token (reportTitle/reportSubtitle/sectionHeading)
+ * as its base style + { type: 'section' }/{ type: 'stack' } render children in order
+ * (measureHeight sums recursively, per-child ensureSpace keeps children from spilling off the page)
+ * Uses createKapomReport({ blocks }) — no need to touch jsPDF/RenderEngine directly
  */
 import { createKapomReport } from '../src/index';
 import type { TableNode } from '../src/index';
@@ -28,20 +28,20 @@ const salesTable: TableNode<Sale> = {
   data: sales,
 };
 
-// report header = stack ของ text ที่ใช้ Typography token ตรง role (ไม่ต้องตั้ง style เอง)
+// report header = a stack of text nodes using a Typography token via `role` (no need to set style manually)
 const report = createKapomReport<Sale>({
   font: fontConfig,
   blocks: [
     {
       type: 'stack',
       children: [
-        // text shorthand ใน children: ไม่ต้องใส่ type: 'text'
+        // text shorthand in children: no need for `type: 'text'`
         { content: 'Monthly Sales Report', role: 'reportTitle' },
         { content: 'January 2026 — All Regions', role: 'reportSubtitle' },
       ],
     },
     { type: 'spacer', height: 6 },
-    // section = stack + name (name ใช้กับ Report Registry เลือก section — ดู demo 07)
+    // section = stack + name (name is used by the Report Registry to select a section — see demo 07)
     {
       type: 'section',
       name: 'sales-summary',

@@ -2,10 +2,10 @@ import type { MeasureContext, RenderContext } from './context';
 import { measureTextBlockHeight } from './text-metrics';
 
 /**
- * สร้าง MeasureContext จาก RenderContext ที่มีอยู่แล้ว — ใช้โดย composite block
- * (stack/section) ที่ต้อง measure ลูกทีละตัว "ระหว่าง" render เพื่อทำ per-child
- * ensureSpace เหมือน engine.render loop ทำกับ block ระดับบนสุด (กันลูกที่เกิน
- * พื้นที่เหลือตกขอบหน้าโดยไม่ break)
+ * Builds a MeasureContext from an existing RenderContext — used by composite blocks
+ * (stack/section) that need to measure each child "in the middle of" rendering, to do
+ * per-child ensureSpace the same way the engine's render loop does for top-level blocks
+ * (keeps a child that overflows the remaining space from spilling off the page without breaking)
  */
 export function deriveMeasureContext(ctx: RenderContext): MeasureContext {
   return {

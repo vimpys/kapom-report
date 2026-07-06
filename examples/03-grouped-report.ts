@@ -1,8 +1,8 @@
 /**
  * Demo — grouped table (composite)
- * โฟกัส: group band ต่อกลุ่ม + per-group rowNumber + subtotal ต่อกลุ่ม + grand total
- * + keep-together (band ไม่ตกท้ายหน้าเดียวดาย)
- * เรียกผ่าน createKapomReport({ blocks }) — ไม่ต้องแตะ jsPDF/RenderEngine เอง
+ * Focus: a group band per group + per-group rowNumber + subtotal per group + grand total
+ * + keep-together (a band never gets stranded alone at the bottom of a page)
+ * Uses createKapomReport({ blocks }) — no need to touch jsPDF/RenderEngine directly
  */
 import { createKapomReport, nativeNumeric } from '../src/index';
 import type { TableNode } from '../src/index';

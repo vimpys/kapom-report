@@ -1,8 +1,8 @@
 /**
- * Node-only I/O ของ facade — โหลด builtin ผ่าน `process.getBuiltinModule()` (Node >= 22.3)
- * แทน static `import 'node:fs'` เพื่อไม่ให้มี node: specifier ค้างใน module graph เลย —
- * bundler ฝั่ง browser (Vite/webpack/esbuild) จึง bundle ผ่านโดยไม่ต้อง shim/conditional exports
- * (โค้ดใน branch Node ไม่มีวันรันบน browser เพราะ caller เช็ค isNodeRuntime() ก่อนเสมอ)
+ * Node-only I/O for the facade — loads builtins via `process.getBuiltinModule()` (Node >= 22.3)
+ * instead of a static `import 'node:fs'`, so no `node:` specifier is left lingering in the module
+ * graph at all — a browser bundler (Vite/webpack/esbuild) can then bundle this without needing
+ * a shim or conditional exports (code in the Node branch never runs in the browser, since callers always check isNodeRuntime() first)
  */
 
 export function isNodeRuntime(): boolean {
@@ -18,15 +18,15 @@ export function writeFile(filename: string, data: Uint8Array): void {
   fs.writeFileSync(filename, data);
 }
 
-/** อายุขั้นต่ำของ temp file ก่อนถูกเคลียร์ (ค้างแก้ #7) — ใหม่กว่านี้ถือว่า viewer อาจยังเปิดอยู่ */
+/** minimum age of a temp file before it's cleared (review fix #7) — anything newer is assumed to possibly still be open in a viewer */
 export const TEMP_PDF_MAX_AGE_MS = 60 * 60 * 1000;
 
 const TEMP_PDF_PATTERN = /^kapom-report-\d+\.pdf$/;
 
 /**
- * เคลียร์ temp PDF เก่าจากการ preview ครั้งก่อนๆ (best effort — ห้าม throw):
- * ลบเฉพาะไฟล์ตาม pattern ของเราที่แก่กว่า TEMP_PDF_MAX_AGE_MS; ไฟล์ที่ viewer
- * lock อยู่ (เช่น Acrobat บน Windows) unlink ไม่ผ่านก็ข้ามเงียบๆ รอรอบถัดไป
+ * Clears old temp PDFs from previous preview() calls (best effort — must never throw):
+ * only deletes files matching our own pattern that are older than TEMP_PDF_MAX_AGE_MS; a file
+ * locked by a viewer (e.g. Acrobat on Windows) that fails to unlink is skipped silently, to be retried next time
  */
 function cleanupOldTempPdfs(): void {
   const fs = process.getBuiltinModule('node:fs');
@@ -41,15 +41,15 @@ function cleanupOldTempPdfs(): void {
       try {
         if (now - fs.statSync(file).mtimeMs > TEMP_PDF_MAX_AGE_MS) fs.unlinkSync(file);
       } catch {
-        // ไฟล์โดน lock/หายไปแล้ว — ข้าม (best effort)
+        // file is locked, or already gone — skip it (best effort)
       }
     }
   } catch {
-    // อ่าน tmpdir ไม่ได้ — ข้ามการเคลียร์ ไม่กระทบ preview
+    // couldn't read tmpdir — skip cleanup, doesn't affect preview
   }
 }
 
-/** เขียน PDF ลง temp file ชื่อไม่ซ้ำ (timestamp) แล้วคืน path — เคลียร์ไฟล์เก่าให้ก่อนทุกครั้ง */
+/** writes the PDF to a temp file with a unique (timestamped) name and returns the path — clears old files first, every time */
 export function writeTempPdf(data: Uint8Array): string {
   cleanupOldTempPdfs();
   const os = process.getBuiltinModule('node:os');
@@ -59,7 +59,7 @@ export function writeTempPdf(data: Uint8Array): string {
   return file;
 }
 
-/** เปิดไฟล์ด้วยโปรแกรม default ของ OS — detach process ไม่บล็อก/ไม่ผูก lifetime กับ Node */
+/** opens a file with the OS's default program — detaches the process so it doesn't block or tie its lifetime to Node */
 export function openWithDefaultViewer(file: string): void {
   const { spawn } = process.getBuiltinModule('node:child_process');
   const command =

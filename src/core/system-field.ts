@@ -3,11 +3,12 @@ import type { DateFormat } from '../format/date-format';
 import { KapomError } from './errors';
 
 /**
- * ค่าที่ engine inject อัตโนมัติ (roadmap 7) — ต่างจาก data field ของ user
- * pageNumber/totalPages รู้ค่าจริงตอน finalize() เท่านั้น (two-pass โดยธรรมชาติของ
- * finalize ที่ iterate ทุกหน้าใน doc หลัง render จบแล้ว — ดู PageBand/Watermark)
- * sectionName/groupName/reportTitle/generatedBy/sectionPageNumber ยังไม่รองรับ
- * (ต้อง thread context เพิ่มข้าม tree ที่ยังไม่มีจุดต่อ — defer ไปเปิดตอนมี pain point จริง)
+ * Values the engine injects automatically (roadmap 7) — distinct from a user's own data fields.
+ * pageNumber/totalPages are only known for real at finalize() (naturally two-pass, since
+ * finalize iterates every page in the doc after rendering finishes — see PageBand/Watermark).
+ * sectionName/groupName/reportTitle/generatedBy/sectionPageNumber are not supported yet
+ * (would need threading extra context across the tree, which has no attachment point yet —
+ * deferred until there's a real pain point).
  */
 export interface SystemFieldValues {
   /** 1-based */
@@ -37,7 +38,7 @@ function resolveSystemFieldToken(
   }
 }
 
-/** แทน {token} ทุกจุดใน template ด้วยค่าจริง — token ไม่รู้จัก throw ทันที (fail-fast กัน typo เงียบๆ) */
+/** Substitutes every {token} in the template with a real value — an unrecognized token throws immediately (fail-fast against a silent typo) */
 export function resolveSystemFields(
   template: string,
   values: SystemFieldValues,

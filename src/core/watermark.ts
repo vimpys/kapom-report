@@ -5,35 +5,38 @@ import type { RGB } from '../types/primitives';
 
 export interface WatermarkContext {
   readonly doc: jsPDF;
-  /** 0-based — นับต่อเนื่องทั้ง document */
+  /** 0-based — counts continuously across the whole document */
   readonly pageIndex: number;
   readonly pageCount: number;
   readonly pageWidth: number;
   readonly pageHeight: number;
-  /** วาด text ผ่าน normalizer facade (จุดเดียวที่อนุญาตให้ watermark แตะ text) */
+  /** draw text through the normalizer facade (the only place a watermark is allowed to touch text) */
   readonly drawText: (text: string, x: number, y: number) => void;
 }
 
 export type WatermarkRenderer = (ctx: WatermarkContext) => void;
 
 /**
- * วาดซ้ำทุกหน้า ไม่หักพื้นที่ content (ต่าง PageBand ที่หัก contentTop/contentBottom) — วาดตอน
- * finalize() หลัง content ทุกหน้าจบแล้ว ด้วยเหตุผลเดียวกับ PageBand (AutoTable สร้างหน้าเองข้าม
- * onPageBreak ของ engine) แปลว่าทางกลไกจริง watermark วาด "ทับ" content เสมอ (jsPDF ไม่มี
- * z-order — วาดทีหลังคือทับ) ผู้ใช้ต้องคุม opacity เอง (เช่น `doc.setGState(new jsPDF.GState({opacity: 0.15}))`
- * ก่อนวาด แล้ว reset กลับ 1 หลังวาด) ให้ "ดูเหมือน" อยู่ใต้ content ทางสายตา — raw `doc` access
- * ระดับเดียวกับ escape hatch ของ Raw block/PageBand
+ * Drawn repeatedly on every page, doesn't subtract from the content area (unlike PageBand, which
+ * subtracts contentTop/contentBottom) — drawn at finalize() after every page's content is done,
+ * for the same reason as PageBand (AutoTable creates pages of its own, bypassing the engine's
+ * onPageBreak), which means mechanically the watermark always draws "over" the content (jsPDF has
+ * no z-order — whatever draws later sits on top). The user controls opacity themselves (e.g.
+ * `doc.setGState(new jsPDF.GState({opacity: 0.15}))` before drawing, then reset to 1 afterward)
+ * to make it "look like" it's beneath the content visually — raw `doc` access at the same level
+ * as the Raw block/PageBand escape hatch.
  */
 export interface Watermark {
   render: WatermarkRenderer;
-  /** วาดบนหน้าแรกด้วยไหม — default true */
+  /** draw on the first page too? — default true */
   showOnFirstPage?: boolean;
 }
 
 /**
- * helper คุม opacity รอบการวาด — set GState opacity ก่อนเรียก draw แล้ว reset กลับ 1 เสมอ
- * ให้ watermark renderer ไม่ต้อง import GState จาก jspdf เอง (ใช้งานง่ายขึ้น จุดประสงค์
- * เดียวกับ drawText facade); ค่านอกช่วง 0-1 → clamp โดย jsPDF เอง
+ * A helper that controls opacity around a draw call — sets the GState opacity before calling
+ * draw, then always resets it back to 1, so a watermark renderer doesn't need to import GState
+ * from jspdf itself (easier to use, same purpose as the drawText facade); a value outside 0-1 is
+ * clamped by jsPDF itself.
  */
 export function withOpacity(doc: jsPDF, opacity: number, draw: () => void): void {
   doc.setGState(new GState({ opacity }));
@@ -49,30 +52,30 @@ export const DEFAULT_WATERMARK_FONT_SIZE = 60;
 export const DEFAULT_WATERMARK_COLOR: RGB = [150, 150, 150];
 
 /**
- * declarative preset (ค้างแก้ #2 จาก code review) — แค่ระบุข้อความก็ได้ตรากลางหน้า
- * ทุกหน้าโดยไม่ต้องเขียน render callback / รู้จัก jsPDF เลย (pattern เดียวกับ
- * createAnchoredBand ที่แก้ให้ PageBand); ต้องการมากกว่านี้ค่อยหลุดไป Watermark เต็มรูป
+ * Declarative preset (review fix #2) — just give it a string and get a stamp centered on every
+ * page, with no need to write a render callback or know jsPDF at all (same pattern as
+ * createAnchoredBand, which did this for PageBand); reach for the full Watermark interface if you need more control.
  */
 export interface TextWatermark {
   text: string;
-  /** ความจาง 0-1 — default 0.15 */
+  /** opacity 0-1 — default 0.15 */
   opacity?: number;
   /** pt — default 60 */
   fontSize?: number;
-  /** default เทา [150,150,150] */
+  /** default gray [150,150,150] */
   color?: RGB;
-  /** วาดบนหน้าแรกด้วยไหม — default true */
+  /** draw on the first page too? — default true */
   showOnFirstPage?: boolean;
 }
 
-/** config ที่ engine/facade รับ — preset ข้อความ หรือ render callback เต็มรูป (escape hatch) */
+/** the config the engine/facade accepts — a text preset, or a full render callback (escape hatch) */
 export type WatermarkInput = Watermark | TextWatermark;
 
 function isTextWatermark(input: WatermarkInput): input is TextWatermark {
   return 'text' in input;
 }
 
-/** แปลง WatermarkInput เป็น Watermark ที่ engine ใช้ — validate fail-fast ตอน resolve (ก่อน render) */
+/** converts a WatermarkInput into the Watermark the engine uses — validates fail-fast at resolve time (before rendering) */
 export function resolveWatermark(input: WatermarkInput): Watermark {
   if (!isTextWatermark(input)) return input;
 
@@ -98,7 +101,7 @@ export function resolveWatermark(input: WatermarkInput): Watermark {
         ctx.doc.setFontSize(fontSize);
         const [r, g, b] = color;
         ctx.doc.setTextColor(r, g, b);
-        // จัดกึ่งกลางจริงด้วยความกว้างที่วัดได้ (ไม่ใช่ offset เดา) — วัดหลัง setFontSize เสมอ
+        // centers for real using the measured width (not a guessed offset) — always measured after setFontSize
         const textWidth = ctx.doc.getTextWidth(text);
         ctx.drawText(text, (ctx.pageWidth - textWidth) / 2, ctx.pageHeight / 2);
       });

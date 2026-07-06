@@ -1,8 +1,9 @@
 import type { DeepPartial, TextStyle } from './primitives';
 
 /**
- * font sizing เป็น theme-level token ต่อ row-type ไม่ set ทีละจุด — เปลี่ยนทั้ง report ที่เดียว
- * pageHeaderFooter/reportTitle/reportSubtitle/sectionHeading รอ block ที่ใช้จริงในขั้น 6 (Composite Report)
+ * Font sizing is a theme-level token per row-type, not set field-by-field — change the whole
+ * report in one place. pageHeaderFooter/reportTitle/reportSubtitle/sectionHeading await a block
+ * that actually uses them, added in step 6 (Composite Report).
  */
 export interface Typography {
   reportTitle: TextStyle;
@@ -30,7 +31,7 @@ export const DEFAULT_TYPOGRAPHY: Typography = {
 
 const TOKEN_NAMES = Object.keys(DEFAULT_TYPOGRAPHY) as (keyof Typography)[];
 
-/** merge ทีละ token — precedence: override token → DEFAULT_TYPOGRAPHY token (ไม่ merge ข้าม token) */
+/** Merge one token at a time — precedence: override token → DEFAULT_TYPOGRAPHY token (never merges across tokens) */
 export function resolveTypography(override?: DeepPartial<Typography>): Typography {
   if (!override) return DEFAULT_TYPOGRAPHY;
 

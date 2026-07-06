@@ -1,8 +1,8 @@
 /**
  * Demo — flat table (AutoTable wrapper)
- * โฟกัส: rowNumber / computed / runningTotal column + aggregate (sum/avg) + summary row
- * + auto page-break ภายในตาราง (ตารางยาวข้ามหน้าเอง)
- * เรียกผ่าน createKapomReport({ blocks }) — ไม่ต้องแตะ jsPDF/RenderEngine เอง
+ * Focus: rowNumber / computed / runningTotal columns + aggregate (sum/avg) + summary row
+ * + auto page-break within the table (a long table overflows onto more pages on its own)
+ * Uses createKapomReport({ blocks }) — no need to touch jsPDF/RenderEngine directly
  */
 import { createKapomReport, nativeNumeric } from '../src/index';
 import type { TableNode } from '../src/index';
@@ -11,7 +11,7 @@ import { fontConfig, saveReport } from './shared';
 interface Sale {
   product: string;
   qty: number;
-  /** string ตาม DECIMAL จาก DB — ระบบรับ Decimalish (number|string) ตรงๆ ไม่แปลง */
+  /** string, matching a DECIMAL column from a DB — the lib accepts Decimalish (number|string) as-is, no conversion */
   price: string;
 }
 
@@ -67,7 +67,7 @@ const report = createKapomReport<Sale>({
     { type: 'spacer', height: 6 },
     {
       type: 'text',
-      content: 'บรรทัดนี้ต่อจากท้ายตารางบนหน้าสุดท้าย (พิสูจน์ cursor sync หลัง AutoTable แบ่งหน้าเอง)',
+      content: 'This line continues right after the table on the last page (proves cursor sync after AutoTable paginates on its own)',
     },
   ],
 });

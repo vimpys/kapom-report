@@ -6,15 +6,16 @@ export interface ResolvedGroup<T> {
 }
 
 /**
- * label ของกลุ่มที่ key เป็น null/undefined/ว่าง (ค้างแก้ #6) — กัน band ขึ้น "null"/"undefined" ตรงๆ
- * (ข้อมูลจริงจาก DB มี NULL ปน group column ได้เสมอ); override ได้ผ่าน headerLabel/footerLabel
- * ซึ่งรับ key นี้เข้าไปแปลงต่อ — เป็นภาษาไทยตาม default locale ของ lib (เหมือน DEFAULT_SUMMARY_LABEL)
+ * the label for a group whose key is null/undefined/empty (review fix #6) — prevents a band
+ * from literally showing "null"/"undefined" (real DB data can always have NULL mixed into a
+ * group column); overridable via headerLabel/footerLabel, which receive this key to transform
+ * further — in Thai, matching the lib's default locale (same as DEFAULT_SUMMARY_LABEL)
  */
 export const UNSPECIFIED_GROUP_KEY = '(ไม่ระบุ)';
 
 /**
- * แบ่ง flat array เป็นกลุ่มตาม GroupResolver.by — คงลำดับตามที่ key ปรากฏครั้งแรก
- * (ข้อมูลที่ sort มาแล้วจาก DB จะได้ลำดับกลุ่มตามนั้น); sortGroups override ได้
+ * Splits a flat array into groups by GroupResolver.by — preserves order by each key's first
+ * appearance (data already sorted by the DB keeps that group order); sortGroups can override this.
  */
 export function splitGroups<T>(
   data: readonly T[],
@@ -56,7 +57,7 @@ export function groupHeaderLabel<T>(
   return resolver.headerLabel?.(key, rows) ?? key;
 }
 
-/** default สอดคล้อง DEFAULT_SUMMARY_LABEL — subtotal ระบุชื่อกลุ่มกันสับสนกับ grand total */
+/** the default matches DEFAULT_SUMMARY_LABEL — a subtotal names its group to avoid confusion with the grand total */
 export function groupFooterLabel<T>(
   resolver: GroupResolver<T>,
   key: string,

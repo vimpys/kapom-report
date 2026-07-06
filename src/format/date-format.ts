@@ -5,17 +5,18 @@ export interface DateFormat {
 }
 
 /**
- * default locale 'en-CA' → YYYY-MM-DD ไม่กำกวม — ไม่ default เป็น 'th-TH' เพราะ ICU ตีความปฏิทินเป็น
- * พุทธศักราชอัตโนมัติ (เช่น 2569 แทน 2026) ซึ่งอาจไม่ใช่สิ่งที่ผู้ใช้ต้องการเสมอไป; locale/ปฏิทินไทย
- * เลือกเองได้ผ่าน DateFormat.locale (เช่น 'th-TH-u-ca-buddhist') — ตาม concept.md ที่ระบุว่า
- * ต้องอยู่ใน formatter config ไม่ hardcode ใน resolver
+ * default locale 'en-CA' → an unambiguous YYYY-MM-DD — not defaulted to 'th-TH' because ICU
+ * would automatically interpret the calendar as the Buddhist era (e.g. 2569 instead of 2026),
+ * which isn't always what a user wants; the Thai locale/calendar can be chosen explicitly via
+ * DateFormat.locale (e.g. 'th-TH-u-ca-buddhist') — per concept.md, which specifies this must
+ * live in the formatter config, not be hardcoded in the resolver
  */
 export const DEFAULT_DATE_FORMAT: Required<Pick<DateFormat, 'locale' | 'dateStyle'>> = {
   locale: 'en-CA',
   dateStyle: 'short',
 };
 
-/** Intl.DateTimeFormat สร้างแพง — cache ต่อ (locale + options) เหมือน number-format.ts */
+/** Intl.DateTimeFormat is expensive to construct — cached per (locale + options), same as number-format.ts */
 const formatterCache = new Map<string, Intl.DateTimeFormat>();
 
 function getDateTimeFormatter(

@@ -1,7 +1,7 @@
 /**
  * Demo — Style resolver: zebra striping + conditional formatting + column-level style
- * โฟกัส: precedence conditional > zebra > column-level > row-type (Typography)
- * เรียกผ่าน createKapomReport({ blocks }) — ไม่ต้องแตะ jsPDF/RenderEngine เอง
+ * Focus: precedence conditional > zebra > column-level > row-type (Typography)
+ * Uses createKapomReport({ blocks }) — no need to touch jsPDF/RenderEngine directly
  */
 import { createKapomReport } from '../src/index';
 import type { TableNode } from '../src/index';
@@ -33,8 +33,8 @@ const ledgerTable: TableNode<LedgerEntry> = {
       align: 'right',
       numberFormat: {},
       aggregate: 'sum',
-      // column-level cellStyle: อยู่ต่ำกว่า zebra/conditional ใน precedence — ทดสอบด้วยว่ายังโผล่ได้
-      // เมื่อ conditional ไม่ตรง (ดู 'Opening balance' ที่ยังเป็น monospace ปกติไม่แดง)
+      // column-level cellStyle: ranks below zebra/conditional in precedence — also tests that it still
+      // shows through when conditional doesn't match (see 'Opening balance', which stays this font and isn't red)
       cellStyle: { fontFamily: 'Sarabun' },
     },
   ],

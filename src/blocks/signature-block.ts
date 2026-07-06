@@ -17,8 +17,9 @@ interface NormalizedSlot {
 }
 
 /**
- * เส้นเซ็นชื่อ + label ใต้เส้น — แบ่ง contentWidth เท่ากันตามจำนวน slot (Report Footer, roadmap 6d)
- * ไม่ใช้ Typography token (ล็อกไว้แค่ 9 ตัวสำหรับ table/text แล้ว) — style ใช้ default ของตัวเองเหมือน DividerNode
+ * A signature line + label below it — divides contentWidth equally by the number of slots
+ * (Report Footer, roadmap 6d); doesn't use a Typography token (those 9 are locked in for
+ * table/text only) — style uses its own default, like DividerNode
  */
 export class SignatureBlock implements MeasurableBlock {
   private readonly slots: readonly NormalizedSlot[];
@@ -40,7 +41,7 @@ export class SignatureBlock implements MeasurableBlock {
     this.labelGap = node.labelGap ?? DEFAULT_SIGNATURE_LABEL_GAP;
     this.slotGap = node.slotGap ?? DEFAULT_SIGNATURE_SLOT_GAP;
     this.style = { ...DEFAULT_TEXT_STYLE, ...node.style };
-    // normalize ครั้งเดียวตอนสร้าง เหมือน TextBlock — measure/render ใช้ค่าเดียวกันเสมอ
+    // normalize once at creation, like TextBlock — measure/render always use the same value
     this.slots = node.slots.map((slot) => ({ label: normalizeText(slot.label) }));
   }
 

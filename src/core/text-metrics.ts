@@ -1,8 +1,8 @@
 import type { jsPDF } from 'jspdf';
 
 /**
- * ตัดบรรทัดผ่าน jsPDF จริง (splitTextToSize อ่าน fontSize ปัจจุบันของ doc)
- * set/restore fontSize รอบเรียกเสมอ — ห้ามทิ้ง side effect ไว้บน doc
+ * Wraps lines using real jsPDF (splitTextToSize reads the doc's current fontSize)
+ * always sets/restores fontSize around the call — must never leave a side effect on the doc
  */
 export function splitTextLines(
   doc: jsPDF,
@@ -12,18 +12,18 @@ export function splitTextLines(
 ): string[] {
   const previousSize = doc.getFontSize();
   doc.setFontSize(fontSize);
-  // jspdf ประกาศ return เป็น any → รับเป็น unknown แล้ว narrow
+  // jspdf declares the return type as any → accept as unknown, then narrow
   const split: unknown = doc.splitTextToSize(text, maxWidth);
   doc.setFontSize(previousSize);
   return Array.isArray(split) ? (split as string[]) : [text];
 }
 
-/** ความสูงต่อบรรทัดในหน่วยของ doc — fontSize เป็น pt เสมอ ต้องหาร scaleFactor แปลงหน่วย */
+/** height per line in the doc's units — fontSize is always in pt, must divide by scaleFactor to convert units */
 export function lineHeightOf(doc: jsPDF, fontSize: number): number {
   return (fontSize * doc.getLineHeightFactor()) / doc.internal.scaleFactor;
 }
 
-/** ความสูงรวมของ text block — single source of truth ให้ทั้ง measure และ render เรียกใช้ */
+/** total height of a text block — single source of truth used by both measure and render */
 export function measureTextBlockHeight(
   doc: jsPDF,
   text: string,

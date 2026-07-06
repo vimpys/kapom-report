@@ -9,58 +9,59 @@ export interface PageMargins {
   right: number;
 }
 
-/** cursor state — อ่านอย่างเดียวจากภายนอก block */
+/** cursor state — read-only from outside a block */
 export interface CursorState {
   readonly x: number;
   readonly y: number;
   readonly pageIndex: number;
 }
 
-/** context ตอน measure — block บอกความสูงโดยยังไม่วาด (ไม่แตะ doc state) */
+/** context during measure — a block reports its height without drawing yet (doesn't touch doc state) */
 export interface MeasureContext {
   readonly pageWidth: number;
   readonly contentWidth: number;
   readonly numeric: NumericStrategy;
   readonly typography: Typography;
-  /** วัด text จริงผ่าน jsPDF โดยไม่วาด (splitTextToSize/getTextWidth) */
+  /** measure real text via jsPDF without drawing (splitTextToSize/getTextWidth) */
   readonly measureText: (text: string, fontSize: number, maxWidth: number) => number;
 }
 
-/** context ตอน render — block วาดลง doc; cursor คุมโดย engine */
+/** context during render — a block draws onto the doc; the cursor is managed by the engine */
 export interface RenderContext {
   readonly doc: jsPDF;
   readonly cursor: CursorState;
   readonly margins: PageMargins;
   readonly contentWidth: number;
-  /** ขอบบน content area (ใต้ page-header reserved) — absolute Y; block ที่แบ่งหน้าเอง (AutoTable) ต้องใช้กันวาดทับ band */
+  /** top edge of the content area (below the reserved page-header) — absolute Y; a block that paginates itself (AutoTable) must use this to avoid drawing over a band */
   readonly contentTop: number;
-  /** ขอบล่าง content area (เหนือ page-footer reserved) — absolute Y */
+  /** bottom edge of the content area (above the reserved page-footer) — absolute Y */
   readonly contentBottom: number;
   readonly numeric: NumericStrategy;
   readonly typography: Typography;
-  /** engine จัดการ page-break — block เรียกเพื่อ advance y */
+  /** the engine handles page-breaks — a block calls this to advance y */
   readonly advanceY: (amount: number) => void;
   readonly ensureSpace: (requiredHeight: number) => void;
   /**
-   * สำหรับ block ที่วาดข้ามหน้าด้วยตัวเอง (เช่น AutoTable) — แจ้ง engine
-   * ว่า doc ไปจบที่หน้า/ตำแหน่งไหน; pageIndex เป็น 0-based ถอยหลังไม่ได้
+   * for a block that paginates across pages itself (e.g. AutoTable) — tells the engine
+   * which page/position the doc ended up at; pageIndex is 0-based and can't go backwards
    */
   readonly syncCursor: (pageIndex: number, y: number) => void;
   /**
-   * บังคับขึ้นหน้าใหม่ไม่ว่าจะเหลือพื้นที่พอไหม (ต่าง ensureSpace ที่ break แค่ตอนไม่พอ) —
-   * no-op ถ้า cursor อยู่หัวหน้าอยู่แล้ว (กันหน้าเปล่าซ้อน); ใช้กับ page-break policy
-   * ระหว่าง section ของ Composite Report (roadmap 6c)
+   * force a new page regardless of whether there's enough room left (unlike ensureSpace,
+   * which only breaks when there isn't enough space) — a no-op if the cursor is already at
+   * the top of a page (avoids stacking blank pages); used for the page-break policy between
+   * sections of a Composite Report (roadmap 6c)
    */
   readonly forcePageBreak: () => void;
 }
 
 /**
- * Contract กลางของทุก block — ต้องตอบได้ 2 อย่าง: สูงเท่าไหร่ + วาดยังไง
- * text/image/table/group/report ทั้งหมด implement interface นี้เหมือนกัน
+ * The shared contract for every block — it must answer two things: how tall, and how to draw.
+ * text/image/table/group/report all implement this same interface.
  */
 export interface MeasurableBlock {
-  /** ความสูงรวม (recursive สำหรับ composite เช่น group/nested) */
+  /** total height (recursive for composites like group/nested) */
   measureHeight(ctx: MeasureContext): number;
-  /** วาดลง doc; ห้ามคำนวณ page-break เอง — ใช้ ctx.ensureSpace */
+  /** draw onto the doc; must not compute page-breaks itself — use ctx.ensureSpace */
   render(ctx: RenderContext): void;
 }

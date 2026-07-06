@@ -7,33 +7,33 @@ import type { ReportColumn, ResolvedAlign } from '../types/column';
 import { isColumnVisible, resolveColumnAlign } from '../types/column';
 import type { TableNode } from '../types/node';
 
-/** default label ของ summary row — สอดคล้อง default locale th-TH */
+/** default label for the summary row — matches the default th-TH locale */
 export const DEFAULT_SUMMARY_LABEL = 'รวม';
 
-/** default ข้อความ No-Data fallback (`data: []`) — สอดคล้อง default locale th-TH เหมือน DEFAULT_SUMMARY_LABEL */
+/** default text for the No-Data fallback (`data: []`) — matches the default th-TH locale, same as DEFAULT_SUMMARY_LABEL */
 export const DEFAULT_NO_DATA_TEXT = 'ไม่มีข้อมูล';
 
 /**
- * ผลลัพธ์ pure จาก column system — string ล้วนพร้อมส่งเข้า AutoTable
- * แยกจาก jsPDF ทั้งหมดเพื่อ test aggregate/format/derived column ได้ตรงๆ
+ * The pure output from the column system — plain strings, ready to hand to AutoTable
+ * kept entirely separate from jsPDF so aggregate/format/derived columns can be tested directly
  */
 export interface ResolvedTableContent {
   head: string[];
   body: string[][];
-  /** undefined เมื่อไม่มี column ไหนประกาศ aggregate */
+  /** undefined when no column declares an aggregate */
   foot: string[] | undefined;
   aligns: ResolvedAlign[];
   widths: (number | undefined)[];
 }
 
 /**
- * state ที่ไหลข้าม segment (กลุ่ม) — mode 'continuous' อ่าน/สะสมผ่านตัวนี้
- * grouped table สร้างครั้งเดียวแล้วส่งเข้า resolveSegmentBody ทีละกลุ่มตามลำดับ render
+ * State that flows across segments (groups) — 'continuous' mode reads/accumulates through this
+ * A grouped table builds this once, then passes it into resolveSegmentBody for each group, in render order.
  */
 export interface SegmentState {
-  /** จำนวนแถวที่ resolve ไปแล้วก่อน segment นี้ (ฐานของ rowNumber continuous) */
+  /** number of rows already resolved before this segment (the base for continuous rowNumber) */
   rowOffset: number;
-  /** ยอดสะสมต่อ column index (runningTotal continuous) */
+  /** running total per column index (continuous runningTotal) */
   runningTotals: (Decimalish | undefined)[];
 }
 
@@ -44,7 +44,7 @@ export function createSegmentState(columnCount: number): SegmentState {
   };
 }
 
-/** filter ตาม visible + fail-fast ถ้าไม่เหลือ column เลย */
+/** filters by visibility + fails fast if no columns remain */
 export function visibleColumns<T>(
   columns: readonly ReportColumn<T>[],
 ): ReportColumn<T>[] {
@@ -67,8 +67,8 @@ function asDecimalishCell(value: unknown, columnHeader: string): Decimalish {
 }
 
 /**
- * resolve body ของหนึ่ง segment (ทั้งตารางเมื่อไม่ group, หนึ่งกลุ่มเมื่อ group)
- * mutate state: per-group accumulator ถูก reset ที่หัว segment, rowOffset เลื่อนตอนจบ
+ * Resolves the body of one segment (the whole table when ungrouped, one group when grouped)
+ * mutates state: the per-group accumulator resets at the start of a segment, rowOffset advances at the end
  */
 export function resolveSegmentBody<T>(
   columns: readonly ReportColumn<T>[],
@@ -117,7 +117,7 @@ function resolveCell<T>(
     case 'rowNumber': {
       const mode = col.mode ?? 'continuous';
       if (mode === 'per-page') {
-        // per-page ต้องรู้ page break จริง → two-pass (roadmap ขั้น 7)
+        // per-page needs to know the real page breaks → requires a two-pass layout (roadmap step 7)
         throw new KapomError(`rowNumber mode 'per-page' is not supported yet — requires a two-pass layout`);
       }
       const base = mode === 'continuous' ? state.rowOffset : 0;
@@ -127,7 +127,7 @@ function resolveCell<T>(
     case 'computed': {
       const value = col.compute(row);
       if (col.formatter) return col.formatter(value, row);
-      // computed เป็น numeric โดย contract (คืน Decimalish) → format เสมอ (default th-TH)
+      // computed is numeric by contract (returns Decimalish) → always formatted (default th-TH)
       return formatNumber(value, numeric, col.numberFormat);
     }
     case 'runningTotal': {
@@ -142,10 +142,11 @@ function resolveCell<T>(
 }
 
 /**
- * แถว aggregate (group footer / grand total) — label ลง "cell แรกที่ว่าง" (ค้างแก้ #4:
- * เดิมเช็คแค่ foot[0] ทำให้ label หายเงียบถ้าคอลัมน์แรกมี aggregate); ถ้าทุก cell
- * มีค่าหมด (ทุกคอลัมน์ aggregate) label ถูกละไว้ — ไม่มีที่ให้ลงโดยไม่ทับยอด
- * คืน undefined เมื่อไม่มี column ไหนประกาศ aggregate
+ * An aggregate row (group footer / grand total) — the label lands on "the first empty cell"
+ * (review fix #4: it used to check only foot[0], so the label went missing silently if the
+ * first column had an aggregate); if every cell ends up with a value (every column has an
+ * aggregate), the label is omitted — there's nowhere to put it without overwriting a total
+ * returns undefined when no column declares an aggregate
  */
 export function resolveAggregateRow<T>(
   columns: readonly ReportColumn<T>[],
@@ -163,7 +164,7 @@ export function resolveAggregateRow<T>(
     if (col.aggregate === undefined) return '';
 
     if (typeof col.aggregate === 'function') {
-      // custom aggregate fn มีเฉพาะ DataColumn (ดู types/column.ts)
+      // a custom aggregate fn only exists on DataColumn (see types/column.ts)
       return formatNumber(col.aggregate(rows), numeric, col.numberFormat);
     }
 
@@ -173,7 +174,7 @@ export function resolveAggregateRow<T>(
         : rows.map((row) => col.compute(row));
 
     const result = computeAggregate(col.aggregate, values, numeric);
-    // count เป็นจำนวนเต็มเสมอ — format ทศนิยม 2 ตำแหน่งจะอ่านแปลก (เช่น "3.00")
+    // count is always a whole number — formatting it to 2 decimal places would read oddly (e.g. "3.00")
     return col.aggregate === 'count'
       ? String(result)
       : formatNumber(result, numeric, col.numberFormat);
@@ -184,7 +185,7 @@ export function resolveAggregateRow<T>(
   return foot.map((cell) => normalizeText(cell));
 }
 
-/** ตารางไม่ group = segment เดียว — mode per-group จึงเท่ากับ continuous โดยธรรมชาติ */
+/** an ungrouped table = a single segment — per-group mode is naturally identical to continuous */
 export function resolveTableContent<T>(
   node: TableNode<T>,
   numeric: NumericStrategy,

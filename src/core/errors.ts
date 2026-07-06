@@ -1,4 +1,4 @@
-/** base error ของทั้ง lib — instanceof KapomError ครอบทุก error ที่เรา throw เอง */
+/** base error for the whole lib — instanceof KapomError catches every error we throw ourselves */
 export class KapomError extends Error {
   constructor(message: string) {
     super(message);
@@ -6,11 +6,12 @@ export class KapomError extends Error {
   }
 }
 
-/** layout invariant พัง — margin/page size ไม่ valid, advance ติดลบ ฯลฯ */
+/** a layout invariant broke — margin/page size not valid, negative advance, etc. */
 export class KapomLayoutError extends KapomError {}
 
 /**
- * font config ไม่ valid — jsPDF fail แบบ silent (ตัวอักษรหาย/กลายเป็นสี่เหลี่ยม ไม่ throw)
- * เลยต้อง validate เองแบบ fail-fast ตอน register กันปัญหาไปโผล่ตอนเปิดไฟล์ PDF
+ * font config is invalid — jsPDF fails silently (glyphs disappear or turn into boxes, no throw)
+ * so we validate ourselves, fail-fast at registration time, to catch problems before they show
+ * up when the PDF is opened
  */
 export class KapomFontError extends KapomError {}

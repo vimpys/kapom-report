@@ -1,9 +1,10 @@
 /**
  * Demo — nested group (roadmap 10)
- * โฟกัส: group ซ้อน 2 ระดับ (region → category) ผ่าน GroupResolver.subGroup —
- * band ทุกระดับ (label ระดับใน indent), subtotal ต่อ sub-group (foot ของ segment),
- * subtotal ต่อ region (แถวเดี่ยวพื้นเทาจับคู่ band) และ grand total ปิดท้าย;
- * เทียบกับ 03-grouped-report.ts ที่ group ระดับเดียว
+ * Focus: a group nested 2 levels deep (region → category) via GroupResolver.subGroup —
+ * a band at every level (inner level labels are indented), a subtotal per sub-group
+ * (the segment's foot), a subtotal per region (a single row on a gray band-matching
+ * background), and a grand total at the end;
+ * compare with 03-grouped-report.ts, which groups only one level deep
  */
 import { createKapomReport } from '../src/index';
 import type { TableNode } from '../src/index';
@@ -17,15 +18,15 @@ interface RegionSale {
   price: string;
 }
 
-const regions = ['เหนือ', 'ใต้', 'ตะวันออก'];
-const categories = ['อาหาร', 'เครื่องดื่ม'];
+const regions = ['North', 'South', 'East'];
+const categories = ['Food', 'Drink'];
 
 const sales: RegionSale[] = regions.flatMap((region, r) =>
   categories.flatMap((category, c) =>
     Array.from({ length: 5 }, (_, i) => ({
       region,
       category,
-      product: `สินค้า ${r * 10 + c * 5 + i + 1}`,
+      product: `Item ${r * 10 + c * 5 + i + 1}`,
       qty: (i % 4) + 1,
       price: `${(i % 50) + 20}.50`,
     })),
@@ -35,21 +36,22 @@ const sales: RegionSale[] = regions.flatMap((region, r) =>
 const nestedTable: TableNode<RegionSale> = {
   type: 'table',
   columns: [
-    // ไม่มี rowNumber นำหน้า — subtotal label ลง cell แรกที่ว่าง (คอลัมน์แรก) ถ้าเป็นคอลัมน์แคบ label ยาวจะ wrap
-    { type: 'data', key: 'product', header: 'สินค้า' },
-    { type: 'data', key: 'qty', header: 'จำนวน', align: 'right', aggregate: 'sum' },
-    { type: 'data', key: 'price', header: 'ราคา', align: 'right', numberFormat: {}, aggregate: 'sum' },
+    // no leading rowNumber — the subtotal label lands on the first empty cell (the first
+    // column); if that were a narrow rowNumber column, a long label would wrap awkwardly
+    { type: 'data', key: 'product', header: 'Item' },
+    { type: 'data', key: 'qty', header: 'Qty', align: 'right', aggregate: 'sum' },
+    { type: 'data', key: 'price', header: 'Price', align: 'right', numberFormat: {}, aggregate: 'sum' },
   ],
   data: sales,
-  summaryLabel: 'รวมทั้งหมด',
+  summaryLabel: 'Grand Total',
   group: {
     by: 'region',
-    headerLabel: (key) => `ภูมิภาค${key}`,
-    footerLabel: (key) => `รวมภูมิภาค${key}`,
+    headerLabel: (key) => `Region: ${key}`,
+    footerLabel: (key) => `Subtotal — ${key}`,
     keepTogether: { minRowsWithHeader: 2 },
     subGroup: {
       by: 'category',
-      footerLabel: (key) => `รวม${key}`,
+      footerLabel: (key) => `Subtotal ${key}`,
     },
   },
 };
@@ -59,7 +61,7 @@ const report = createKapomReport<RegionSale>({
   blocks: [
     {
       type: 'text',
-      content: 'Nested group — region → category ซ้อน 2 ระดับ',
+      content: 'Nested group — region → category, 2 levels deep',
       style: { fontSize: 14, fontStyle: 'bold' },
     },
     { type: 'spacer', height: 4 },

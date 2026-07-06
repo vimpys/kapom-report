@@ -1,17 +1,18 @@
 /**
- * บังคับใช้ทุก text ก่อนถึง jsPDF (decision ใน CLAUDE.md) — jsPDF คำนวณ width
- * แบบ glyph-by-glyph ตรงๆ ตัวควบคุม/whitespace แปลกๆ ทำ layout พัง (width เพี้ยน,
- * ตัดบรรทัดผิดที่, หรือวาดเป็นสี่เหลี่ยม) โดยไม่มี error ให้เห็น
+ * Enforced on every piece of text before it reaches jsPDF (decision in CLAUDE.md) — jsPDF
+ * computes width glyph-by-glyph directly, so stray control/whitespace characters break
+ * layout (wrong widths, wrapping in the wrong place, or drawing as boxes) with no visible error.
  */
 export interface TextNormalizeOptions {
-  /** NBSP (U+00A0, U+202F) -> space ปกติ; ปิดได้ถ้าตั้งใจใช้กันตัวเลขตัด — default true */
+  /** NBSP (U+00A0, U+202F) -> a regular space; can be disabled if intentionally used to prevent number wrapping — default true */
   collapseNbsp?: boolean;
-  /** จำนวน space แทนหนึ่ง tab (jsPDF ไม่รู้จัก tab stop) — default 4 */
+  /** number of spaces per tab (jsPDF doesn't know about tab stops) — default 4 */
   tabWidth?: number;
 }
 
-// สร้างผ่าน RegExp(string) ไม่ใช่ literal ตรงๆ — กัน editor/encoding แปลง \u escape
-// เป็น unicode char จริงในไฟล์ source (zero-width/bidi ไม่ควรอยู่เป็นตัวอักษรจริงในโค้ด)
+// Built via RegExp(string) rather than a literal directly — this keeps an editor/encoding from
+// turning the escapes into real unicode characters in the source file (zero-width/bidi
+// characters shouldn't exist as literal characters in the code).
 const ZERO_WIDTH = new RegExp('[\\u200B-\\u200D\\u2060]', 'g');
 const BIDI_MARKS = new RegExp('[\\u200E\\u200F\\u202A-\\u202E]', 'g');
 const BOM = new RegExp('[\\uFEFF]', 'g');
@@ -19,8 +20,8 @@ const CONTROL_CHARS_EXCEPT_NEWLINE = new RegExp('[\\u0000-\\u0009\\u000B-\\u001F
 const NBSP = new RegExp('[\\u00A0\\u202F]', 'g');
 
 /**
- * Thai combining marks (สระ/วรรณยุกต์) ไม่ strip — ต้องพึ่ง font shaping ที่ถูกต้อง
- * (เชื่อมกับ font registry ใน ../font) ไม่ใช่ปัญหาที่ normalizer แก้ได้
+ * Thai combining marks (vowels/tone marks) are not stripped — they depend on correct font
+ * shaping (tied to the font registry in ../font), not something the normalizer can fix.
  */
 export function normalizeText(text: string, options: TextNormalizeOptions = {}): string {
   const tabWidth = options.tabWidth ?? 4;
