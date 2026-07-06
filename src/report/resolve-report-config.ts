@@ -45,6 +45,8 @@ export interface KapomReportConfig<T> extends KapomReportBaseOptions {
   group?: KapomGroupInput<T>;
   style?: TableStyleOptions<T>;
   summaryLabel?: string;
+  /** ข้อความเมื่อ `data` ว่าง — default 'ไม่มีข้อมูล' */
+  noDataText?: string;
 }
 
 /**
@@ -103,6 +105,7 @@ function resolveTableNode<T>(config: KapomReportConfig<T>): TableNode<T> {
     ...(group !== undefined ? { group } : {}),
     ...(config.style !== undefined ? { style: config.style } : {}),
     ...(config.summaryLabel !== undefined ? { summaryLabel: config.summaryLabel } : {}),
+    ...(config.noDataText !== undefined ? { noDataText: config.noDataText } : {}),
   };
 }
 

@@ -64,4 +64,12 @@ describe('computeColumnWidths', () => {
     const calls = stub.setFontSize.mock.calls.map((args) => args[0]);
     expect(calls).toEqual([10, 16]);
   });
+
+  it('วัดที่ fontSize ที่ส่งเข้ามา (typography.detailRow) ไม่ hardcode 10 (ค้างแก้ #3)', () => {
+    const { stub, doc } = makeStubDoc();
+    computeColumnWidths(doc, [['x']], [undefined], 100, 14);
+
+    const calls = stub.setFontSize.mock.calls.map((args) => args[0]);
+    expect(calls).toEqual([14, 16]); // วัดที่ 14 แล้ว restore 16 เดิม
+  });
 });

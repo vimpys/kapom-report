@@ -10,6 +10,9 @@ import type { TableNode } from '../types/node';
 /** default label ของ summary row — สอดคล้อง default locale th-TH */
 export const DEFAULT_SUMMARY_LABEL = 'รวม';
 
+/** default ข้อความ No-Data fallback (`data: []`) — สอดคล้อง default locale th-TH เหมือน DEFAULT_SUMMARY_LABEL */
+export const DEFAULT_NO_DATA_TEXT = 'ไม่มีข้อมูล';
+
 /**
  * ผลลัพธ์ pure จาก column system — string ล้วนพร้อมส่งเข้า AutoTable
  * แยกจาก jsPDF ทั้งหมดเพื่อ test aggregate/format/derived column ได้ตรงๆ
@@ -139,7 +142,9 @@ function resolveCell<T>(
 }
 
 /**
- * แถว aggregate (group footer / grand total) — label ลง cell แรกที่ว่าง
+ * แถว aggregate (group footer / grand total) — label ลง "cell แรกที่ว่าง" (ค้างแก้ #4:
+ * เดิมเช็คแค่ foot[0] ทำให้ label หายเงียบถ้าคอลัมน์แรกมี aggregate); ถ้าทุก cell
+ * มีค่าหมด (ทุกคอลัมน์ aggregate) label ถูกละไว้ — ไม่มีที่ให้ลงโดยไม่ทับยอด
  * คืน undefined เมื่อไม่มี column ไหนประกาศ aggregate
  */
 export function resolveAggregateRow<T>(
@@ -174,8 +179,8 @@ export function resolveAggregateRow<T>(
       : formatNumber(result, numeric, col.numberFormat);
   });
 
-  const first = foot[0];
-  if (first === '') foot[0] = label;
+  const firstEmpty = foot.findIndex((cell) => cell === '');
+  if (firstEmpty !== -1) foot[firstEmpty] = label;
   return foot.map((cell) => normalizeText(cell));
 }
 

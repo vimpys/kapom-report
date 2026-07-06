@@ -1,6 +1,6 @@
 import type { jsPDF } from 'jspdf';
 
-/** default ของ AutoTable — ต้องวัดที่ fontSize เดียวกับที่ตารางใช้จริง */
+/** fallback เมื่อไม่ส่ง fontSize — ตรง default ของ AutoTable และ DEFAULT_TYPOGRAPHY.detailRow */
 const AUTOTABLE_FONT_SIZE = 10;
 /** cellPadding ซ้าย+ขวา โดยประมาณของ AutoTable default (5pt ต่อข้าง) ในหน่วย doc */
 function paddingAllowance(doc: jsPDF): number {
@@ -14,15 +14,19 @@ function paddingAllowance(doc: jsPDF): number {
  * ไม่จำเป็นต้องแจกความกว้างเหมือนอัลกอริทึมภายในของ AutoTable เป๊ะ —
  * แค่ทุก segment ใช้ค่าชุดเดียวกัน เส้นแบ่ง column ก็ตรงกันทั้ง report;
  * ข้อความที่กว้างกว่าที่วัด AutoTable ตัดบรรทัดให้เอง (แถวสูงขึ้น ไม่ล้น)
+ *
+ * @param fontSize ต้องตรงกับ fontSize ที่ body ใช้จริง (typography.detailRow ที่ resolve แล้ว —
+ *   ค้างแก้ #3: เดิม hardcode 10 ทำให้วัดผิดเมื่อ user override typography)
  */
 export function computeColumnWidths(
   doc: jsPDF,
   rows: readonly (readonly string[])[],
   userWidths: readonly (number | undefined)[],
   contentWidth: number,
+  fontSize: number = AUTOTABLE_FONT_SIZE,
 ): number[] {
   const previousSize = doc.getFontSize();
-  doc.setFontSize(AUTOTABLE_FONT_SIZE);
+  doc.setFontSize(fontSize);
   const pad = paddingAllowance(doc);
 
   const natural: number[] = [];

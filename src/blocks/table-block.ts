@@ -9,6 +9,7 @@ import { normalizeText } from '../core/text-normalizer';
 import { resolveRowStyle } from '../style/resolve-cell-style';
 import {
   createSegmentState,
+  DEFAULT_NO_DATA_TEXT,
   DEFAULT_SUMMARY_LABEL,
   resolveAggregateRow,
   resolveTableContent,
@@ -55,6 +56,16 @@ function cellStyleToAutoTableStyles(style: Partial<CellStyle>): Partial<Styles> 
   return styles;
 }
 
+/** ดึง string จาก cell ของ AutoTable — รองรับทั้ง string ตรงและ CellDef object ({content}, เช่น no-data colSpan row) */
+function cellStringContent(cell: unknown): string | undefined {
+  if (typeof cell === 'string') return cell;
+  if (typeof cell === 'object' && cell !== null && 'content' in cell) {
+    const { content } = cell as { content?: unknown };
+    if (typeof content === 'string') return content;
+  }
+  return undefined;
+}
+
 /** column-level headerStyle/cellStyle (Partial<TextStyle>) → AutoTable Partial<Styles> */
 function partialTextStyleToAutoTableStyles(style: Partial<TextStyle> | undefined): Partial<Styles> {
   if (!style) return {};
@@ -84,6 +95,9 @@ export class TableBlock<T> implements MeasurableBlock {
     const rowHeight = lineHeight * ESTIMATED_ROW_HEIGHT_RATIO;
     const footRows = this.hasAggregate() ? 1 : 0;
 
+    // No-Data fallback: head + แถวข้อความเดียว
+    if (this.node.data.length === 0) return 2 * rowHeight;
+
     if (!this.node.group) {
       return (1 + this.node.data.length + footRows) * rowHeight;
     }
@@ -100,11 +114,33 @@ export class TableBlock<T> implements MeasurableBlock {
   }
 
   render(ctx: RenderContext): void {
+    if (this.node.data.length === 0) {
+      this.renderNoData(ctx);
+      return;
+    }
     if (this.node.group) {
       this.renderGrouped(ctx, this.node.group);
     } else {
       this.renderFlat(ctx);
     }
+  }
+
+  // ── No-Data fallback (data ว่าง — ค้างแก้ #5) ────────────────────────
+
+  /** หัวตาราง + แถวข้อความเดียว colSpan เต็มความกว้าง — แทนหัวตารางเปล่าเงียบๆ แบบเดิม */
+  private renderNoData(ctx: RenderContext): void {
+    const columns = visibleColumns(this.node.columns);
+    const aligns = columns.map(resolveColumnAlign);
+    const head = columns.map((col) => normalizeText(col.header));
+    const text = normalizeText(this.node.noDataText ?? DEFAULT_NO_DATA_TEXT);
+
+    this.runAutoTable(ctx, {
+      head: [head],
+      body: [[{ content: text, colSpan: columns.length, styles: { halign: 'center' } }]],
+      headStyles: this.resolveTokenStyles(ctx, ctx.typography.columnHeader),
+      bodyStyles: this.resolveTokenStyles(ctx, ctx.typography.detailRow),
+      didParseCell: this.alignHook(aligns),
+    });
   }
 
   // ── flat (ไม่ group) ────────────────────────────────────────────────
@@ -163,6 +199,7 @@ export class TableBlock<T> implements MeasurableBlock {
       allRows,
       columns.map((col) => col.width),
       ctx.contentWidth,
+      ctx.typography.detailRow.fontSize, // วัดที่ fontSize เดียวกับ body จริง (ค้างแก้ #3)
     );
 
     const columnStyles: Record<string, Partial<Styles>> = {};
@@ -391,8 +428,9 @@ export class TableBlock<T> implements MeasurableBlock {
       for (const row of section) {
         if (!Array.isArray(row)) continue;
         for (const cell of row) {
-          if (typeof cell === 'string' && containsThai(cell)) {
-            throw thaiGlyphError(fontName, cell);
+          const content = cellStringContent(cell);
+          if (content !== undefined && containsThai(content)) {
+            throw thaiGlyphError(fontName, content);
           }
         }
       }

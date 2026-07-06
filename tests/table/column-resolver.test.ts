@@ -274,6 +274,29 @@ describe('resolveTableContent — foot (aggregate)', () => {
     ]);
   });
 
+  it('resolveAggregateRow: คอลัมน์แรกมี aggregate → label เลื่อนไป cell ว่างถัดไป ไม่หายเงียบ (ค้างแก้ #4)', () => {
+    const columns: ReportColumn<Sale>[] = [
+      { type: 'data', key: 'price', header: 'ราคา', aggregate: 'sum' },
+      { type: 'data', key: 'product', header: 'สินค้า' },
+      { type: 'data', key: 'qty', header: 'นับ', aggregate: 'count' },
+    ];
+
+    expect(resolveAggregateRow(columns, sales, nativeNumeric, 'รวม')).toEqual([
+      '10.80',
+      'รวม',
+      '3',
+    ]);
+  });
+
+  it('resolveAggregateRow: ทุกคอลัมน์มี aggregate → ไม่มีที่ให้ label (ละไว้ ไม่ทับยอด)', () => {
+    const columns: ReportColumn<Sale>[] = [
+      { type: 'data', key: 'price', header: 'ราคา', aggregate: 'sum' },
+      { type: 'data', key: 'qty', header: 'นับ', aggregate: 'count' },
+    ];
+
+    expect(resolveAggregateRow(columns, sales, nativeNumeric, 'รวม')).toEqual(['10.80', '3']);
+  });
+
   it('data ว่าง → sum/count เป็นศูนย์ ไม่ throw', () => {
     const node: TableNode<Sale> = {
       type: 'table',

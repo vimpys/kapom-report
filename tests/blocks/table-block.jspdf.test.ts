@@ -583,3 +583,55 @@ describe('TableBlock × nested group (subGroup chain, roadmap 10)', () => {
     expect(doc.lastAutoTable?.finalY).toBeDefined();
   });
 });
+
+describe('TableBlock × No-Data fallback (data ว่าง — ค้างแก้ #5)', () => {
+  function emptyNode(overrides: Partial<TableNode<Sale>> = {}): TableNode<Sale> {
+    return {
+      type: 'table',
+      columns: [
+        { type: 'data', key: 'product', header: 'Product' },
+        { type: 'data', key: 'qty', header: 'Qty', align: 'right', aggregate: 'sum' },
+      ],
+      data: [],
+      summaryLabel: 'Total',
+      noDataText: 'No data', // default เป็นไทย ('ไม่มีข้อมูล') — เทสต์นี้ไม่ลงทะเบียนฟอนต์ไทย (Thai font guard)
+      ...overrides,
+    };
+  }
+
+  it('flat + data ว่าง → หัวตาราง + แถวข้อความเดียว colSpan (ไม่ใช่หัวเปล่าเงียบๆ แล้ว)', () => {
+    const doc = new jsPDF();
+    const engine = new RenderEngine(doc);
+    const ctx = engine.createRenderContext();
+
+    engine.render([createBlock(emptyNode())]);
+
+    const body = doc.lastAutoTable?.body ?? [];
+    expect(body).toHaveLength(1);
+    expect(body[0]?.cells['0']?.text.join('')).toBe('No data');
+    expect(body[0]?.cells['0']?.colSpan).toBe(2);
+    expect(ctx.cursor.y).toBe(doc.lastAutoTable?.finalY); // cursor sync ปกติ
+  });
+
+  it('grouped + data ว่าง → fallback เดียวกัน (ไม่มี band/subtotal/grand total)', () => {
+    const doc = new jsPDF();
+    const engine = new RenderEngine(doc);
+
+    engine.render([
+      createBlock(emptyNode({ group: { by: 'product', footerLabel: (k) => `Sum ${k}` } })),
+    ]);
+
+    const body = doc.lastAutoTable?.body ?? [];
+    expect(body).toHaveLength(1);
+    expect(body[0]?.cells['0']?.text.join('')).toBe('No data');
+  });
+
+  it('noDataText default เป็นไทย ("ไม่มีข้อมูล") + ไม่ลงทะเบียนฟอนต์ไทย → Thai font guard throw', () => {
+    const doc = new jsPDF();
+    const engine = new RenderEngine(doc);
+
+    const node = emptyNode();
+    delete node.noDataText;
+    expect(() => engine.render([createBlock(node)])).toThrow(/ภาษาไทย/);
+  });
+});

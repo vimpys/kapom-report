@@ -129,6 +129,7 @@ export {
   createSegmentState,
   visibleColumns,
   DEFAULT_SUMMARY_LABEL,
+  DEFAULT_NO_DATA_TEXT,
 } from './table/column-resolver';
 export { computeAggregate, asDecimalish } from './table/aggregate';
 export type { ResolvedGroup } from './table/group-resolver';

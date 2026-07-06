@@ -86,6 +86,8 @@ export interface TableNode<T> {
   /** master-detail (2 ระดับ MVP); คืน sub-table ต่อ row */
   nested?: (row: T) => TableNode<unknown> | undefined;
   summaryLabel?: string;
+  /** ข้อความแถวเดียวกลางตารางเมื่อ `data` ว่าง (No-Data fallback) — default 'ไม่มีข้อมูล' */
+  noDataText?: string;
   style?: TableStyleOptions<T>;
 }
 
