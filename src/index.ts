@@ -132,7 +132,12 @@ export {
 } from './table/column-resolver';
 export { computeAggregate, asDecimalish } from './table/aggregate';
 export type { ResolvedGroup } from './table/group-resolver';
-export { splitGroups, groupHeaderLabel, groupFooterLabel } from './table/group-resolver';
+export {
+  splitGroups,
+  groupHeaderLabel,
+  groupFooterLabel,
+  UNSPECIFIED_GROUP_KEY,
+} from './table/group-resolver';
 export type { GroupTreeNode } from './table/group-tree';
 export { buildGroupTree, flattenGroupTreeRows, countGroupBands } from './table/group-tree';
 export { computeColumnWidths } from './table/column-width';

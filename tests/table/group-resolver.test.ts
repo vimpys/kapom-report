@@ -3,6 +3,7 @@ import {
   groupFooterLabel,
   groupHeaderLabel,
   splitGroups,
+  UNSPECIFIED_GROUP_KEY,
 } from '../../src/table/group-resolver';
 
 interface Row {
@@ -45,6 +46,36 @@ describe('splitGroups', () => {
 
   it('data ว่าง → ไม่มีกลุ่ม', () => {
     expect(splitGroups([], { by: 'category' })).toEqual([]);
+  });
+
+  it('key เป็น null/undefined/ว่าง → fallback UNSPECIFIED_GROUP_KEY ไม่ใช่ "null"/"undefined" (ค้างแก้ #6)', () => {
+    interface Nullable {
+      region: string | null | undefined;
+      amount: number;
+    }
+    const data: Nullable[] = [
+      { region: 'North', amount: 1 },
+      { region: null, amount: 2 },
+      { region: undefined, amount: 3 },
+      { region: '', amount: 4 },
+    ];
+
+    const groups = splitGroups(data, { by: 'region' });
+
+    // null/undefined/'' รวมเป็นกลุ่มเดียวกัน — first-seen ที่ตำแหน่งแถว amount 2
+    expect(groups.map((g) => g.key)).toEqual(['North', UNSPECIFIED_GROUP_KEY]);
+    expect(groups[1]?.rows.map((r) => r.amount)).toEqual([2, 3, 4]);
+  });
+
+  it('key เป็นค่า falsy ที่มีความหมาย (0/false) → คงค่า String ตามจริง ไม่ fallback', () => {
+    const data = [
+      { flag: 0, amount: 1 },
+      { flag: false, amount: 2 },
+    ];
+
+    const groups = splitGroups(data, { by: 'flag' });
+
+    expect(groups.map((g) => g.key)).toEqual(['0', 'false']);
   });
 });
 
