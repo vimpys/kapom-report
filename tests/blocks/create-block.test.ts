@@ -7,6 +7,7 @@ import { ImageBlock } from '../../src/blocks/image-block';
 import { SignatureBlock } from '../../src/blocks/signature-block';
 import { StackBlock } from '../../src/blocks/stack-block';
 import { SectionBlock } from '../../src/blocks/section-block';
+import { RawBlock } from '../../src/blocks/raw-block';
 import { KapomError } from '../../src/core/errors';
 
 describe('createBlock', () => {
@@ -34,8 +35,8 @@ describe('createBlock', () => {
     ).toBeInstanceOf(SignatureBlock);
   });
 
-  it('node type ที่ยังไม่รองรับ (เช่น raw) → throw KapomError', () => {
-    expect(() =>
+  it('raw node → RawBlock (escape hatch ลงทะเบียนแล้ว ไม่ throw)', () => {
+    expect(
       createBlock({
         type: 'raw',
         measure: () => 0,
@@ -43,7 +44,11 @@ describe('createBlock', () => {
           /* no-op */
         },
       }),
-    ).toThrow(KapomError);
+    ).toBeInstanceOf(RawBlock);
+  });
+
+  it('node type ที่ไม่เคยลงทะเบียนจริงๆ → throw KapomError', () => {
+    expect(() => createBlock({ type: 'definitely-not-a-block' } as never)).toThrow(KapomError);
   });
 
   it('stack node → StackBlock ที่มีลูกแปลงผ่าน createBlock แล้ว', () => {

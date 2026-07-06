@@ -38,6 +38,7 @@ export type {
   TableStyleOptions,
   TableNode,
   RawNode,
+  RawDrawCursor,
   StackNode,
   SectionNode,
   ReportNode,
@@ -108,6 +109,7 @@ export {
 export { TableBlock } from './blocks/table-block';
 export { StackBlock } from './blocks/stack-block';
 export { SectionBlock } from './blocks/section-block';
+export { RawBlock } from './blocks/raw-block';
 export { createBlock } from './blocks/create-block';
 
 export type { BlockFactory } from './blocks/block-registry';

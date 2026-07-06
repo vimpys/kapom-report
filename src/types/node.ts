@@ -1,6 +1,14 @@
+import type { jsPDF } from 'jspdf';
 import type { ReportColumn } from './column';
 import type { CellStyle, RGB, TextStyle } from './primitives';
 import type { Typography } from './typography';
+
+/** the position + available width the engine hands a RawNode's draw callback */
+export interface RawDrawCursor {
+  x: number;
+  y: number;
+  contentWidth: number;
+}
 
 export interface TextNode {
   type: 'text';
@@ -91,11 +99,15 @@ export interface TableNode<T> {
   style?: TableStyleOptions<T>;
 }
 
+/**
+ * escape hatch (level 2) — the user draws with jsPDF directly, while the engine still manages
+ * the cursor/page-break: `measure(contentWidth)` reports the height up front so the engine can
+ * decide whether to break before drawing, then `draw` gets the exact position + width to render at
+ */
 export interface RawNode {
   type: 'raw';
   measure: (contentWidth: number) => number;
-  /** escape hatch: draw with jsPDF directly, within the scope where the engine manages the cursor for you */
-  draw: (doc: unknown, cursor: { x: number; y: number }) => void;
+  draw: (doc: jsPDF, cursor: RawDrawCursor) => void;
 }
 
 /** composite: renders children in order, measureHeight sums recursively — children accept text shorthand */

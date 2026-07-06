@@ -7,9 +7,11 @@ import { SignatureBlock } from './signature-block';
 import { TableBlock } from './table-block';
 import { StackBlock } from './stack-block';
 import { SectionBlock } from './section-block';
+import { RawBlock } from './raw-block';
 import type {
   DividerNode,
   ImageNode,
+  RawNode,
   SectionNode,
   SignatureNode,
   SpacerNode,
@@ -38,6 +40,7 @@ export function registerBuiltinBlocks(): void {
   registerBlockType('divider', (node) => new DividerBlock(node as DividerNode));
   registerBlockType('image', (node) => new ImageBlock(node as ImageNode));
   registerBlockType('signature', (node) => new SignatureBlock(node as SignatureNode));
+  registerBlockType('raw', (node) => new RawBlock(node as RawNode));
   registerBlockType('table', (node) => new TableBlock(node as TableNode<unknown>));
   registerBlockType('stack', (node) => {
     const stackNode = node as StackNode<unknown>;
