@@ -1,7 +1,7 @@
 import { autoTable } from 'jspdf-autotable';
 import type { FontStyle as AutoTableFontStyle, Styles, UserOptions } from 'jspdf-autotable';
 import type { MeasurableBlock, MeasureContext, RenderContext } from '../core/context';
-import { drawText } from '../core/draw-text';
+import { applyTextStyle, drawText } from '../core/draw-text';
 import { KapomError } from '../core/errors';
 import { containsThai, isBuiltinStandardFont, thaiGlyphError } from '../core/font-guard';
 import { lineHeightOf } from '../core/text-metrics';
@@ -36,15 +36,6 @@ const GROUP_BAND_HEIGHT_RATIO = 1.6;
 const GROUP_BAND_FILL: RGB = [236, 240, 241];
 const GRAND_TOTAL_FILL: RGB = [41, 128, 185];
 
-/** TextStyle (Typography token) → AutoTable Partial<Styles> — font family ไม่ set ถ้าไม่ระบุ (สืบทอดจาก styles.font base แทน) */
-function tokenToAutoTableStyles(token: TextStyle): Partial<Styles> {
-  const styles: Partial<Styles> = { fontSize: token.fontSize };
-  if (token.fontStyle) styles.fontStyle = token.fontStyle;
-  if (token.color) styles.textColor = [...token.color];
-  if (token.fontFamily) styles.font = token.fontFamily;
-  return styles;
-}
-
 /** CellStyle (zebra/conditional override) → AutoTable Partial<Styles> */
 function cellStyleToAutoTableStyles(style: Partial<CellStyle>): Partial<Styles> {
   const styles: Partial<Styles> = {};
@@ -66,7 +57,7 @@ function cellStringContent(cell: unknown): string | undefined {
   return undefined;
 }
 
-/** column-level headerStyle/cellStyle (Partial<TextStyle>) → AutoTable Partial<Styles> */
+/** TextStyle (Typography token / column-level headerStyle/cellStyle) → AutoTable Partial<Styles> — font family ไม่ set ถ้าไม่ระบุ (สืบทอดจาก styles.font base แทน) */
 function partialTextStyleToAutoTableStyles(style: Partial<TextStyle> | undefined): Partial<Styles> {
   if (!style) return {};
   const styles: Partial<Styles> = {};
@@ -143,20 +134,34 @@ export class TableBlock<T> implements MeasurableBlock {
     });
   }
 
+  /**
+   * columnStyles ต่อ index: halign + fix width + column-level cellStyle — cellStyle ต้องมาก่อน
+   * didParseCell เสมอ (zebra/conditional apply ทีหลังจึงทับได้ตาม precedence ที่ล็อกไว้)
+   */
+  private buildColumnStyles(
+    aligns: readonly ResolvedAlign[],
+    columns: readonly ReportColumn<T>[],
+    widthOf: (index: number) => Partial<Styles>,
+  ): Record<string, Partial<Styles>> {
+    const columnStyles: Record<string, Partial<Styles>> = {};
+    aligns.forEach((align, index) => {
+      columnStyles[String(index)] = {
+        halign: align.data,
+        ...widthOf(index),
+        ...partialTextStyleToAutoTableStyles(columns[index]?.cellStyle),
+      };
+    });
+    return columnStyles;
+  }
+
   // ── flat (ไม่ group) ────────────────────────────────────────────────
 
   private renderFlat(ctx: RenderContext): void {
     const columns = visibleColumns(this.node.columns);
     const content = resolveTableContent(this.node, ctx.numeric);
-    const columnStyles: Record<string, Partial<Styles>> = {};
-    content.aligns.forEach((align, index) => {
+    const columnStyles = this.buildColumnStyles(content.aligns, columns, (index) => {
       const width = content.widths[index];
-      columnStyles[String(index)] = {
-        halign: align.data,
-        ...(width !== undefined ? { cellWidth: width } : {}),
-        // column-level cellStyle มาก่อน didParseCell เสมอ → zebra/conditional ยังทับได้ตาม precedence
-        ...partialTextStyleToAutoTableStyles(columns[index]?.cellStyle),
-      };
+      return width !== undefined ? { cellWidth: width } : {};
     });
 
     this.runAutoTable(ctx, {
@@ -202,14 +207,9 @@ export class TableBlock<T> implements MeasurableBlock {
       ctx.typography.detailRow.fontSize, // วัดที่ fontSize เดียวกับ body จริง (ค้างแก้ #3)
     );
 
-    const columnStyles: Record<string, Partial<Styles>> = {};
-    aligns.forEach((align, index) => {
-      columnStyles[String(index)] = {
-        halign: align.data,
-        cellWidth: widths[index] ?? 'auto',
-        ...partialTextStyleToAutoTableStyles(columns[index]?.cellStyle),
-      };
-    });
+    const columnStyles = this.buildColumnStyles(aligns, columns, (index) => ({
+      cellWidth: widths[index] ?? 'auto',
+    }));
 
     const lineHeight = lineHeightOf(ctx.doc, ctx.typography.detailRow.fontSize);
     const bandHeight = lineHeight * GROUP_BAND_HEIGHT_RATIO;
@@ -327,11 +327,12 @@ export class TableBlock<T> implements MeasurableBlock {
     doc.setFillColor(r, g, b);
     doc.rect(cursor.x, cursor.y, contentWidth, bandHeight, 'F');
 
-    doc.setFontSize(token.fontSize);
     const fontName = token.fontFamily ?? doc.getFont().fontName;
-    doc.setFont(fontName, this.resolveSupportedFontStyle(doc, fontName, token.fontStyle));
-    const [tr, tg, tb] = token.color ?? [0, 0, 0];
-    doc.setTextColor(tr, tg, tb);
+    applyTextStyle(doc, {
+      ...token,
+      fontStyle: this.resolveSupportedFontStyle(doc, fontName, token.fontStyle),
+      color: token.color ?? [0, 0, 0], // band ต้องได้สีดำ default เสมอ ไม่สืบสีจาก block ก่อนหน้า
+    });
 
     const inset = 5 / doc.internal.scaleFactor; // ล้อ cellPadding ของ AutoTable
     // nested group: indent label ตามชั้นให้เห็นลำดับชั้น (band เต็มความกว้างเท่ากันทุกระดับ)
@@ -346,7 +347,7 @@ export class TableBlock<T> implements MeasurableBlock {
 
   /** Typography token → AutoTable styles พร้อม fallback fontStyle ถ้า font ที่ใช้ไม่มี variant นั้นจริง */
   private resolveTokenStyles(ctx: RenderContext, token: TextStyle): Partial<Styles> {
-    const styles = tokenToAutoTableStyles(token);
+    const styles = partialTextStyleToAutoTableStyles(token);
     if (styles.fontStyle) {
       const fontName = styles.font ?? ctx.doc.getFont().fontName;
       styles.fontStyle = this.resolveSupportedFontStyle(ctx.doc, fontName, styles.fontStyle);
@@ -359,11 +360,11 @@ export class TableBlock<T> implements MeasurableBlock {
    * ที่ใช้ไม่มี variant นั้นลงทะเบียนไว้ jsPDF จะ warn เงียบๆ แล้ว fallback (silent failure
    * ที่ decision เรื่อง font บอกไว้ว่าต้องกันเอง) เช็คจาก getFontList ก่อนใช้เสมอ
    */
-  private resolveSupportedFontStyle(
+  private resolveSupportedFontStyle<S extends AutoTableFontStyle>(
     doc: RenderContext['doc'],
     fontName: string,
-    requested: AutoTableFontStyle | undefined,
-  ): AutoTableFontStyle {
+    requested: S | undefined,
+  ): S | 'normal' {
     if (!requested || requested === 'normal') return 'normal';
     const available = doc.getFontList()[fontName] ?? [];
     return available.includes(requested) ? requested : 'normal';

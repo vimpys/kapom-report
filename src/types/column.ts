@@ -59,15 +59,6 @@ export type ReportColumn<T> =
   | ComputedColumn<T>
   | RunningTotalColumn<T>;
 
-/** type guard สำหรับ narrow ใน renderer */
-export const isDataColumn = <T>(col: ReportColumn<T>): col is DataColumn<T> =>
-  col.type === 'data';
-
-export const isDerivedColumn = <T>(
-  col: ReportColumn<T>,
-): col is RowNumberColumn | ComputedColumn<T> | RunningTotalColumn<T> =>
-  col.type !== 'data';
-
 /** resolve alignment: header fallback → data, data fallback → 'left' */
 export interface ResolvedAlign {
   header: HAlign;

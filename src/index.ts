@@ -24,12 +24,7 @@ export type {
   ReportColumn,
   ResolvedAlign,
 } from './types/column';
-export {
-  isDataColumn,
-  isDerivedColumn,
-  resolveColumnAlign,
-  isColumnVisible,
-} from './types/column';
+export { resolveColumnAlign, isColumnVisible } from './types/column';
 
 export type {
   TextNode,
@@ -46,7 +41,6 @@ export type {
   StackNode,
   SectionNode,
   ReportNode,
-  SummaryValue,
 } from './types/node';
 
 export type { Typography } from './types/typography';

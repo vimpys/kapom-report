@@ -1,25 +1,10 @@
-import type { jsPDF } from 'jspdf';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import type { MeasurableBlock, RenderContext } from '../src/core/context';
 import { RenderEngine } from '../src/core/engine';
+import { makeStubDoc, SCALE_FACTOR } from './helpers/stub-doc';
 
-// stub เฉพาะ surface ที่ engine แตะ — A4 mm, scaleFactor pt→mm ของ jsPDF
-const SCALE_FACTOR = 72 / 25.4;
-
-function makeStubDoc() {
-  const stub = {
-    internal: {
-      pageSize: { getWidth: () => 210, getHeight: () => 297 },
-      scaleFactor: SCALE_FACTOR,
-    },
-    addPage: vi.fn(),
-    getFontSize: vi.fn(() => 16),
-    setFontSize: vi.fn(),
-    getLineHeightFactor: vi.fn(() => 1.15),
-    splitTextToSize: vi.fn((): string[] => ['line1', 'line2', 'line3']),
-  };
-  return { stub, doc: stub as unknown as jsPDF };
-}
+/** stub ให้ splitTextToSize ตัดเป็น 3 บรรทัด — ใช้กับเทสต์ measureText ด้านล่าง */
+const THREE_LINES = ['line1', 'line2', 'line3'];
 
 /** block ปลอมสูงคงที่ — บันทึกตำแหน่ง cursor ตอนถูก render */
 function makeBlock(height: number) {
@@ -88,7 +73,7 @@ describe('RenderEngine — render loop', () => {
 
 describe('RenderEngine — MeasureContext.measureText', () => {
   it('คืนความสูง = จำนวนบรรทัด × lineHeight (pt→หน่วย doc ผ่าน scaleFactor)', () => {
-    const { stub, doc } = makeStubDoc();
+    const { stub, doc } = makeStubDoc(THREE_LINES);
     const engine = new RenderEngine(doc);
     const ctx = engine.createMeasureContext();
 

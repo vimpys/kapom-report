@@ -1,5 +1,5 @@
 import type { MeasurableBlock, MeasureContext, RenderContext } from '../core/context';
-import { drawText } from '../core/draw-text';
+import { applyTextStyle, drawText } from '../core/draw-text';
 import { splitTextLines, lineHeightOf } from '../core/text-metrics';
 import { normalizeText } from '../core/text-normalizer';
 import type { TextStyle } from '../types/primitives';
@@ -45,13 +45,7 @@ export class TextBlock implements MeasurableBlock {
     const style = resolveTextStyle(ctx.typography, this.node.role, this.node.style);
     const { doc, cursor, contentWidth } = ctx;
 
-    doc.setFontSize(style.fontSize);
-    const currentFont = doc.getFont();
-    doc.setFont(style.fontFamily ?? currentFont.fontName, style.fontStyle ?? 'normal');
-    if (style.color) {
-      const [r, g, b] = style.color;
-      doc.setTextColor(r, g, b);
-    }
+    applyTextStyle(doc, style);
 
     const lines = splitTextLines(doc, this.content, style.fontSize, contentWidth);
     const singleLineHeight = lineHeightOf(doc, style.fontSize);

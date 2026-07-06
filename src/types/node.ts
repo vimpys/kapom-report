@@ -1,4 +1,3 @@
-import type { Decimalish } from '../numeric/numeric-strategy';
 import type { ReportColumn } from './column';
 import type { CellStyle, RGB, TextStyle } from './primitives';
 import type { Typography } from './typography';
@@ -128,7 +127,3 @@ export type ReportNode<T = unknown> =
   | StackNode<T>
   | SectionNode<T>;
 
-export interface SummaryValue {
-  columnKey: string;
-  value: Decimalish;
-}

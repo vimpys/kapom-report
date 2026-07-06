@@ -1,5 +1,5 @@
 import type { MeasurableBlock, MeasureContext, RenderContext } from '../core/context';
-import { drawText } from '../core/draw-text';
+import { applyTextStyle, drawText } from '../core/draw-text';
 import { splitTextLines, lineHeightOf } from '../core/text-metrics';
 import { normalizeText } from '../core/text-normalizer';
 import { KapomLayoutError } from '../core/errors';
@@ -61,13 +61,7 @@ export class SignatureBlock implements MeasurableBlock {
     const { doc, cursor, contentWidth } = ctx;
     const columnWidth = this.columnWidth(contentWidth);
 
-    doc.setFontSize(this.style.fontSize);
-    const currentFont = doc.getFont();
-    doc.setFont(this.style.fontFamily ?? currentFont.fontName, this.style.fontStyle ?? 'normal');
-    if (this.style.color) {
-      const [r, g, b] = this.style.color;
-      doc.setTextColor(r, g, b);
-    }
+    applyTextStyle(doc, this.style);
     const [lineR, lineG, lineB] = DEFAULT_DIVIDER_COLOR;
     doc.setDrawColor(lineR, lineG, lineB);
     doc.setLineWidth(DEFAULT_DIVIDER_THICKNESS);

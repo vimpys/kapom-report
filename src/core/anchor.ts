@@ -1,6 +1,7 @@
 import type { HAlign, TextStyle } from '../types/primitives';
 import type { DateFormat } from '../format/date-format';
 import type { PageBand, PageBandContext, PageBandRenderer } from './page-band';
+import { applyTextStyle } from './draw-text';
 import { resolveSystemFields } from './system-field';
 import { lineHeightOf } from './text-metrics';
 import { KapomError } from './errors';
@@ -69,12 +70,7 @@ export function createAnchoredBand(options: AnchoredBandOptions): PageBand {
 
       const previousSize = ctx.doc.getFontSize();
       const previousFont = ctx.doc.getFont();
-      ctx.doc.setFontSize(style.fontSize);
-      ctx.doc.setFont(style.fontFamily ?? previousFont.fontName, style.fontStyle ?? 'normal');
-      if (style.color) {
-        const [r, g, b] = style.color;
-        ctx.doc.setTextColor(r, g, b);
-      }
+      applyTextStyle(ctx.doc, style);
 
       const textWidth = ctx.doc.getTextWidth(text);
       const x = anchorX(anchor.align, ctx, textWidth);

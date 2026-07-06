@@ -15,7 +15,7 @@ import type {
 import { PdfCursor } from './cursor';
 import { drawText } from './draw-text';
 import type { PageBand } from './page-band';
-import { measureTextBlockHeight } from './text-metrics';
+import { deriveMeasureContext } from './measure-context';
 import type { Watermark, WatermarkInput } from './watermark';
 import { resolveWatermark } from './watermark';
 
@@ -100,15 +100,9 @@ export class RenderEngine {
     }
   }
 
+  /** delegate ไป deriveMeasureContext — logic สร้าง MeasureContext มีที่เดียว (single source) */
   createMeasureContext(): MeasureContext {
-    return {
-      pageWidth: this.doc.internal.pageSize.getWidth(),
-      contentWidth: this.cursor.contentWidth,
-      numeric: this.numeric,
-      typography: this.typography,
-      measureText: (text, fontSize, maxWidth) =>
-        measureTextBlockHeight(this.doc, text, fontSize, maxWidth),
-    };
+    return deriveMeasureContext(this.createRenderContext());
   }
 
   createRenderContext(): RenderContext {
