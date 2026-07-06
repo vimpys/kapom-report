@@ -1,9 +1,24 @@
 import { jsPDF } from 'jspdf';
-import { describe, expect, it } from 'vitest';
+import type { UserOptions } from 'jspdf-autotable';
+import { describe, expect, it, vi } from 'vitest';
 import { createBlock } from '../../src/blocks/create-block';
 import { RenderEngine } from '../../src/core/engine';
 import type { TableNode } from '../../src/types/node';
 import { DEFAULT_TYPOGRAPHY } from '../../src/types/typography';
+
+// ESM module namespaces aren't configurable, so vi.spyOn can't wrap a named export directly —
+// vi.mock + importOriginal lets us call through to the real implementation while still recording calls
+const autoTableCalls: UserOptions[] = [];
+vi.mock('jspdf-autotable', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('jspdf-autotable')>();
+  return {
+    ...actual,
+    autoTable: (doc: jsPDF, options: UserOptions) => {
+      autoTableCalls.push(options);
+      return actual.autoTable(doc, options);
+    },
+  };
+});
 
 interface Sale {
   no?: never;
@@ -633,5 +648,78 @@ describe('TableBlock × No-Data fallback (data ว่าง — ค้างแ�
     const node = emptyNode();
     delete node.noDataText;
     expect(() => engine.render([createBlock(node)])).toThrow(/Thai text/);
+  });
+});
+
+describe('TableBlock × aggregate row label colSpan (aesthetics fix — merges the label into empty leading columns)', () => {
+  it('flat table: rowNumber + no-aggregate Product column → summary label spans both, left-aligned', () => {
+    const doc = new jsPDF();
+    const engine = new RenderEngine(doc);
+
+    engine.render([createBlock(tableNode(makeSales(3)))]);
+
+    const footCell = doc.lastAutoTable?.foot[0]?.cells['0'];
+    expect(footCell?.colSpan).toBe(2);
+    expect(footCell?.text.join('')).toBe('Total');
+    expect(footCell?.styles.halign).toBe('left');
+    // the numeric columns after the merge keep their own (right) alignment, untouched
+    expect(doc.lastAutoTable?.foot[0]?.cells['2']?.styles.halign).toBe('right');
+  });
+
+  it('grouped table: leaf segment foot label spans the empty columns the same way', () => {
+    // doc.lastAutoTable only reflects the LAST autoTable() call (the grand total table, which
+    // has no `foot` at all) — inspect the recorded calls to find the leaf segment's own options
+    autoTableCalls.length = 0;
+    const doc = new jsPDF();
+    const engine = new RenderEngine(doc);
+
+    engine.render([createBlock(groupedNode(makeCategorized(2, ['Alpha'])))]);
+
+    const leafOptions = autoTableCalls[0];
+    const footRow = leafOptions?.foot?.[0] as [{ content: string; colSpan: number; styles: { halign: string } }];
+    expect(footRow[0]).toEqual({ content: 'Subtotal Alpha', colSpan: 2, styles: { halign: 'left' } });
+  });
+
+  it('grand total (body row): label spans the empty columns and stays left-aligned', () => {
+    const doc = new jsPDF();
+    const engine = new RenderEngine(doc);
+
+    engine.render([createBlock(groupedNode(makeCategorized(2, ['Alpha', 'Beta'])))]);
+
+    // grand total is the last AutoTable call — a single body row, theme 'plain'
+    const bodyCell = doc.lastAutoTable?.body[0]?.cells['0'];
+    expect(bodyCell?.colSpan).toBe(2);
+    expect(bodyCell?.text.join('')).toBe('Grand Total');
+    expect(bodyCell?.styles.halign).toBe('left');
+  });
+
+  it('single cell with no aggregate remaining after the label (span=1) → stays a plain cell, not colSpan', () => {
+    const doc = new jsPDF();
+    const engine = new RenderEngine(doc);
+
+    // only the rowNumber column is empty — Product itself carries no aggregate but IS the
+    // very next column and has no aggregate either, so this scenario instead checks a column
+    // layout where the label's neighbor already has a value: Product carries an aggregate here.
+    engine.render([
+      createBlock({
+        type: 'table',
+        columns: [
+          { type: 'rowNumber', header: '#', align: 'right' },
+          {
+            type: 'data',
+            key: 'product',
+            header: 'Product',
+            aggregate: () => 'n/a',
+          },
+          { type: 'data', key: 'qty', header: 'Qty', align: 'right', aggregate: 'sum' },
+        ],
+        data: makeSales(3).map(({ product, qty }) => ({ product, qty, price: '0' })),
+        summaryLabel: 'Total',
+      } satisfies TableNode<Sale>),
+    ]);
+
+    const footCell = doc.lastAutoTable?.foot[0]?.cells['0'];
+    expect(footCell?.colSpan).toBe(1);
+    expect(footCell?.text.join('')).toBe('Total');
   });
 });

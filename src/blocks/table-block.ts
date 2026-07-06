@@ -1,5 +1,5 @@
 import { autoTable } from 'jspdf-autotable';
-import type { FontStyle as AutoTableFontStyle, Styles, UserOptions } from 'jspdf-autotable';
+import type { CellDef, FontStyle as AutoTableFontStyle, Styles, UserOptions } from 'jspdf-autotable';
 import type { MeasurableBlock, MeasureContext, RenderContext } from '../core/context';
 import { applyTextStyle, drawText } from '../core/draw-text';
 import { KapomError } from '../core/errors';
@@ -11,6 +11,7 @@ import {
   createSegmentState,
   DEFAULT_NO_DATA_TEXT,
   DEFAULT_SUMMARY_LABEL,
+  firstAggregateLabelIndex,
   resolveAggregateRow,
   resolveTableContent,
   visibleColumns,
@@ -55,6 +56,27 @@ function cellStringContent(cell: unknown): string | undefined {
     if (typeof content === 'string') return content;
   }
   return undefined;
+}
+
+/**
+ * Merges an aggregate row's label cell with any immediately-following empty columns into one
+ * wider colSpan cell — purely a display concern (the flat `foot` array is still what's used for
+ * column-width measurement and GroupTreeNode.foot, both untouched by this). Gives the label room
+ * instead of squeezing into a single narrow column (e.g. a rowNumber column, see demo 03) and
+ * forces left-align, since a merged cell is now a text label, not whatever alignment the
+ * underlying columns (e.g. right-aligned rowNumber) would otherwise use.
+ */
+function mergeFootLabel(foot: readonly string[], labelIndex: number): (string | CellDef)[] {
+  if (labelIndex === -1) return [...foot];
+  let span = 1;
+  while (labelIndex + span < foot.length && foot[labelIndex + span] === '') span += 1;
+  if (span === 1) return [...foot];
+
+  return [
+    ...foot.slice(0, labelIndex),
+    { content: foot[labelIndex] ?? '', colSpan: span, styles: { halign: 'left' } },
+    ...foot.slice(labelIndex + span),
+  ];
 }
 
 /** TextStyle (a Typography token / column-level headerStyle/cellStyle) → AutoTable Partial<Styles> — font family isn't set unless specified (inherits from the base styles.font instead) */
@@ -165,10 +187,11 @@ export class TableBlock<T> implements MeasurableBlock {
       return width !== undefined ? { cellWidth: width } : {};
     });
 
+    const labelIndex = firstAggregateLabelIndex(columns);
     this.runAutoTable(ctx, {
       head: [content.head],
       body: content.body,
-      ...(content.foot ? { foot: [content.foot] } : {}),
+      ...(content.foot ? { foot: [mergeFootLabel(content.foot, labelIndex)] } : {}),
       columnStyles,
       headStyles: this.resolveTokenStyles(ctx, ctx.typography.columnHeader),
       bodyStyles: this.resolveTokenStyles(ctx, ctx.typography.detailRow),
@@ -215,6 +238,7 @@ export class TableBlock<T> implements MeasurableBlock {
     const lineHeight = lineHeightOf(ctx.doc, ctx.typography.detailRow.fontSize);
     const bandHeight = lineHeight * GROUP_BAND_HEIGHT_RATIO;
     const rowEstimate = lineHeight * ESTIMATED_ROW_HEIGHT_RATIO;
+    const labelIndex = firstAggregateLabelIndex(columns);
 
     this.renderGroupTree(ctx, tree, {
       head,
@@ -223,6 +247,7 @@ export class TableBlock<T> implements MeasurableBlock {
       columnStyles,
       bandHeight,
       rowEstimate,
+      labelIndex,
     });
 
     if (grandFoot) {
@@ -236,7 +261,7 @@ export class TableBlock<T> implements MeasurableBlock {
         // gray instead of the intended blue). 'plain' doesn't define alternateRow at all as its
         // default, which sidesteps the problem entirely.
         theme: 'plain',
-        body: [grandFoot],
+        body: [mergeFootLabel(grandFoot, labelIndex)],
         columnStyles,
         bodyStyles: {
           ...this.resolveTokenStyles(ctx, ctx.typography.summary),
@@ -258,6 +283,7 @@ export class TableBlock<T> implements MeasurableBlock {
       columnStyles: Record<string, Partial<Styles>>;
       bandHeight: number;
       rowEstimate: number;
+      labelIndex: number;
     },
   ): void {
     for (const node of tree) {
@@ -275,7 +301,7 @@ export class TableBlock<T> implements MeasurableBlock {
       this.runAutoTable(ctx, {
         head: [shared.head],
         body: node.body ?? [],
-        ...(node.foot ? { foot: [node.foot] } : {}),
+        ...(node.foot ? { foot: [mergeFootLabel(node.foot, shared.labelIndex)] } : {}),
         columnStyles: shared.columnStyles,
         headStyles: this.resolveTokenStyles(ctx, ctx.typography.columnHeader),
         bodyStyles: this.resolveTokenStyles(ctx, ctx.typography.detailRow),
@@ -308,12 +334,17 @@ export class TableBlock<T> implements MeasurableBlock {
   private renderSubtotalRow(
     ctx: RenderContext,
     foot: string[],
-    shared: { aligns: readonly ResolvedAlign[]; columnStyles: Record<string, Partial<Styles>>; rowEstimate: number },
+    shared: {
+      aligns: readonly ResolvedAlign[];
+      columnStyles: Record<string, Partial<Styles>>;
+      rowEstimate: number;
+      labelIndex: number;
+    },
   ): void {
     ctx.ensureSpace(shared.rowEstimate);
     this.runAutoTable(ctx, {
       theme: 'plain',
-      body: [foot],
+      body: [mergeFootLabel(foot, shared.labelIndex)],
       columnStyles: shared.columnStyles,
       bodyStyles: {
         ...this.resolveTokenStyles(ctx, ctx.typography.groupFooter),
@@ -398,7 +429,8 @@ export class TableBlock<T> implements MeasurableBlock {
       }
 
       if (data.section === 'foot') {
-        if (align) data.cell.styles.halign = align.data;
+        // a merged label cell (mergeFootLabel) carries its own explicit halign — never override it here
+        if (align && typeof data.cell.raw !== 'object') data.cell.styles.halign = align.data;
         return;
       }
 

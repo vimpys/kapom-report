@@ -141,6 +141,22 @@ function resolveCell<T>(
   }
 }
 
+/** true when an aggregate row has nothing to put in this column (no aggregate declared, or not a data/computed column) — the exact rule resolveAggregateRow uses to find the label's slot */
+function isAggregateLabelSlot<T>(col: ReportColumn<T>): boolean {
+  if (col.type !== 'data' && col.type !== 'computed') return true;
+  return col.aggregate === undefined;
+}
+
+/**
+ * Index of the first column an aggregate row's label can land on (see resolveAggregateRow) —
+ * -1 if every column has an aggregate, meaning the label gets omitted entirely. Exposed so the
+ * render layer can merge that slot with any immediately-following empty columns into one wider
+ * display cell (colSpan), without needing resolveAggregateRow to also return this index.
+ */
+export function firstAggregateLabelIndex<T>(columns: readonly ReportColumn<T>[]): number {
+  return columns.findIndex(isAggregateLabelSlot);
+}
+
 /**
  * An aggregate row (group footer / grand total) — the label lands on "the first empty cell"
  * (review fix #4: it used to check only foot[0], so the label went missing silently if the
@@ -180,7 +196,7 @@ export function resolveAggregateRow<T>(
       : formatNumber(result, numeric, col.numberFormat);
   });
 
-  const firstEmpty = foot.findIndex((cell) => cell === '');
+  const firstEmpty = firstAggregateLabelIndex(columns);
   if (firstEmpty !== -1) foot[firstEmpty] = label;
   return foot.map((cell) => normalizeText(cell));
 }

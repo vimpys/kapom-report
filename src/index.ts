@@ -125,6 +125,7 @@ export {
   resolveTableContent,
   resolveSegmentBody,
   resolveAggregateRow,
+  firstAggregateLabelIndex,
   createSegmentState,
   visibleColumns,
   DEFAULT_SUMMARY_LABEL,

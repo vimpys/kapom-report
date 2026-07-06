@@ -4,6 +4,7 @@ import { nativeNumeric } from '../../src/numeric/numeric-strategy';
 import {
   createSegmentState,
   DEFAULT_SUMMARY_LABEL,
+  firstAggregateLabelIndex,
   resolveAggregateRow,
   resolveSegmentBody,
   resolveTableContent,
@@ -311,6 +312,50 @@ describe('resolveTableContent — foot (aggregate)', () => {
     const content = resolveTableContent(node, nativeNumeric);
     expect(content.body).toEqual([]);
     expect(content.foot).toEqual([DEFAULT_SUMMARY_LABEL, '0.00', '0']);
+  });
+});
+
+describe('firstAggregateLabelIndex — where an aggregate row label lands (used for colSpan merging)', () => {
+  it('rowNumber + no-aggregate data column → the first column (index 0)', () => {
+    const columns: ReportColumn<Sale>[] = [
+      { type: 'rowNumber', header: '#' },
+      { type: 'data', key: 'product', header: 'Product' },
+      { type: 'data', key: 'qty', header: 'Qty', aggregate: 'sum' },
+    ];
+
+    expect(firstAggregateLabelIndex(columns)).toBe(0);
+  });
+
+  it('first column has an aggregate → label moves to the next column with none', () => {
+    const columns: ReportColumn<Sale>[] = [
+      { type: 'data', key: 'qty', header: 'Qty', aggregate: 'sum' },
+      { type: 'data', key: 'product', header: 'Product' },
+    ];
+
+    expect(firstAggregateLabelIndex(columns)).toBe(1);
+  });
+
+  it('every column has an aggregate → -1 (no room for a label)', () => {
+    const columns: ReportColumn<Sale>[] = [
+      { type: 'data', key: 'price', header: 'Price', aggregate: 'sum' },
+      { type: 'data', key: 'qty', header: 'Qty', aggregate: 'count' },
+    ];
+
+    expect(firstAggregateLabelIndex(columns)).toBe(-1);
+  });
+
+  it('matches exactly where resolveAggregateRow places the label — same rule, same index', () => {
+    const columns: ReportColumn<Sale>[] = [
+      { type: 'rowNumber', header: '#' },
+      { type: 'data', key: 'product', header: 'Product' },
+      { type: 'data', key: 'qty', header: 'Qty', aggregate: 'sum' },
+    ];
+    const sales: Sale[] = [{ product: 'A', qty: 2, price: '1' }];
+
+    const index = firstAggregateLabelIndex(columns);
+    const row = resolveAggregateRow(columns, sales, nativeNumeric, 'Total');
+
+    expect(row?.[index]).toBe('Total');
   });
 });
 
