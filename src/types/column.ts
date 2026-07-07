@@ -4,6 +4,9 @@ import type { HAlign, NumberFormat, TextStyle } from './primitives';
 export type AggregateFn = 'sum' | 'avg' | 'count' | 'min' | 'max';
 export type RowNumberMode = 'continuous' | 'per-group' | 'per-page';
 
+/** default when a rowNumber/runningTotal column doesn't set `mode` — counts continuously across the whole report */
+export const DEFAULT_ROW_NUMBER_MODE = 'continuous' as const;
+
 interface ColumnBase {
   header: string;
   /** data cell alignment; default 'left' */
@@ -73,4 +76,11 @@ export function resolveColumnAlign<T>(col: ReportColumn<T>): ResolvedAlign {
 export function isColumnVisible<T>(col: ReportColumn<T>): boolean {
   if (col.visible === undefined) return true;
   return typeof col.visible === 'function' ? col.visible() : col.visible;
+}
+
+/** only these 2 of the 4 column kinds carry an `aggregate` field (see DataColumn/ComputedColumn above) */
+export function isAggregatableColumn<T>(
+  col: ReportColumn<T>,
+): col is DataColumn<T> | ComputedColumn<T> {
+  return col.type === 'data' || col.type === 'computed';
 }

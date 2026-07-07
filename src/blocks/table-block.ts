@@ -24,7 +24,7 @@ import {
   flattenGroupTreeRows,
 } from '../table/group-tree';
 import type { ReportColumn, ResolvedAlign } from '../types/column';
-import { resolveColumnAlign } from '../types/column';
+import { isAggregatableColumn, resolveColumnAlign } from '../types/column';
 import type { GroupResolver, TableNode, TableStyleOptions } from '../types/node';
 import type { CellStyle, RGB, TextStyle } from '../types/primitives';
 
@@ -550,8 +550,6 @@ export class TableBlock<T> implements MeasurableBlock {
   }
 
   private hasAggregate(): boolean {
-    return this.node.columns.some(
-      (col) => (col.type === 'data' || col.type === 'computed') && col.aggregate !== undefined,
-    );
+    return this.node.columns.some((col) => isAggregatableColumn(col) && col.aggregate !== undefined);
   }
 }

@@ -4,7 +4,7 @@ import { formatNumber } from '../format/number-format';
 import { computeAggregate } from './aggregate';
 import type { Decimalish, NumericStrategy } from '../numeric/numeric-strategy';
 import type { ComputedColumn, DataColumn, ReportColumn, ResolvedAlign } from '../types/column';
-import { isColumnVisible, resolveColumnAlign } from '../types/column';
+import { DEFAULT_ROW_NUMBER_MODE, isAggregatableColumn, isColumnVisible, resolveColumnAlign } from '../types/column';
 import type { NumberFormat } from '../types/primitives';
 import type { TableNode } from '../types/node';
 
@@ -82,7 +82,7 @@ export function resolveSegmentBody<T>(
   state: SegmentState,
 ): string[][] {
   columns.forEach((col, index) => {
-    if (col.type === 'runningTotal' && (col.mode ?? 'continuous') === 'per-group') {
+    if (col.type === 'runningTotal' && (col.mode ?? DEFAULT_ROW_NUMBER_MODE) === 'per-group') {
       state.runningTotals[index] = undefined;
     }
   });
@@ -120,7 +120,7 @@ function resolveCell<T>(
       return stringifyCell(value);
     }
     case 'rowNumber': {
-      const mode = col.mode ?? 'continuous';
+      const mode = col.mode ?? DEFAULT_ROW_NUMBER_MODE;
       if (mode === 'per-page') {
         // per-page needs to know the real page breaks → requires a two-pass layout (roadmap step 7)
         throw new KapomError(`rowNumber mode 'per-page' is not supported yet — requires a two-pass layout`);
@@ -148,7 +148,7 @@ function resolveCell<T>(
 
 /** true when an aggregate row has nothing to put in this column (no aggregate declared, or not a data/computed column) — the exact rule resolveAggregateRow uses to find the label's slot */
 function isAggregateLabelSlot<T>(col: ReportColumn<T>): boolean {
-  if (col.type !== 'data' && col.type !== 'computed') return true;
+  if (!isAggregatableColumn(col)) return true;
   return col.aggregate === undefined;
 }
 
@@ -199,13 +199,11 @@ export function resolveAggregateRow<T>(
   numeric: NumericStrategy,
   label: string,
 ): string[] | undefined {
-  const hasAggregate = columns.some(
-    (col) => (col.type === 'data' || col.type === 'computed') && col.aggregate !== undefined,
-  );
+  const hasAggregate = columns.some((col) => isAggregatableColumn(col) && col.aggregate !== undefined);
   if (!hasAggregate) return undefined;
 
   const foot = columns.map((col) => {
-    if (col.type !== 'data' && col.type !== 'computed') return '';
+    if (!isAggregatableColumn(col)) return '';
     if (col.aggregate === undefined) return '';
 
     if (typeof col.aggregate === 'function') {
