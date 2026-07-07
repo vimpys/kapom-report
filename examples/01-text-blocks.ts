@@ -8,9 +8,9 @@ import { createKapomReport } from '../src/index';
 import type { ReportNodeInput } from '../src/index';
 import { fontConfig, saveReport } from './shared';
 
-/** 1x1 transparent PNG — stands in for a real logo to demo addImage() + auto-scale to contentWidth */
+/** 100x60 solid-blue PNG — stands in for a real logo to demo addImage() + auto-scale to contentWidth */
 const TINY_PNG_BASE64 =
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+  'iVBORw0KGgoAAAANSUhEUgAAAGQAAAA8CAIAAAAfXYiZAAAAbUlEQVR42u3QQQ0AAAgEoEtiOsMaywq+HRsJSPVwFAWyZMmSJUuWAlmyZMmSJUuBLFmyZMmSpUCWLFmyZMlSIEuWLFmyZCmQJUuWLFmyFMiSJUuWLFkKZMmSJUuWLAWyZMmSJUuWAlmyZMn6aQEomzgjCy5zAAAAAABJRU5ErkJggg==';
 
 const paragraph =
   'Sample text for testing the PdfCursor engine\'s automatic word wrap. When a line does not fit the available width, the engine computes the real line count via jsPDF\'s splitTextToSize and advances the cursor by the measured height. ';
@@ -31,7 +31,7 @@ const blocks: ReportNodeInput[] = [
     data: TINY_PNG_BASE64,
     format: 'PNG',
     width: 400, // intentionally exceeds contentWidth (~180mm) → auto-scales down, keeping aspect ratio
-    height: 400,
+    height: 240, // matches the source PNG's 100x60 (5:3) aspect ratio so the scaled-down box isn't stretched
   },
   { type: 'spacer', height: 6 },
   paragraph.repeat(3), // text shorthand: a plain string is a text node
