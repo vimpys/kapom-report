@@ -16,6 +16,8 @@ import { PdfCursor } from './cursor';
 import { drawText } from './draw-text';
 import type { PageBand } from './page-band';
 import { deriveMeasureContext } from './measure-context';
+import type { PageNumberInput } from './page-number';
+import { renderPageNumber, resolvePageNumber } from './page-number';
 import type { Watermark, WatermarkInput } from './watermark';
 import { resolveWatermark } from './watermark';
 
@@ -35,6 +37,12 @@ export interface RenderEngineOptions {
    * accepts a preset `{ text: 'DRAFT', ... }` or a full render callback (escape hatch)
    */
   watermark?: WatermarkInput;
+  /**
+   * a lightweight page-number annotation drawn inside the existing page margin — unlike
+   * pageHeader/pageFooter, this never reserves content-area space; `true` for the default
+   * (bottom-left, '{pageNumber} / {totalPages}'), a position string shorthand, or a full object
+   */
+  pageNumber?: PageNumberInput;
 }
 
 /** in the doc's units — 15 suits a doc in mm (jsPDF's default); a doc in pt units should override this */
@@ -58,6 +66,7 @@ export class RenderEngine {
   private readonly pageHeader: PageBand | undefined;
   private readonly pageFooter: PageBand | undefined;
   private readonly watermark: Watermark | undefined;
+  private readonly pageNumber: ReturnType<typeof resolvePageNumber>;
 
   constructor(doc: jsPDF, options: RenderEngineOptions = {}) {
     this.doc = doc;
@@ -67,6 +76,7 @@ export class RenderEngine {
     this.pageHeader = options.pageHeader;
     this.pageFooter = options.pageFooter;
     this.watermark = options.watermark !== undefined ? resolveWatermark(options.watermark) : undefined;
+    this.pageNumber = resolvePageNumber(options.pageNumber);
 
     if (options.font) {
       // must happen before the first block renders — the constructor always runs before .render() anyway
@@ -141,7 +151,7 @@ export class RenderEngine {
    * No-op if there's no band; safe to call even without one — the facade/user can always call it.
    */
   finalize(): void {
-    if (!this.pageHeader && !this.pageFooter && !this.watermark) return;
+    if (!this.pageHeader && !this.pageFooter && !this.watermark && !this.pageNumber) return;
 
     const pageCount = this.doc.getNumberOfPages();
     const pageWidth = this.doc.internal.pageSize.getWidth();
@@ -170,6 +180,9 @@ export class RenderEngine {
       if (this.pageFooter && (page > 1 || this.pageFooter.showOnFirstPage !== false)) {
         const footerTop = pageHeight - this.margins.bottom - this.pageFooter.height;
         this.drawBand(this.pageFooter, footerTop, bandWidth, pageIndex, pageCount);
+      }
+      if (this.pageNumber && (page > 1 || this.pageNumber.showOnFirstPage)) {
+        renderPageNumber(this.doc, pageIndex, pageCount, pageWidth, pageHeight, this.margins, this.pageNumber);
       }
     }
 

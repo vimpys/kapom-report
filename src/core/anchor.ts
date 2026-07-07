@@ -38,10 +38,11 @@ function resolveAnchorStyle(override?: Partial<TextStyle>): TextStyle {
   return { ...DEFAULT_ANCHOR_STYLE, ...override };
 }
 
-function anchorX(align: HAlign, ctx: PageBandContext, textWidth: number): number {
-  if (align === 'left') return ctx.x;
-  if (align === 'right') return ctx.x + ctx.width - textWidth;
-  return ctx.x + (ctx.width - textWidth) / 2;
+/** horizontal position for a piece of text within a [x, x+width) span — shared with core/page-number.ts */
+export function anchorX(align: HAlign, x: number, width: number, textWidth: number): number {
+  if (align === 'left') return x;
+  if (align === 'right') return x + width - textWidth;
+  return x + (width - textWidth) / 2;
 }
 
 /**
@@ -74,7 +75,7 @@ export function createAnchoredBand(options: AnchoredBandOptions): PageBand {
       applyTextStyle(ctx.doc, style);
 
       const textWidth = ctx.doc.getTextWidth(text);
-      const x = anchorX(anchor.align, ctx, textWidth);
+      const x = anchorX(anchor.align, ctx.x, ctx.width, textWidth);
       const y = ctx.y + ctx.height / 2 + lineHeightOf(ctx.doc, style.fontSize) / 2;
       ctx.drawText(text, x, y);
 

@@ -3,6 +3,7 @@ import { KapomError } from '../core/errors';
 import type { NumericStrategy } from '../numeric/numeric-strategy';
 import type { PageMargins } from '../core/context';
 import type { PageBand } from '../core/page-band';
+import type { PageNumberInput } from '../core/page-number';
 import type { WatermarkInput } from '../core/watermark';
 import type { RenderEngineOptions } from '../core/engine';
 import type { FontConfig } from '../font/font-config';
@@ -33,6 +34,8 @@ export interface KapomReportBaseOptions {
   pageFooter?: PageBand;
   /** a preset `{ text: 'DRAFT', ... }` or a full render callback (escape hatch) */
   watermark?: WatermarkInput;
+  /** a lightweight page-number annotation drawn inside the page margin — doesn't reduce content area (unlike pageHeader/pageFooter); `true` for the default (bottom-left), a position string, or a full object */
+  pageNumber?: PageNumberInput;
   /** passed straight into `new jsPDF(options)` — orientation/format/unit etc. (omit = jsPDF's own default, a4/portrait/mm) */
   document?: jsPDFOptions;
 }
@@ -120,6 +123,7 @@ function resolveEngineOptions(config: KapomReportBaseOptions): RenderEngineOptio
     ...(config.pageHeader !== undefined ? { pageHeader: config.pageHeader } : {}),
     ...(config.pageFooter !== undefined ? { pageFooter: config.pageFooter } : {}),
     ...(config.watermark !== undefined ? { watermark: config.watermark } : {}),
+    ...(config.pageNumber !== undefined ? { pageNumber: config.pageNumber } : {}),
   };
 }
 

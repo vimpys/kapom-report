@@ -85,6 +85,14 @@ export { resolveSystemFields } from './core/system-field';
 export type { Anchor, AnchoredBandOptions } from './core/anchor';
 export { DEFAULT_ANCHOR_FONT_SIZE, createAnchoredBand } from './core/anchor';
 
+export type { PageNumberPosition, PageNumberOptions, PageNumberInput } from './core/page-number';
+export {
+  DEFAULT_PAGE_NUMBER_POSITION,
+  DEFAULT_PAGE_NUMBER_FORMAT,
+  resolvePageNumber,
+  renderPageNumber,
+} from './core/page-number';
+
 export type { TextNormalizeOptions } from './core/text-normalizer';
 export { normalizeText } from './core/text-normalizer';
 export { drawText } from './core/draw-text';
