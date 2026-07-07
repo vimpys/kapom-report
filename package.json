@@ -1,6 +1,6 @@
 {
   "name": "kapom-report",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "Declarative PDF report library wrapping jsPDF + AutoTable — auto grouping, subtotals, composite reports, strict TypeScript",
   "type": "module",
   "main": "./dist/index.cjs",
