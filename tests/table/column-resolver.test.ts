@@ -175,9 +175,12 @@ describe('resolveTableContent — foot (aggregate)', () => {
 
   it('sum จาก string decimal + summaryLabel default ที่ column แรก', () => {
     const content = resolveTableContent(
+      // numberFormat: {} ทำให้ subtotal คงทศนิยมไว้ (ทดสอบเรื่อง sum จาก DECIMAL string โดยเฉพาะ)
+      // ค้างแก้: 'data' column ที่ไม่ตั้ง numberFormat ตอนนี้ subtotal ใช้ 0 ตำแหน่งทศนิยม
+      // (สอดคล้องกับ row ที่ไม่ format เลย) ไม่ใช่ DEFAULT_NUMBER_FORMAT (2 ตำแหน่ง) แบบเดิม
       baseNode([
         { type: 'data', key: 'product', header: 'สินค้า' },
-        { type: 'data', key: 'price', header: 'ราคา', aggregate: 'sum' },
+        { type: 'data', key: 'price', header: 'ราคา', aggregate: 'sum', numberFormat: {} },
       ]),
       nativeNumeric,
     );
@@ -194,19 +197,22 @@ describe('resolveTableContent — foot (aggregate)', () => {
       summaryLabel: 'ยอดรวมทั้งสิ้น',
     };
 
+    // qty ไม่ตั้ง numberFormat → subtotal ไม่มีทศนิยม (เหมือน row) ไม่ใช่ '6.00' แบบเดิม
     expect(resolveTableContent(node, nativeNumeric).foot).toEqual([
       'ยอดรวมทั้งสิ้น',
-      '6.00',
+      '6',
     ]);
   });
 
   it('count เป็นจำนวนเต็ม (ไม่ format ทศนิยม); avg/min/max ผ่าน strategy', () => {
     const content = resolveTableContent(
+      // avg/min/max ตั้ง numberFormat: {} ไว้ตรงๆ เพื่อทดสอบว่าทศนิยมยังถูกต้องผ่าน strategy
+      // (ไม่ใช่ทดสอบ default fallback — ค้างแก้เปลี่ยน default เป็น 0 ตำแหน่งถ้าไม่ตั้ง numberFormat)
       baseNode([
         { type: 'data', key: 'product', header: 'นับ', aggregate: 'count' },
-        { type: 'data', key: 'qty', header: 'เฉลี่ย', aggregate: 'avg' },
-        { type: 'data', key: 'price', header: 'ต่ำสุด', aggregate: 'min' },
-        { type: 'data', key: 'price', header: 'สูงสุด', aggregate: 'max' },
+        { type: 'data', key: 'qty', header: 'เฉลี่ย', aggregate: 'avg', numberFormat: {} },
+        { type: 'data', key: 'price', header: 'ต่ำสุด', aggregate: 'min', numberFormat: {} },
+        { type: 'data', key: 'price', header: 'สูงสุด', aggregate: 'max', numberFormat: {} },
       ]),
       nativeNumeric,
     );
@@ -222,6 +228,7 @@ describe('resolveTableContent — foot (aggregate)', () => {
           type: 'data',
           key: 'price',
           header: 'qty-weighted',
+          numberFormat: {}, // ค่าถ่วงน้ำหนักเป็นเงิน — ตั้งทศนิยมไว้ตรงๆ
           aggregate: (rows) =>
             nativeNumeric.sum(rows.map((r) => nativeNumeric.multiply(r.qty, r.price))),
         },
@@ -266,7 +273,7 @@ describe('resolveTableContent — foot (aggregate)', () => {
   it('resolveAggregateRow: label กำหนดเองลง cell แรกที่ว่าง', () => {
     const columns: ReportColumn<Sale>[] = [
       { type: 'data', key: 'product', header: 'สินค้า' },
-      { type: 'data', key: 'price', header: 'ราคา', aggregate: 'sum' },
+      { type: 'data', key: 'price', header: 'ราคา', aggregate: 'sum', numberFormat: {} },
     ];
 
     expect(resolveAggregateRow(columns, sales, nativeNumeric, 'รวม B')).toEqual([
@@ -277,7 +284,7 @@ describe('resolveTableContent — foot (aggregate)', () => {
 
   it('resolveAggregateRow: คอลัมน์แรกมี aggregate → label เลื่อนไป cell ว่างถัดไป ไม่หายเงียบ (ค้างแก้ #4)', () => {
     const columns: ReportColumn<Sale>[] = [
-      { type: 'data', key: 'price', header: 'ราคา', aggregate: 'sum' },
+      { type: 'data', key: 'price', header: 'ราคา', aggregate: 'sum', numberFormat: {} },
       { type: 'data', key: 'product', header: 'สินค้า' },
       { type: 'data', key: 'qty', header: 'นับ', aggregate: 'count' },
     ];
@@ -291,7 +298,7 @@ describe('resolveTableContent — foot (aggregate)', () => {
 
   it('resolveAggregateRow: ทุกคอลัมน์มี aggregate → ไม่มีที่ให้ label (ละไว้ ไม่ทับยอด)', () => {
     const columns: ReportColumn<Sale>[] = [
-      { type: 'data', key: 'price', header: 'ราคา', aggregate: 'sum' },
+      { type: 'data', key: 'price', header: 'ราคา', aggregate: 'sum', numberFormat: {} },
       { type: 'data', key: 'qty', header: 'นับ', aggregate: 'count' },
     ];
 
@@ -303,7 +310,7 @@ describe('resolveTableContent — foot (aggregate)', () => {
       type: 'table',
       columns: [
         { type: 'data', key: 'product', header: 'สินค้า' },
-        { type: 'data', key: 'price', header: 'ราคา', aggregate: 'sum' },
+        { type: 'data', key: 'price', header: 'ราคา', aggregate: 'sum', numberFormat: {} },
         { type: 'data', key: 'qty', header: 'นับ', aggregate: 'count' },
       ],
       data: [],

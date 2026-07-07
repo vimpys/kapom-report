@@ -3,8 +3,9 @@ import { normalizeText } from '../core/text-normalizer';
 import { formatNumber } from '../format/number-format';
 import { computeAggregate } from './aggregate';
 import type { Decimalish, NumericStrategy } from '../numeric/numeric-strategy';
-import type { ReportColumn, ResolvedAlign } from '../types/column';
+import type { ComputedColumn, DataColumn, ReportColumn, ResolvedAlign } from '../types/column';
 import { isColumnVisible, resolveColumnAlign } from '../types/column';
+import type { NumberFormat } from '../types/primitives';
 import type { TableNode } from '../types/node';
 
 /** default label for the summary row — matches the default th-TH locale */
@@ -158,6 +159,30 @@ export function firstAggregateLabelIndex<T>(columns: readonly ReportColumn<T>[])
 }
 
 /**
+ * A 'data' column's row cells never apply Intl formatting unless `numberFormat` is set (see
+ * resolveCell — no numberFormat = raw `String(value)`, e.g. an integer-like Qty column shows
+ * "42" with no forced decimals). An aggregate on that same column used to ignore this and always
+ * fall back to DEFAULT_NUMBER_FORMAT's 2 decimal places, so a subtotal could show "175.00" for a
+ * column whose rows never had decimals at all. This resolves the format an aggregate cell should
+ * use so it stays consistent with its own column's row-level behavior: a 'data' column with no
+ * `numberFormat` gets 0 decimal places instead of 2 (still through Intl.NumberFormat — not a raw
+ * stringify — so float arithmetic artifacts from summing/averaging are still rounded away, and
+ * locale grouping still applies); 'computed'/'runningTotal' columns are untouched here since they
+ * already format unconditionally at the row level too (see resolveCell), so they were already
+ * consistent between row and aggregate before this fix.
+ */
+const UNCONFIGURED_DATA_COLUMN_FORMAT: NumberFormat = { minimumFractionDigits: 0, maximumFractionDigits: 0 };
+
+function formatAggregateResult<T>(
+  col: DataColumn<T> | ComputedColumn<T>,
+  result: Decimalish,
+  numeric: NumericStrategy,
+): string {
+  const format = col.type === 'data' && col.numberFormat === undefined ? UNCONFIGURED_DATA_COLUMN_FORMAT : col.numberFormat;
+  return formatNumber(result, numeric, format);
+}
+
+/**
  * An aggregate row (group footer / grand total) — the label lands on "the first empty cell"
  * (review fix #4: it used to check only foot[0], so the label went missing silently if the
  * first column had an aggregate); if every cell ends up with a value (every column has an
@@ -181,7 +206,7 @@ export function resolveAggregateRow<T>(
 
     if (typeof col.aggregate === 'function') {
       // a custom aggregate fn only exists on DataColumn (see types/column.ts)
-      return formatNumber(col.aggregate(rows), numeric, col.numberFormat);
+      return formatAggregateResult(col, col.aggregate(rows), numeric);
     }
 
     const values =
@@ -191,9 +216,7 @@ export function resolveAggregateRow<T>(
 
     const result = computeAggregate(col.aggregate, values, numeric);
     // count is always a whole number — formatting it to 2 decimal places would read oddly (e.g. "3.00")
-    return col.aggregate === 'count'
-      ? String(result)
-      : formatNumber(result, numeric, col.numberFormat);
+    return col.aggregate === 'count' ? String(result) : formatAggregateResult(col, result, numeric);
   });
 
   const firstEmpty = firstAggregateLabelIndex(columns);

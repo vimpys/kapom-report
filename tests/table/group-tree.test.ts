@@ -68,12 +68,12 @@ describe('buildGroupTree — โครงสร้าง 2 ระดับ', () 
   it('foot (subtotal) มีทุกระดับเมื่อ column มี aggregate — ยอดถูกต้องต่อกลุ่ม', () => {
     const tree = build();
 
-    // North ทั้งกลุ่ม = 1+2+3 = 6, North>Food = 1+2 = 3
-    expect(tree[0]?.foot?.[2]).toBe('6.00');
-    expect(tree[0]?.children?.[0]?.foot?.[2]).toBe('3.00');
+    // North ทั้งกลุ่ม = 1+2+3 = 6, North>Food = 1+2 = 3 (qty ไม่มี numberFormat → ไม่บังคับทศนิยม)
+    expect(tree[0]?.foot?.[2]).toBe('6');
+    expect(tree[0]?.children?.[0]?.foot?.[2]).toBe('3');
     // South ทั้งกลุ่ม = 4+5+6 = 15, South>Drink = 5+6 = 11
-    expect(tree[1]?.foot?.[2]).toBe('15.00');
-    expect(tree[1]?.children?.[1]?.foot?.[2]).toBe('11.00');
+    expect(tree[1]?.foot?.[2]).toBe('15');
+    expect(tree[1]?.children?.[1]?.foot?.[2]).toBe('11');
   });
 
   it('foot เป็น undefined ทุกระดับเมื่อไม่มี column ไหนประกาศ aggregate', () => {
