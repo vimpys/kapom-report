@@ -4,6 +4,10 @@
  * indented right underneath (real feature, not a mockup); `nestedIndentColumn` picks which
  * column of the master table the child's left edge lines up with (grid-aligned, computed from
  * the master's own resolved column widths — not an approximate offset)
+ * 'HF/GSP 949027' has 35 payments — enough to force the nested child table itself to overflow
+ * onto its own extra page; the indent stays put across that break, the page header (if any)
+ * still redraws on the page AutoTable creates for it, and the master table correctly resumes
+ * afterward with the remaining batches + grand total
  * Uses createKapomReport({ blocks }) — no need to touch jsPDF/RenderEngine/TableBlock directly
  */
 import { createKapomReport } from '../src/index';
@@ -28,6 +32,15 @@ interface Batch {
   payments?: Payment[];
 }
 
+// enough rows to force the nested Payments table itself to overflow onto its own extra page
+const manyPayments: Payment[] = Array.from({ length: 35 }, (_, i) => ({
+  date: `${(i % 28) + 1}/${(i % 12) + 1}/2022`,
+  card: '****3374',
+  method: 'Credit Card',
+  billingStatus: 'BILLED',
+  amount: '250.00',
+}));
+
 const batches: Batch[] = [
   { batchName: 'DT/OGP 949025', type: 'Check', openDate: '3/31/2022', bank: 'Santander', qty: 9, sumPayments: '2765.50' },
   { batchName: 'DT/OGP 949235', type: 'Check', openDate: '3/31/2022', bank: 'Ally', qty: 5, sumPayments: '10000.00' },
@@ -36,14 +49,10 @@ const batches: Batch[] = [
     type: 'Check',
     openDate: '1/30/2022',
     bank: 'Ally',
-    qty: 3,
-    sumPayments: '750.00',
+    qty: manyPayments.length,
+    sumPayments: (manyPayments.length * 250).toFixed(2),
     // only this batch has payment detail — every other row's `nested` callback returns undefined
-    payments: [
-      { date: '1/30/2022', card: '****3374', method: 'Credit Card', billingStatus: 'BILLED', amount: '250.00' },
-      { date: '2/28/2022', card: '****3374', method: 'Credit Card', billingStatus: 'BILLED', amount: '250.00' },
-      { date: '3/30/2022', card: '****3374', method: 'Credit Card', billingStatus: 'BILLED', amount: '250.00' },
-    ],
+    payments: manyPayments,
   },
   { batchName: 'DT/OGP 947394', type: 'Check', openDate: '3/31/2022', bank: 'Ally', qty: 9, sumPayments: '12765.50' },
   { batchName: 'HF/OGP 902458', type: 'Check', openDate: '3/31/2022', bank: 'Santander', qty: 17, sumPayments: '10000.00' },
