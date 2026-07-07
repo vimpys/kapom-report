@@ -31,6 +31,19 @@ describe('formatNumber', () => {
       formatNumber(1234.5, nativeNumeric, { locale: 'de-DE' }),
     ).toBe('1.234,50');
   });
+
+  it('fractionDigits shorthand — ตั้งค่าเดียว ได้ min/max เท่ากันทั้งคู่', () => {
+    expect(formatNumber(1234.5, nativeNumeric, { fractionDigits: 4 })).toBe('1,234.5000');
+    expect(formatNumber(1234.56789, nativeNumeric, { fractionDigits: 4 })).toBe('1,234.5679');
+  });
+
+  it('minimumFractionDigits/maximumFractionDigits เจาะจงไว้ ชนะ fractionDigits shorthand ทีละฝั่ง', () => {
+    // minimumFractionDigits ตั้งเจาะจงไว้ที่ 1 (ชนะ fractionDigits), maximumFractionDigits fallback ไปที่ fractionDigits (4)
+    // ค่านี้มีแค่ 1 ตำแหน่งจริง ผ่าน minimum ที่ 1 แล้วเลยไม่ต้อง pad ไปถึง max 4
+    expect(
+      formatNumber(1234.5, nativeNumeric, { fractionDigits: 4, minimumFractionDigits: 1 }),
+    ).toBe('1,234.5');
+  });
 });
 
 describe('getNumberFormatter — cache', () => {

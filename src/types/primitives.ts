@@ -18,6 +18,8 @@ export interface TextStyle {
 
 export interface NumberFormat {
   locale?: string;
+  /** shorthand: sets both min/max fraction digits at once — ignored per-side if that side is set explicitly */
+  fractionDigits?: number;
   minimumFractionDigits?: number;
   maximumFractionDigits?: number;
 }

@@ -2,7 +2,7 @@ import type { Decimalish, NumericStrategy } from '../numeric/numeric-strategy';
 import type { NumberFormat } from '../types/primitives';
 
 /** default per decision: th-TH, 2 decimal places — overridable at the report → column level */
-export const DEFAULT_NUMBER_FORMAT: Required<NumberFormat> = {
+export const DEFAULT_NUMBER_FORMAT: Required<Omit<NumberFormat, 'fractionDigits'>> = {
   locale: 'th-TH',
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
@@ -12,7 +12,13 @@ export const DEFAULT_NUMBER_FORMAT: Required<NumberFormat> = {
 const formatterCache = new Map<string, Intl.NumberFormat>();
 
 export function getNumberFormatter(format?: NumberFormat): Intl.NumberFormat {
-  const resolved: Required<NumberFormat> = { ...DEFAULT_NUMBER_FORMAT, ...format };
+  const resolved = {
+    locale: format?.locale ?? DEFAULT_NUMBER_FORMAT.locale,
+    minimumFractionDigits:
+      format?.minimumFractionDigits ?? format?.fractionDigits ?? DEFAULT_NUMBER_FORMAT.minimumFractionDigits,
+    maximumFractionDigits:
+      format?.maximumFractionDigits ?? format?.fractionDigits ?? DEFAULT_NUMBER_FORMAT.maximumFractionDigits,
+  };
   const key = `${resolved.locale}|${resolved.minimumFractionDigits}|${resolved.maximumFractionDigits}`;
   let formatter = formatterCache.get(key);
   if (!formatter) {
