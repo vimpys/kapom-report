@@ -52,27 +52,19 @@ export function buildGroupTree<T>(
       groupFooterLabel(resolver, group.key, group.rows),
     );
 
-    if (resolver.subGroup) {
-      return {
-        label,
-        depth,
-        rows: group.rows,
-        minRowsWithHeader: minRows,
-        foot,
-        children: buildGroupTree(columns, group.rows, resolver.subGroup, numeric, state, depth + 1),
-        body: undefined,
-      };
-    }
+    const base = { label, depth, rows: group.rows, minRowsWithHeader: minRows, foot };
 
-    return {
-      label,
-      depth,
-      rows: group.rows,
-      minRowsWithHeader: minRows,
-      foot,
-      children: undefined,
-      body: resolveSegmentBody(columns, group.rows, numeric, state),
-    };
+    return resolver.subGroup
+      ? {
+          ...base,
+          children: buildGroupTree(columns, group.rows, resolver.subGroup, numeric, state, depth + 1),
+          body: undefined,
+        }
+      : {
+          ...base,
+          children: undefined,
+          body: resolveSegmentBody(columns, group.rows, numeric, state),
+        };
   });
 }
 

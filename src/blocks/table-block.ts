@@ -251,24 +251,19 @@ export class TableBlock<T> implements MeasurableBlock {
     });
 
     if (grandFoot) {
-      ctx.ensureSpace(rowEstimate);
       // the grand total is a single, boldly-styled body row — not AutoTable's own foot, because
-      // a table with only a foot and no body is an edge case the library doesn't guarantee
-      this.runAutoTable(ctx, {
-        // The default theme ('striped') always sets alternateRow.fillColor for even body row
-        // indexes (this row is the only one = index 0 = always even), which silently merges over
-        // our bodyStyles.fillColor (observed while checking a real demo — the background faded to
-        // gray instead of the intended blue). 'plain' doesn't define alternateRow at all as its
-        // default, which sidesteps the problem entirely.
-        theme: 'plain',
-        body: [mergeFootLabel(grandFoot, labelIndex)],
+      // a table with only a foot and no body is an edge case the library doesn't guarantee (same
+      // reasoning as a non-leaf group's subtotal — see renderSingleTotalRow)
+      this.renderSingleTotalRow(
+        ctx,
+        grandFoot,
+        labelIndex,
         columnStyles,
-        bodyStyles: {
-          ...this.resolveTokenStyles(ctx, ctx.typography.summary),
-          fillColor: [...GRAND_TOTAL_FILL],
-        },
-        didParseCell: this.alignHook(aligns),
-      });
+        aligns,
+        ctx.typography.summary,
+        GRAND_TOTAL_FILL,
+        rowEstimate,
+      );
     }
   }
 
@@ -294,7 +289,18 @@ export class TableBlock<T> implements MeasurableBlock {
       if (node.children) {
         this.renderGroupTree(ctx, node.children, shared);
         // a non-leaf subtotal has no segment to attach a foot to — drawn as a separate single row instead
-        if (node.foot) this.renderSubtotalRow(ctx, node.foot, shared);
+        if (node.foot) {
+          this.renderSingleTotalRow(
+            ctx,
+            node.foot,
+            shared.labelIndex,
+            shared.columnStyles,
+            shared.aligns,
+            ctx.typography.groupFooter,
+            GROUP_BAND_FILL,
+            shared.rowEstimate,
+          );
+        }
         continue;
       }
 
@@ -326,31 +332,34 @@ export class TableBlock<T> implements MeasurableBlock {
   }
 
   /**
-   * a non-leaf group's subtotal (nested group) — a single row with theme 'plain', for the same
-   * reason as the grand total (a foot-only table is an edge case AutoTable doesn't guarantee,
-   * and it avoids alternateRow overriding fillColor); uses the same GROUP_BAND_FILL background
-   * as the band, to visually pair with the group's header, unlike the grand total's darker color
+   * A single, boldly-styled body row for a total that has no AutoTable segment of its own — used
+   * by both the grand total and a non-leaf group's subtotal (nested group). theme 'plain' for the
+   * same reason in both cases: a foot-only table is an edge case AutoTable doesn't guarantee, and
+   * the default theme ('striped') always sets alternateRow.fillColor for even body row indexes
+   * (this row is the only one = index 0 = always even), which would silently override fillColor
+   * (observed for real on a demo — the background faded to gray instead of the intended color);
+   * 'plain' doesn't define alternateRow at all, sidestepping the problem entirely.
    */
-  private renderSubtotalRow(
+  private renderSingleTotalRow(
     ctx: RenderContext,
-    foot: string[],
-    shared: {
-      aligns: readonly ResolvedAlign[];
-      columnStyles: Record<string, Partial<Styles>>;
-      rowEstimate: number;
-      labelIndex: number;
-    },
+    foot: readonly string[],
+    labelIndex: number,
+    columnStyles: Record<string, Partial<Styles>>,
+    aligns: readonly ResolvedAlign[],
+    token: TextStyle,
+    fillColor: RGB,
+    rowEstimate: number,
   ): void {
-    ctx.ensureSpace(shared.rowEstimate);
+    ctx.ensureSpace(rowEstimate);
     this.runAutoTable(ctx, {
       theme: 'plain',
-      body: [mergeFootLabel(foot, shared.labelIndex)],
-      columnStyles: shared.columnStyles,
+      body: [mergeFootLabel(foot, labelIndex)],
+      columnStyles,
       bodyStyles: {
-        ...this.resolveTokenStyles(ctx, ctx.typography.groupFooter),
-        fillColor: [...GROUP_BAND_FILL],
+        ...this.resolveTokenStyles(ctx, token),
+        fillColor: [...fillColor],
       },
-      didParseCell: this.alignHook(shared.aligns),
+      didParseCell: this.alignHook(aligns),
     });
   }
 
