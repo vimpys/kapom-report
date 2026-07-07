@@ -27,8 +27,6 @@ const data: Sale[] = [
 describe('createKapomReport × jsPDF จริง', () => {
   it('zero-config: columns+data เท่านั้น → สร้าง doc ได้ ไม่ throw', () => {
     const report = createKapomReport({
-      // ไม่มี aggregate — ถ้ามี summary row จะได้ label default 'รวม' (ไทย) ซึ่งโดน
-      // Thai font guard เพราะเทสต์นี้ไม่ลงทะเบียนฟอนต์ไทย (ดูเทสต์ guard แยกด้านล่าง)
       columns: [
         { key: 'product', header: 'Product' },
         { key: 'qty', header: 'Qty', align: 'right' },
@@ -39,17 +37,16 @@ describe('createKapomReport × jsPDF จริง', () => {
     expect(report.doc.getNumberOfPages()).toBeGreaterThanOrEqual(1);
   });
 
-  it('aggregate + summaryLabel default (ไทย) โดยไม่ลงทะเบียนฟอนต์ไทย → throw KapomFontError (กัน mojibake เงียบ)', () => {
-    expect(() =>
-      createKapomReport({
-        // คอลัมน์แรกไม่มี aggregate ให้ label 'รวม' (default ไทย) ลง cell แรกจริง
-        columns: [
-          { key: 'product', header: 'Product' },
-          { key: 'qty', header: 'Qty', aggregate: 'sum' },
-        ],
-        data,
-      }),
-    ).toThrow(/Thai text/);
+  it('zero-config + aggregate (summaryLabel default, English) โดยไม่ลงทะเบียนฟอนต์ไทย → ไม่ throw', () => {
+    const report = createKapomReport({
+      columns: [
+        { key: 'product', header: 'Product' },
+        { key: 'qty', header: 'Qty', aggregate: 'sum' },
+      ],
+      data,
+    });
+
+    expect(report.doc.getNumberOfPages()).toBeGreaterThanOrEqual(1);
   });
 
   it('aggregate + summaryLabel อังกฤษ → ผ่านได้โดยไม่ต้องลงทะเบียนฟอนต์', () => {
@@ -77,7 +74,6 @@ describe('createKapomReport × jsPDF จริง', () => {
 
   it('group shorthand (string key) → ตารางจัดกลุ่มจริงผ่าน AutoTable ไม่ throw', () => {
     const report = createKapomReport({
-      // ไม่มี aggregate — group foot default label เป็นไทย ('รวม X') จะโดน Thai font guard
       columns: [
         { key: 'product', header: 'Product' },
         { key: 'qty', header: 'Qty', align: 'right' },

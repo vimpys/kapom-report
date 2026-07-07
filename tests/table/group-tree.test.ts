@@ -103,7 +103,7 @@ describe('buildGroupTree — โครงสร้าง 2 ระดับ', () 
     expect(tree[0]?.label).toBe('ภูมิภาค North');
     expect(tree[0]?.children?.[0]?.label).toBe('Food'); // ระดับในไม่มี headerLabel → key ตรงๆ
     expect(tree[0]?.children?.[0]?.foot?.[0]).toBe('ยอด Food');
-    expect(tree[0]?.foot?.[0]).toBe('รวม North'); // ระดับนอกไม่มี footerLabel → default
+    expect(tree[0]?.foot?.[0]).toBe('Total North'); // ระดับนอกไม่มี footerLabel → default
   });
 
   it('minRowsWithHeader มาจาก keepTogether ของ resolver ระดับตัวเอง (default 1)', () => {
@@ -149,8 +149,8 @@ describe('flattenGroupTreeRows', () => {
     // 6 data rows + 4 leaf foots + 2 region foots = 12
     expect(rows).toHaveLength(12);
     // ลำดับ: North>Food body(2) → foot → North>Drink body(1) → foot → foot North → ...
-    expect(rows[2]?.[0]).toBe('รวม Food');
-    expect(rows[5]?.[0]).toBe('รวม North');
+    expect(rows[2]?.[0]).toBe('Total Food');
+    expect(rows[5]?.[0]).toBe('Total North');
   });
 });
 

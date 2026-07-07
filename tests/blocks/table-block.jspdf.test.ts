@@ -138,8 +138,6 @@ function groupedNode(
     group: {
       by: 'category',
       headerLabel: (key, rows) => `${key} — ${rows.length} items`,
-      // default footerLabel เป็นภาษาไทย ('รวม X') — เทสต์ชุดนี้ไม่ลงทะเบียนฟอนต์ไทย
-      // จะโดน Thai font guard (fail-fast ที่ถูกต้อง) จึง override เป็นอังกฤษ
       footerLabel: (key) => `Subtotal ${key}`,
       ...(keepTogether ? { keepTogether } : {}),
     },
@@ -243,7 +241,6 @@ function ledgerNode(data: Ledger[], overrides: Partial<TableNode<Ledger>> = {}):
       { type: 'data', key: 'amount', header: 'Amount', align: 'right' },
     ],
     data,
-    // default summaryLabel เป็นภาษาไทย ('รวม') — เทสต์ชุดนี้ไม่ลงทะเบียนฟอนต์ไทย จะโดน Thai font guard
     summaryLabel: 'Total',
     ...overrides,
   };
@@ -609,7 +606,7 @@ describe('TableBlock × No-Data fallback (data ว่าง — ค้างแ�
       ],
       data: [],
       summaryLabel: 'Total',
-      noDataText: 'No data', // default เป็นไทย ('ไม่มีข้อมูล') — เทสต์นี้ไม่ลงทะเบียนฟอนต์ไทย (Thai font guard)
+      noDataText: 'No data', // matches DEFAULT_NO_DATA_TEXT — explicit here so the assertion doesn't depend on the default staying this value
       ...overrides,
     };
   }
@@ -641,13 +638,16 @@ describe('TableBlock × No-Data fallback (data ว่าง — ค้างแ�
     expect(body[0]?.cells['0']?.text.join('')).toBe('No data');
   });
 
-  it('noDataText default เป็นไทย ("ไม่มีข้อมูล") + ไม่ลงทะเบียนฟอนต์ไทย → Thai font guard throw', () => {
+  it('noDataText default (English, zero-config) ไม่ลงทะเบียนฟอนต์ไทย → ไม่ throw', () => {
     const doc = new jsPDF();
     const engine = new RenderEngine(doc);
 
     const node = emptyNode();
     delete node.noDataText;
-    expect(() => engine.render([createBlock(node)])).toThrow(/Thai text/);
+    engine.render([createBlock(node)]);
+
+    const body = doc.lastAutoTable?.body ?? [];
+    expect(body[0]?.cells['0']?.text.join('')).toBe('No data');
   });
 });
 

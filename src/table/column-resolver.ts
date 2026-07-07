@@ -8,11 +8,15 @@ import { isColumnVisible, resolveColumnAlign } from '../types/column';
 import type { NumberFormat } from '../types/primitives';
 import type { TableNode } from '../types/node';
 
-/** default label for the summary row — matches the default th-TH locale */
-export const DEFAULT_SUMMARY_LABEL = 'รวม';
+/**
+ * default label for the summary row — English so a zero-config table (no font registered) never
+ * hits the Thai font guard just from adding an `aggregate` column (2026-07-07 — was 'รวม'; override
+ * via `summaryLabel` if a Thai label is wanted, same as any other user-facing text)
+ */
+export const DEFAULT_SUMMARY_LABEL = 'Total';
 
-/** default text for the No-Data fallback (`data: []`) — matches the default th-TH locale, same as DEFAULT_SUMMARY_LABEL */
-export const DEFAULT_NO_DATA_TEXT = 'ไม่มีข้อมูล';
+/** default text for the No-Data fallback (`data: []`) — same zero-config rationale as DEFAULT_SUMMARY_LABEL */
+export const DEFAULT_NO_DATA_TEXT = 'No data';
 
 /**
  * The pure output from the column system — plain strings, ready to hand to AutoTable

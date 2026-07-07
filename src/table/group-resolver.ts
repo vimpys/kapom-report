@@ -9,9 +9,11 @@ export interface ResolvedGroup<T> {
  * the label for a group whose key is null/undefined/empty (review fix #6) — prevents a band
  * from literally showing "null"/"undefined" (real DB data can always have NULL mixed into a
  * group column); overridable via headerLabel/footerLabel, which receive this key to transform
- * further — in Thai, matching the lib's default locale (same as DEFAULT_SUMMARY_LABEL)
+ * further — English (2026-07-07 — was Thai '(ไม่ระบุ)') for the same zero-config reason as
+ * DEFAULT_SUMMARY_LABEL: a group with no font registered shouldn't hit the Thai font guard
+ * just from an unspecified key
  */
-export const UNSPECIFIED_GROUP_KEY = '(ไม่ระบุ)';
+export const UNSPECIFIED_GROUP_KEY = '(unspecified)';
 
 /**
  * Splits a flat array into groups by GroupResolver.by — preserves order by each key's first
@@ -57,11 +59,11 @@ export function groupHeaderLabel<T>(
   return resolver.headerLabel?.(key, rows) ?? key;
 }
 
-/** the default matches DEFAULT_SUMMARY_LABEL — a subtotal names its group to avoid confusion with the grand total */
+/** the default matches DEFAULT_SUMMARY_LABEL (English, zero-config) — a subtotal names its group to avoid confusion with the grand total */
 export function groupFooterLabel<T>(
   resolver: GroupResolver<T>,
   key: string,
   rows: readonly T[],
 ): string {
-  return resolver.footerLabel?.(key, rows) ?? `รวม ${key}`;
+  return resolver.footerLabel?.(key, rows) ?? `Total ${key}`;
 }

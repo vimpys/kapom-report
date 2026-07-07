@@ -80,10 +80,10 @@ describe('splitGroups', () => {
 });
 
 describe('group labels', () => {
-  it('default: header = key, footer = "รวม key"', () => {
+  it('default: header = key, footer = "Total key"', () => {
     const resolver = { by: 'category' as const };
     expect(groupHeaderLabel<Row>(resolver, 'A', [])).toBe('A');
-    expect(groupFooterLabel<Row>(resolver, 'A', [])).toBe('รวม A');
+    expect(groupFooterLabel<Row>(resolver, 'A', [])).toBe('Total A');
   });
 
   it('custom labels รับ key + rows', () => {
