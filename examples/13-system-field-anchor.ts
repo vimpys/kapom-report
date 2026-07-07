@@ -1,9 +1,9 @@
 /**
  * Demo — SystemField + Anchor Position (roadmap 7)
  * Focus: createAnchoredBand() composes an Anchor[] into a single PageBand, instead of
- * hand-writing a render callback like 05-page-header-footer does — format strings use
+ * hand-writing a render callback like 11-page-header-footer does — format strings use
  * {token} (date/time/dateTime), substituted via the SystemField resolver
- * The page number itself is NOT one of the footer's anchors — see examples/14-page-number.ts,
+ * The page number itself is NOT one of the footer's anchors — see examples/12-page-number.ts,
  * which uses the dedicated `pageNumber` option so it doesn't cost the footer band any extra height
  * Uses createKapomReport({ blocks, pageHeader, pageFooter, pageNumber }) — the facade calls finalize() for you
  */
@@ -39,7 +39,7 @@ const report = createKapomReport<Row>({
       { align: 'right', format: '{date}', style: { color: [41, 128, 185] } },
     ],
   }),
-  // Compared to 05-page-header-footer, which hand-writes a render callback — here it's a plain
+  // Compared to 11-page-header-footer, which hand-writes a render callback — here it's a plain
   // format string via {dateTime}, no need to touch doc.setFontSize/setTextColor
   pageFooter: createAnchoredBand({
     height: 12,
@@ -61,4 +61,4 @@ const report = createKapomReport<Row>({
   ],
 });
 
-saveReport(report, '09-system-field-anchor');
+saveReport(report, '13-system-field-anchor');

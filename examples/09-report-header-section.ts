@@ -54,4 +54,4 @@ const report = createKapomReport<Sale>({
   ],
 });
 
-saveReport(report, '06-report-header-section');
+saveReport(report, '09-report-header-section');

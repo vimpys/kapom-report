@@ -72,4 +72,4 @@ const report = createKapomReport<Sale>({
   ],
 });
 
-saveReport(report, '02-sales-table');
+saveReport(report, '04-sales-table');

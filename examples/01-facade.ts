@@ -25,7 +25,7 @@ const report = createKapomReport({
   title: 'Monthly Sales Report',
   font: fontConfig,
   document: { orientation: 'landscape', format: 'letter' }, // omit this = jsPDF's own a4/portrait default
-  group: 'category', // layer 2 shorthand — compare with examples/03-grouped-report.ts, which writes a full GroupResolver by hand
+  group: 'category', // layer 2 shorthand — compare with examples/06-grouped-report.ts, which writes a full GroupResolver by hand
   columns: [
     // layer 1 shorthand — no `type` at all, normalized into a DataColumn for you
     { key: 'product', header: 'Product' },
@@ -34,4 +34,4 @@ const report = createKapomReport({
   data: sales,
 });
 
-saveReport(report, '10-facade');
+saveReport(report, '01-facade');

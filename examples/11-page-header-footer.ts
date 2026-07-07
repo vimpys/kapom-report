@@ -2,7 +2,7 @@
  * Demo — Page Header/Footer band (roadmap 6a)
  * Focus: reserved height is subtracted from the content area; the band is redrawn on every
  * page, including pages AutoTable creates on its own (not just pages engine.breakPage makes)
- * The page number itself is NOT drawn here — see examples/14-page-number.ts, which uses the
+ * The page number itself is NOT drawn here — see examples/12-page-number.ts, which uses the
  * dedicated `pageNumber` option instead of bundling "Page X of Y" into this reserved footer band
  * Uses createKapomReport({ blocks, pageHeader, pageFooter, pageNumber }) — the facade calls finalize() for you
  */
@@ -73,4 +73,4 @@ const report = createKapomReport<Row>({
   ],
 });
 
-saveReport(report, '05-page-header-footer');
+saveReport(report, '11-page-header-footer');

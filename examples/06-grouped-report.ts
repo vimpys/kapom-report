@@ -83,4 +83,4 @@ const report = createKapomReport<RegionSale>({
   ],
 });
 
-saveReport(report, '03-grouped-report');
+saveReport(report, '06-grouped-report');

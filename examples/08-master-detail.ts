@@ -100,4 +100,4 @@ const report = createKapomReport<Batch>({
   ],
 });
 
-saveReport(report, '15-master-detail');
+saveReport(report, '08-master-detail');

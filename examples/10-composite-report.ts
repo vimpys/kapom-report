@@ -109,4 +109,4 @@ const report = createKapomReport({
   ),
 });
 
-saveReport(report, '07-composite-report');
+saveReport(report, '10-composite-report');

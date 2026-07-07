@@ -59,4 +59,4 @@ const report = createKapomReport<LedgerEntry>({
   ],
 });
 
-saveReport(report, '04-styled-ledger');
+saveReport(report, '05-styled-ledger');

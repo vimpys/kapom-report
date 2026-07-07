@@ -45,4 +45,4 @@ const report = createKapomReport<Sale>({
   ],
 });
 
-saveReport(report, '08-signature-watermark');
+saveReport(report, '14-signature-watermark');

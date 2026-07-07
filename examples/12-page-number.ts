@@ -3,7 +3,7 @@
  * Focus: unlike pageHeader/pageFooter (PageBand), pageNumber never reserves content-area space —
  * it draws directly inside the existing page margin (which content never uses anyway), at a
  * fixed position on every page. Content here uses almost the full page height, same as if there
- * were no page number at all — compare with 05-page-header-footer.ts, where pageFooter's
+ * were no page number at all — compare with 11-page-header-footer.ts, where pageFooter's
  * reserved band visibly shrinks the content area on every page.
  * Also shows the 3 Progressive Disclosure layers:
  *   layer 1 — `pageNumber: true`                (default: bottom-left, '{pageNumber} / {totalPages}')
@@ -36,4 +36,4 @@ const report = createKapomReport({
   ],
 });
 
-saveReport(report, '14-page-number');
+saveReport(report, '12-page-number');

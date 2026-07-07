@@ -4,7 +4,7 @@
  * a band at every level (inner level labels are indented), a subtotal per sub-group
  * (the segment's foot), a subtotal per region (a single row on a gray band-matching
  * background), and a grand total at the end;
- * compare with 03-grouped-report.ts, which groups only one level deep
+ * compare with 06-grouped-report.ts, which groups only one level deep
  */
 import { createKapomReport } from '../src/index';
 import type { TableNode } from '../src/index';
@@ -69,4 +69,4 @@ const report = createKapomReport<RegionSale>({
   ],
 });
 
-saveReport(report, '11-nested-group');
+saveReport(report, '07-nested-group');

@@ -51,4 +51,4 @@ const blocks: ReportNodeInput[] = [
   ),
 ];
 
-saveReport(createKapomReport({ blocks, font: fontConfig }), '01-text-blocks');
+saveReport(createKapomReport({ blocks, font: fontConfig }), '02-text-blocks');

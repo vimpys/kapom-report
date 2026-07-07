@@ -28,7 +28,7 @@ const report = createKapomReport({
 });
 
 // path 1: save to a permanent file (examples/output, same as every other demo)
-saveReport(report, '12-save-preview');
+saveReport(report, '03-save-preview');
 
 // path 2: preview — writes a temp file + opens the OS's own viewer (returns the path in case you want to delete/reference it)
 const previewPath = report.preview();

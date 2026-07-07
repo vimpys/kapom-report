@@ -22,7 +22,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
-    "demo": "tsx examples/01-text-blocks.ts && tsx examples/02-sales-table.ts && tsx examples/03-grouped-report.ts && tsx examples/04-styled-ledger.ts && tsx examples/05-page-header-footer.ts && tsx examples/06-report-header-section.ts && tsx examples/07-composite-report.ts && tsx examples/08-signature-watermark.ts && tsx examples/09-system-field-anchor.ts && tsx examples/10-facade.ts && tsx examples/11-nested-group.ts && tsx examples/12-save-preview.ts && tsx examples/13-raw-escape-hatch.ts && tsx examples/14-page-number.ts && tsx examples/15-master-detail.ts"
+    "demo": "tsx examples/01-facade.ts && tsx examples/02-text-blocks.ts && tsx examples/03-save-preview.ts && tsx examples/04-sales-table.ts && tsx examples/05-styled-ledger.ts && tsx examples/06-grouped-report.ts && tsx examples/07-nested-group.ts && tsx examples/08-master-detail.ts && tsx examples/09-report-header-section.ts && tsx examples/10-composite-report.ts && tsx examples/11-page-header-footer.ts && tsx examples/12-page-number.ts && tsx examples/13-system-field-anchor.ts && tsx examples/14-signature-watermark.ts && tsx examples/15-raw-escape-hatch.ts"
   },
   "keywords": [
     "pdf",
