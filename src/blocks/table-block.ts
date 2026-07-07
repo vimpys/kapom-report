@@ -23,8 +23,8 @@ import {
   countGroupBands,
   flattenGroupTreeRows,
 } from '../table/group-tree';
-import type { ReportColumn, ResolvedAlign } from '../types/column';
-import { isAggregatableColumn, resolveColumnAlign } from '../types/column';
+import type { ReportColumn, ResolvedAlign, RowNumberColumn } from '../types/column';
+import { DEFAULT_ROW_NUMBER_MODE, isAggregatableColumn, resolveColumnAlign } from '../types/column';
 import type { GroupResolver, TableNode, TableStyleOptions } from '../types/node';
 import type { CellStyle, RGB, TextStyle } from '../types/primitives';
 
@@ -90,6 +90,23 @@ function partialTextStyleToAutoTableStyles(style: Partial<TextStyle> | undefined
   return styles;
 }
 
+/**
+ * `rowNumber` mode 'per-page' counts per physical PDF page — a page's row 1 has to actually be
+ * drawn before we know it landed on a new page, so this state is shared across every AutoTable
+ * segment in a single TableBlock.render() call (a flat table's one segment, or every leaf +
+ * subtotal segment in a grouped table) and mutated live from a willDrawCell hook (see
+ * perPageRowNumberHook). Keyed by column index so more than one 'per-page' rowNumber column
+ * (unusual, but not disallowed by the type) counts independently.
+ */
+interface PerPageRowNumberState {
+  page: number;
+  counts: Map<number, number>;
+}
+
+function createPerPageRowNumberState(): PerPageRowNumberState {
+  return { page: -1, counts: new Map() };
+}
+
 export class TableBlock<T> implements MeasurableBlock {
   constructor(private readonly node: TableNode<T>) {
     if (node.nested) {
@@ -132,10 +149,11 @@ export class TableBlock<T> implements MeasurableBlock {
       this.renderNoData(ctx);
       return;
     }
+    const perPage = createPerPageRowNumberState();
     if (this.node.group) {
-      this.renderGrouped(ctx, this.node.group);
+      this.renderGrouped(ctx, this.node.group, perPage);
     } else {
-      this.renderFlat(ctx);
+      this.renderFlat(ctx, perPage);
     }
   }
 
@@ -179,7 +197,7 @@ export class TableBlock<T> implements MeasurableBlock {
 
   // ── flat (ungrouped) ────────────────────────────────────────────────
 
-  private renderFlat(ctx: RenderContext): void {
+  private renderFlat(ctx: RenderContext, perPage: PerPageRowNumberState): void {
     const columns = visibleColumns(this.node.columns);
     const content = resolveTableContent(this.node, ctx.numeric);
     const columnStyles = this.buildColumnStyles(content.aligns, columns, (index) => {
@@ -197,12 +215,13 @@ export class TableBlock<T> implements MeasurableBlock {
       columns,
       rows: this.node.data,
       footToken: ctx.typography.summary,
+      perPage,
     });
   }
 
   // ── grouped (composite: a band + segment per group + grand total; recursive when there's a subGroup) ──────
 
-  private renderGrouped(ctx: RenderContext, resolver: GroupResolver<T>): void {
+  private renderGrouped(ctx: RenderContext, resolver: GroupResolver<T>, perPage: PerPageRowNumberState): void {
     const columns = visibleColumns(this.node.columns);
     const aligns = columns.map(resolveColumnAlign);
     const head = columns.map((col) => normalizeText(col.header));
@@ -248,6 +267,7 @@ export class TableBlock<T> implements MeasurableBlock {
       bandHeight,
       rowEstimate,
       labelIndex,
+      perPage,
     });
 
     if (grandFoot) {
@@ -279,6 +299,7 @@ export class TableBlock<T> implements MeasurableBlock {
       bandHeight: number;
       rowEstimate: number;
       labelIndex: number;
+      perPage: PerPageRowNumberState;
     },
   ): void {
     for (const node of tree) {
@@ -314,6 +335,7 @@ export class TableBlock<T> implements MeasurableBlock {
         columns: shared.columns,
         rows: node.rows,
         footToken: ctx.typography.groupFooter,
+        perPage: shared.perPage,
       });
     }
   }
@@ -335,9 +357,11 @@ export class TableBlock<T> implements MeasurableBlock {
       columns: readonly ReportColumn<T>[];
       rows: readonly T[];
       footToken: TextStyle;
+      perPage: PerPageRowNumberState;
     },
   ): void {
-    const { head, body, foot, labelIndex, columnStyles, aligns, columns, rows, footToken } = params;
+    const { head, body, foot, labelIndex, columnStyles, aligns, columns, rows, footToken, perPage } = params;
+    const willDrawCell = this.perPageRowNumberHook(ctx, columns, perPage);
     this.runAutoTable(ctx, {
       head: [head],
       body,
@@ -347,7 +371,53 @@ export class TableBlock<T> implements MeasurableBlock {
       bodyStyles: this.resolveTokenStyles(ctx, ctx.typography.detailRow),
       footStyles: this.resolveTokenStyles(ctx, footToken),
       didParseCell: this.cellHook(aligns, columns, rows, this.node.style),
+      ...(willDrawCell ? { willDrawCell } : {}),
     });
+  }
+
+  /**
+   * `rowNumber` mode 'per-page' can only be resolved once AutoTable has actually decided which
+   * page a row lands on — willDrawCell fires per body cell right after that decision (addPage()
+   * has already run for this row if needed) and right before it's drawn, so `data.pageNumber` is
+   * the real, final page number. Returns undefined (no hook attached) when this segment has no
+   * 'per-page' rowNumber column, so the common case pays nothing extra.
+   */
+  private perPageRowNumberHook(
+    ctx: RenderContext,
+    columns: readonly ReportColumn<T>[],
+    state: PerPageRowNumberState,
+  ): NonNullable<UserOptions['willDrawCell']> | undefined {
+    const perPageColumns = new Map<number, RowNumberColumn>();
+    columns.forEach((col, index) => {
+      if (col.type === 'rowNumber' && (col.mode ?? DEFAULT_ROW_NUMBER_MODE) === 'per-page') {
+        perPageColumns.set(index, col);
+      }
+    });
+    if (perPageColumns.size === 0) return undefined;
+
+    return (data) => {
+      if (data.section !== 'body') return;
+      const col = perPageColumns.get(data.column.index);
+      if (!col) return;
+
+      if (state.page !== data.pageNumber) {
+        state.page = data.pageNumber;
+        state.counts.clear();
+      }
+      const count = (state.counts.get(data.column.index) ?? 0) + 1;
+      state.counts.set(data.column.index, count);
+
+      const n = (col.startAt ?? 1) + count - 1;
+      const text = normalizeText(col.formatter ? col.formatter(n) : String(n));
+
+      // AutoTable draws this cell's text itself, bypassing the drawText facade guard entirely —
+      // re-check here the same way assertThaiCellsRenderable does, since a user's formatter could return anything
+      const fontName = ctx.doc.getFont().fontName;
+      if (isBuiltinStandardFont(fontName) && containsThai(text)) {
+        throw thaiGlyphError(fontName, text);
+      }
+      data.cell.text = [text];
+    };
   }
 
   /** minimum space needed before drawing this node's band — a non-leaf must account for the child bands nested down to the first leaf */

@@ -121,11 +121,12 @@ function resolveCell<T>(
     }
     case 'rowNumber': {
       const mode = col.mode ?? DEFAULT_ROW_NUMBER_MODE;
-      if (mode === 'per-page') {
-        // per-page needs to know the real page breaks → requires a two-pass layout (roadmap step 7)
-        throw new KapomError(`rowNumber mode 'per-page' is not supported yet — requires a two-pass layout`);
-      }
-      const base = mode === 'continuous' ? state.rowOffset : 0;
+      // 'per-page' can't be resolved here — this step is pure and jsPDF-agnostic, so it has no
+      // idea where AutoTable will actually break pages. This produces a placeholder (continuous
+      // numbering, same as when unset) purely so column-width measurement has a realistic-looking
+      // string to measure; TableBlock overwrites the drawn text per-cell via a willDrawCell hook
+      // once AutoTable has decided which page each row really lands on (see perPageRowNumberHook)
+      const base = mode === 'per-group' ? 0 : state.rowOffset;
       const n = (col.startAt ?? 1) + base + localIndex;
       return col.formatter ? col.formatter(n) : String(n);
     }

@@ -723,3 +723,43 @@ describe('TableBlock × aggregate row label colSpan (aesthetics fix — merges t
     expect(footCell?.text.join('')).toBe('Total');
   });
 });
+
+describe('TableBlock × rowNumber mode per-page × jsPDF จริง', () => {
+  function perPageNode(data: Sale[]): TableNode<Sale> {
+    return {
+      type: 'table',
+      columns: [
+        { type: 'rowNumber', header: '#', align: 'right', mode: 'per-page' },
+        { type: 'data', key: 'product', header: 'Product' },
+      ],
+      data,
+    };
+  }
+
+  it('เลขแถวรีเซ็ตเป็น 1 ทุกครั้งที่ขึ้นหน้าใหม่จริง — willDrawCell hook เดียว ไม่ต้อง two-pass', () => {
+    const doc = new jsPDF();
+    const engine = new RenderEngine(doc);
+
+    engine.render([createBlock(perPageNode(makeSales(80)))]);
+
+    expect(doc.getNumberOfPages()).toBeGreaterThan(1);
+
+    const body = doc.lastAutoTable?.body ?? [];
+    const numbers = body.map((row) => Number(row.cells['0']?.text.join('')));
+
+    expect(numbers[0]).toBe(1);
+    // continuous numbering across 80 rows would never repeat or go down — a real per-page reset
+    // must show up as the sequence dropping back down somewhere
+    const hasReset = numbers.some((n, i) => i > 0 && n <= (numbers[i - 1] ?? 0));
+    expect(hasReset).toBe(true);
+  });
+
+  it('head row ไม่ถูกแตะ (hook เช็ค section === body เท่านั้น)', () => {
+    const doc = new jsPDF();
+    const engine = new RenderEngine(doc);
+
+    engine.render([createBlock(perPageNode(makeSales(3)))]);
+
+    expect(doc.lastAutoTable?.head[0]?.cells['0']?.text.join('')).toBe('#');
+  });
+});

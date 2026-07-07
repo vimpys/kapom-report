@@ -127,13 +127,13 @@ describe('resolveTableContent — body cell ต่อ column type', () => {
     expect(content.body.map((r) => r[1])).toEqual(['(1)', '(2)', '(3)']);
   });
 
-  it('rowNumber: mode per-page ยังไม่รองรับ → throw ชัดเจน', () => {
-    expect(() =>
-      resolveTableContent(
-        baseNode([{ type: 'rowNumber', header: '#', mode: 'per-page' }]),
-        nativeNumeric,
-      ),
-    ).toThrow(/per-page/);
+  it('rowNumber: mode per-page ไม่ throw แล้ว — ได้ placeholder แบบ continuous (เลขจริงคำนวณตอน draw ใน TableBlock)', () => {
+    const content = resolveTableContent(
+      baseNode([{ type: 'rowNumber', header: '#', mode: 'per-page' }]),
+      nativeNumeric,
+    );
+
+    expect(content.body.map((r) => r[0])).toEqual(['1', '2', '3']);
   });
 
   it('computed: คำนวณจาก row + format default เสมอ (เป็น numeric โดย contract)', () => {
@@ -403,12 +403,16 @@ describe('resolveSegmentBody — state ข้าม segment (group)', () => {
     expect(body2.map((r) => r[1])).toEqual(['0.20']);
   });
 
-  it('per-page ยัง throw เหมือนเดิม (ต้อง two-pass)', () => {
+  it('per-page ไม่ throw แล้ว — placeholder ที่ layer นี้นับแบบ continuous ข้าม segment (เลขจริงคำนวณตอน draw ใน TableBlock)', () => {
     const columns: ReportColumn<Sale>[] = [
       { type: 'rowNumber', header: '#', mode: 'per-page' },
     ];
-    expect(() =>
-      resolveSegmentBody(columns, seg1, nativeNumeric, createSegmentState(1)),
-    ).toThrow(/per-page/);
+    const state = createSegmentState(1);
+
+    const body1 = resolveSegmentBody(columns, seg1, nativeNumeric, state);
+    const body2 = resolveSegmentBody(columns, seg2, nativeNumeric, state);
+
+    expect(body1.map((r) => r[0])).toEqual(['1', '2']);
+    expect(body2.map((r) => r[0])).toEqual(['3']);
   });
 });
