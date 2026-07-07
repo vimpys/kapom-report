@@ -24,12 +24,18 @@ const node = (extra?: Partial<TableNode<Row>>): TableNode<Row> => ({
 });
 
 describe('TableBlock — validation', () => {
-  it('nested ยังไม่รองรับ → throw ตอนสร้าง', () => {
-    expect(() => new TableBlock(node({ nested: () => undefined }))).toThrow(KapomError);
+  it('nested รองรับแล้ว → ไม่ throw', () => {
+    expect(() => new TableBlock(node({ nested: () => undefined }))).not.toThrow();
   });
 
   it('group รองรับแล้ว → ไม่ throw', () => {
     expect(() => new TableBlock(node({ group: { by: 'name' } }))).not.toThrow();
+  });
+
+  it('nested + group พร้อมกัน → throw ตอนสร้าง (ยังไม่รองรับผสมกัน)', () => {
+    expect(() =>
+      new TableBlock(node({ nested: () => undefined, group: { by: 'name' } })),
+    ).toThrow(KapomError);
   });
 });
 

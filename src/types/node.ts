@@ -91,8 +91,21 @@ export interface TableNode<T> {
   columns: readonly ReportColumn<T>[];
   data: readonly T[];
   group?: GroupResolver<T>;
-  /** master-detail (2 levels, MVP); returns a sub-table per row */
+  /**
+   * master-detail (2 levels, MVP); returns a sub-table per row (`undefined` = this row has no
+   * detail). The child's row type is necessarily `unknown` here (rows across a whole table can't
+   * share a single concrete type when each row's child table has its own independent columns) —
+   * a concrete `TableNode<Payment>` literal needs `satisfies TableNode<Payment> as unknown as
+   * TableNode<unknown>` to assign here (an invariance quirk of `DataColumn.key: keyof T`, same
+   * reason `ReportRegistry` casts once internally — see CLAUDE.md)
+   */
   nested?: (row: T) => TableNode<unknown> | undefined;
+  /**
+   * 0-based column index the nested child table's left edge aligns to (default 0 = full width,
+   * no indent) — computed from this table's own resolved column widths, so the child's left edge
+   * always lines up exactly with that column's grid line, like a colSpan across the rest
+   */
+  nestedIndentColumn?: number;
   summaryLabel?: string;
   /** single-row message centered in the table when `data` is empty (No-Data fallback) — default DEFAULT_NO_DATA_TEXT */
   noDataText?: string;

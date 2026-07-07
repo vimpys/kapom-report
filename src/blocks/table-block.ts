@@ -7,6 +7,7 @@ import { containsThai, isBuiltinStandardFont, thaiGlyphError } from '../core/fon
 import { lineHeightOf } from '../core/text-metrics';
 import { normalizeText } from '../core/text-normalizer';
 import { resolveRowStyle } from '../style/resolve-cell-style';
+import type { ResolvedTableContent } from '../table/column-resolver';
 import {
   createSegmentState,
   DEFAULT_NO_DATA_TEXT,
@@ -109,8 +110,8 @@ function createPerPageRowNumberState(): PerPageRowNumberState {
 
 export class TableBlock<T> implements MeasurableBlock {
   constructor(private readonly node: TableNode<T>) {
-    if (node.nested) {
-      throw new KapomError('nested tables are not supported yet — coming with group integration (roadmap)');
+    if (node.nested && node.group) {
+      throw new KapomError('nested (master-detail) and group cannot be combined yet — pick one');
     }
   }
 
@@ -129,6 +130,10 @@ export class TableBlock<T> implements MeasurableBlock {
     // No-Data fallback: header + a single message row
     if (this.node.data.length === 0) return 2 * rowHeight;
 
+    if (this.node.nested) {
+      return this.measureNested(ctx, rowHeight, footRows);
+    }
+
     if (!this.node.group) {
       return (1 + this.node.data.length + footRows) * rowHeight;
     }
@@ -142,6 +147,25 @@ export class TableBlock<T> implements MeasurableBlock {
       this.node.data.length * rowHeight +
       footRows * rowHeight
     );
+  }
+
+  /**
+   * master-detail (nested): 1 head row + each row's own row-height, plus — for a row whose
+   * `nested(row)` returns a child table — that child's own recursive measureHeight. Passing the
+   * same MeasureContext straight through to the child is safe even though the child actually
+   * renders narrower (indented): this estimate only measures a single 'X' character's line
+   * height, which doesn't depend on the available width at all.
+   */
+  private measureNested(ctx: MeasureContext, rowHeight: number, footRows: number): number {
+    const nested = this.node.nested;
+    if (!nested) return 0;
+    let height = rowHeight;
+    for (const row of this.node.data) {
+      height += rowHeight;
+      const child = nested(row);
+      if (child) height += new TableBlock(child).measureHeight(ctx);
+    }
+    return height + footRows * rowHeight;
   }
 
   render(ctx: RenderContext): void {
@@ -200,6 +224,12 @@ export class TableBlock<T> implements MeasurableBlock {
   private renderFlat(ctx: RenderContext, perPage: PerPageRowNumberState): void {
     const columns = visibleColumns(this.node.columns);
     const content = resolveTableContent(this.node, ctx.numeric);
+
+    if (this.node.nested) {
+      this.renderFlatWithNested(ctx, columns, content, perPage);
+      return;
+    }
+
     const columnStyles = this.buildColumnStyles(content.aligns, columns, (index) => {
       const width = content.widths[index];
       return width !== undefined ? { cellWidth: width } : {};
@@ -217,6 +247,135 @@ export class TableBlock<T> implements MeasurableBlock {
       footToken: ctx.typography.summary,
       perPage,
     });
+  }
+
+  // ── master-detail (nested): the master AutoTable is split into a segment per run of rows
+  // without a child, with each nested row's own child table rendered in between ──────
+
+  /**
+   * Splits the master table around every row that has a `nested(row)` child — a row with a
+   * child still shows its own values (flushed as part of the segment through that row,
+   * inclusive), then the child table renders indented right after; the remaining rows continue
+   * in a fresh segment. Only the trailing segment carries the grand summary foot — a mid-table
+   * segment never does, since the report reads top to bottom and a summary belongs at the end.
+   */
+  private renderFlatWithNested(
+    ctx: RenderContext,
+    columns: readonly ReportColumn<T>[],
+    content: ResolvedTableContent,
+    perPage: PerPageRowNumberState,
+  ): void {
+    const nested = this.node.nested;
+    if (!nested) return;
+
+    const indentColumn = this.node.nestedIndentColumn ?? 0;
+    if (indentColumn < 0 || indentColumn >= columns.length) {
+      throw new KapomError(
+        `nestedIndentColumn must be between 0 and ${columns.length - 1} (got ${indentColumn})`,
+      );
+    }
+
+    const labelIndex = firstAggregateLabelIndex(columns);
+    // a single, fixed set of column widths across every segment (same reasoning as renderGrouped)
+    // — this is also what makes the nested child's indent line up exactly with the column grid,
+    // like a colSpan across the remaining columns, without needing an actual colSpan cell
+    const allRows: (readonly string[])[] = [
+      content.head,
+      ...content.body,
+      ...(content.foot ? [content.foot] : []),
+    ];
+    const widths = computeColumnWidths(
+      ctx.doc,
+      allRows,
+      columns.map((col) => col.width),
+      ctx.contentWidth,
+      ctx.typography.detailRow.fontSize,
+    );
+    const columnStyles = this.buildColumnStyles(content.aligns, columns, (index) => ({
+      cellWidth: widths[index] ?? 'auto',
+    }));
+    const indentX = widths.slice(0, indentColumn).reduce((sum, w) => sum + w, 0);
+    const childWidth = widths.slice(indentColumn).reduce((sum, w) => sum + w, 0);
+
+    const rows = this.node.data;
+    let segmentStart = 0;
+
+    for (let i = 0; i < rows.length; i += 1) {
+      const row = rows[i];
+      if (row === undefined) continue;
+      const child = nested(row);
+      if (child === undefined) continue;
+
+      this.runSegmentTable(ctx, {
+        head: content.head,
+        body: content.body.slice(segmentStart, i + 1),
+        foot: undefined,
+        labelIndex,
+        columnStyles,
+        aligns: content.aligns,
+        columns,
+        rows: rows.slice(segmentStart, i + 1),
+        footToken: ctx.typography.summary,
+        perPage,
+      });
+
+      this.renderNestedChild(ctx, child, indentX, childWidth);
+      segmentStart = i + 1;
+    }
+
+    if (segmentStart < rows.length) {
+      this.runSegmentTable(ctx, {
+        head: content.head,
+        body: content.body.slice(segmentStart),
+        foot: content.foot,
+        labelIndex,
+        columnStyles,
+        aligns: content.aligns,
+        columns,
+        rows: rows.slice(segmentStart),
+        footToken: ctx.typography.summary,
+        perPage,
+      });
+    } else if (content.foot) {
+      // the last row itself had a nested child — no trailing body rows left for the foot to
+      // attach to; reuse the same "single total row" mechanism the grand total already relies on
+      // (a foot-only AutoTable call is an edge case the library doesn't guarantee, same as elsewhere)
+      const rowEstimate = lineHeightOf(ctx.doc, ctx.typography.detailRow.fontSize) * ESTIMATED_ROW_HEIGHT_RATIO;
+      this.renderSingleTotalRow(
+        ctx,
+        content.foot,
+        labelIndex,
+        columnStyles,
+        content.aligns,
+        ctx.typography.summary,
+        GRAND_TOTAL_FILL,
+        rowEstimate,
+      );
+    }
+  }
+
+  /**
+   * Renders a master-detail child table indented/narrowed to [indentX, indentX + childWidth) —
+   * a plain shallow copy of RenderContext with shifted margins is enough, since TableBlock only
+   * ever reads ctx.margins/ctx.contentWidth for its own horizontal placement, never ctx.cursor.x
+   * directly (see drawGroupBand, which reads ctx.margins.left for the same reason).
+   */
+  private renderNestedChild(
+    ctx: RenderContext,
+    child: TableNode<unknown>,
+    indentX: number,
+    childWidth: number,
+  ): void {
+    const childCtx: RenderContext = {
+      ...ctx,
+      margins: {
+        ...ctx.margins,
+        left: ctx.margins.left + indentX,
+        right: ctx.contentWidth + ctx.margins.right - indentX - childWidth,
+      },
+      contentWidth: childWidth,
+    };
+    new TableBlock(child).render(childCtx);
   }
 
   // ── grouped (composite: a band + segment per group + grand total; recursive when there's a subGroup) ──────
@@ -467,11 +626,14 @@ export class TableBlock<T> implements MeasurableBlock {
   }
 
   private drawGroupBand(ctx: RenderContext, label: string, bandHeight: number, depth = 0): void {
-    const { doc, cursor, contentWidth } = ctx;
+    const { doc, cursor, contentWidth, margins } = ctx;
     const token = ctx.typography.groupHeader;
     const [r, g, b] = GROUP_BAND_FILL;
     doc.setFillColor(r, g, b);
-    doc.rect(cursor.x, cursor.y, contentWidth, bandHeight, 'F');
+    // margins.left, not cursor.x — cursor.x always equals margins.left in every existing case
+    // (both only ever reset together), but only margins.left correctly follows a nested-table
+    // child's indent (see renderNestedChild), since that overrides ctx.margins, not the cursor
+    doc.rect(margins.left, cursor.y, contentWidth, bandHeight, 'F');
 
     const fontName = token.fontFamily ?? doc.getFont().fontName;
     applyTextStyle(doc, {
@@ -484,7 +646,7 @@ export class TableBlock<T> implements MeasurableBlock {
     // nested group: indent the label according to depth, to make the hierarchy visible (bands are the same full width at every level)
     const indent = inset * 2 * depth;
     const lineHeight = lineHeightOf(doc, token.fontSize);
-    drawText(doc, label, cursor.x + inset + indent, cursor.y + lineHeight * 1.15);
+    drawText(doc, label, margins.left + inset + indent, cursor.y + lineHeight * 1.15);
 
     ctx.advanceY(bandHeight);
   }
