@@ -187,16 +187,16 @@ export class TableBlock<T> implements MeasurableBlock {
       return width !== undefined ? { cellWidth: width } : {};
     });
 
-    const labelIndex = firstAggregateLabelIndex(columns);
-    this.runAutoTable(ctx, {
-      head: [content.head],
+    this.runSegmentTable(ctx, {
+      head: content.head,
       body: content.body,
-      ...(content.foot ? { foot: [mergeFootLabel(content.foot, labelIndex)] } : {}),
+      foot: content.foot,
+      labelIndex: firstAggregateLabelIndex(columns),
       columnStyles,
-      headStyles: this.resolveTokenStyles(ctx, ctx.typography.columnHeader),
-      bodyStyles: this.resolveTokenStyles(ctx, ctx.typography.detailRow),
-      footStyles: this.resolveTokenStyles(ctx, ctx.typography.summary),
-      didParseCell: this.cellHook(content.aligns, columns, this.node.data, this.node.style),
+      aligns: content.aligns,
+      columns,
+      rows: this.node.data,
+      footToken: ctx.typography.summary,
     });
   }
 
@@ -304,17 +304,50 @@ export class TableBlock<T> implements MeasurableBlock {
         continue;
       }
 
-      this.runAutoTable(ctx, {
-        head: [shared.head],
+      this.runSegmentTable(ctx, {
+        head: shared.head,
         body: node.body ?? [],
-        ...(node.foot ? { foot: [mergeFootLabel(node.foot, shared.labelIndex)] } : {}),
+        foot: node.foot,
+        labelIndex: shared.labelIndex,
         columnStyles: shared.columnStyles,
-        headStyles: this.resolveTokenStyles(ctx, ctx.typography.columnHeader),
-        bodyStyles: this.resolveTokenStyles(ctx, ctx.typography.detailRow),
-        footStyles: this.resolveTokenStyles(ctx, ctx.typography.groupFooter),
-        didParseCell: this.cellHook(shared.aligns, shared.columns, node.rows, this.node.style),
+        aligns: shared.aligns,
+        columns: shared.columns,
+        rows: node.rows,
+        footToken: ctx.typography.groupFooter,
       });
     }
+  }
+
+  /**
+   * Runs one AutoTable segment (a flat table's only segment, or one leaf's segment in a grouped
+   * table) — head/body/optional-foot/columnStyles/didParseCell wiring shared by both callers;
+   * only the foot's Typography token differs between them (summary vs groupFooter).
+   */
+  private runSegmentTable(
+    ctx: RenderContext,
+    params: {
+      head: string[];
+      body: string[][];
+      foot: readonly string[] | undefined;
+      labelIndex: number;
+      columnStyles: Record<string, Partial<Styles>>;
+      aligns: readonly ResolvedAlign[];
+      columns: readonly ReportColumn<T>[];
+      rows: readonly T[];
+      footToken: TextStyle;
+    },
+  ): void {
+    const { head, body, foot, labelIndex, columnStyles, aligns, columns, rows, footToken } = params;
+    this.runAutoTable(ctx, {
+      head: [head],
+      body,
+      ...(foot ? { foot: [mergeFootLabel(foot, labelIndex)] } : {}),
+      columnStyles,
+      headStyles: this.resolveTokenStyles(ctx, ctx.typography.columnHeader),
+      bodyStyles: this.resolveTokenStyles(ctx, ctx.typography.detailRow),
+      footStyles: this.resolveTokenStyles(ctx, footToken),
+      didParseCell: this.cellHook(aligns, columns, rows, this.node.style),
+    });
   }
 
   /** minimum space needed before drawing this node's band — a non-leaf must account for the child bands nested down to the first leaf */
