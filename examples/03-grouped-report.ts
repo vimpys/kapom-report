@@ -57,6 +57,7 @@ const groupedTable: TableNode<RegionSale> = {
       align: 'right',
       compute: (row) => nativeNumeric.multiply(row.qty, row.price),
       aggregate: 'sum',
+      numberFormat: { fractionDigits: 4 },
     },
   ],
   data: regionSales,
