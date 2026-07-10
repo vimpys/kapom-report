@@ -8,10 +8,14 @@ import { TableBlock } from './table-block';
 import { StackBlock } from './stack-block';
 import { SectionBlock } from './section-block';
 import { RawBlock } from './raw-block';
+import { assertRowNodeValid, DEFAULT_ROW_GAP, RowBlock } from './row-block';
+import { KeyValueBlock } from './key-value-block';
 import type {
   DividerNode,
   ImageNode,
+  KeyValueNode,
   RawNode,
+  RowNode,
   SectionNode,
   SignatureNode,
   SpacerNode,
@@ -54,4 +58,16 @@ export function registerBuiltinBlocks(): void {
       sectionNode.breakBefore ?? false,
     );
   });
+  registerBlockType('row', (node) => {
+    const rowNode = node as RowNode<unknown>;
+    assertRowNodeValid(rowNode); // fail-fast before building children (validates widths/gap + rejects table/section)
+    return new RowBlock(
+      rowNode.columns.map((column) => ({
+        width: column.width,
+        blocks: column.children.map((child) => createBlock(child)),
+      })),
+      rowNode.gap ?? DEFAULT_ROW_GAP,
+    );
+  });
+  registerBlockType('keyValue', (node) => new KeyValueBlock(node as KeyValueNode));
 }

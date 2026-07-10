@@ -125,6 +125,46 @@ export interface RawNode {
   draw: (doc: jsPDF, cursor: RawDrawCursor) => void;
 }
 
+/** one column of a RowNode — a vertical stack of blocks constrained to the column's width */
+export interface RowColumn<T> {
+  /** fixed width (mm); omit = share the remaining width equally with the other flexible columns */
+  width?: number;
+  children: readonly ReportNodeInput<T>[];
+}
+
+/**
+ * horizontal composite: columns laid side by side, each one a vertical stack of ordinary blocks;
+ * the row's height = its tallest column. The whole row is kept together (ensureSpace for the full
+ * height, never breaks inside) — meant for headers/info sections, not page-length content.
+ * v1 scope: children that paginate themselves or force page-breaks (table/section) are rejected
+ * fail-fast at build time.
+ */
+export interface RowNode<T> {
+  type: 'row';
+  columns: readonly RowColumn<T>[];
+  /** horizontal gap between columns (mm) — default DEFAULT_ROW_GAP */
+  gap?: number;
+}
+
+/**
+ * label + value pairs as aligned rows (quotation meta, totals, document properties) — the label
+ * column is bold by default; labelWidth omitted = widest label measured from the actual font.
+ * Labels/values are single-line by design (no wrapping) — for wrapped content compose a RowNode
+ * of text blocks instead.
+ */
+export interface KeyValueNode {
+  type: 'keyValue';
+  rows: ReadonlyArray<readonly [label: string, value: string]>;
+  /** label column width (mm) — default: widest label + a small gap, measured from the actual font */
+  labelWidth?: number;
+  /** merged over { ...DEFAULT_TEXT_STYLE, fontStyle: 'bold' } */
+  labelStyle?: Partial<TextStyle>;
+  /** merged over DEFAULT_TEXT_STYLE */
+  valueStyle?: Partial<TextStyle>;
+  /** value alignment within the remaining width — default 'left' (next to the label column) */
+  valueAlign?: HAlign;
+}
+
 /** composite: renders children in order, measureHeight sums recursively — children accept text shorthand */
 export interface StackNode<T> {
   type: 'stack';
@@ -153,7 +193,9 @@ export type ReportNode<T = unknown> =
   | TableNode<T>
   | RawNode
   | StackNode<T>
-  | SectionNode<T>;
+  | SectionNode<T>
+  | RowNode<T>
+  | KeyValueNode;
 
 /** a TextNode without the need for `type` — used as input shorthand (`{ content: 'x', role?, style? }`) */
 export type TextNodeShorthand = Omit<TextNode, 'type'>;

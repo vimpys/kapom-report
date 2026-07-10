@@ -48,11 +48,15 @@ export type {
   RawDrawCursor,
   StackNode,
   SectionNode,
+  RowColumn,
+  RowNode,
+  KeyValueNode,
   ReportNode,
   TextNodeShorthand,
   ReportNodeInput,
 } from './types/node';
 export { resolveNodeInput } from './types/node';
+export { DEFAULT_ROW_GAP } from './blocks/row-block';
 
 export type { Typography } from './types/typography';
 export { DEFAULT_TYPOGRAPHY, resolveTypography } from './types/typography';
