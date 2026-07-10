@@ -19,10 +19,14 @@ const logo = new Uint8Array(readFileSync(join(here, '../src/assets/kapom-report.
 /** jsPDF doc type, without the demo having to import jspdf itself */
 type Doc = Parameters<RawNode['draw']>[0];
 
-const BRAND: RGB = [47, 138, 87];
+/** pastel green theme — soft fills with sage text accents (deliberately its own palette, not the reference mockup's) */
+const BRAND_TEXT: RGB = [106, 158, 120]; // sage green — company name / title / contact lines
+const BRAND_FILL: RGB = [205, 231, 208]; // pastel green — grand-total box fill
+const BRAND_LINE: RGB = [178, 214, 186]; // soft green — dividers
+const BRAND_DARK: RGB = [47, 93, 63]; // deep green — readable text on the pastel fill
+const ZEBRA_FILL: RGB = [237, 246, 238]; // very light green tint — table zebra rows
 const INK: RGB = [40, 40, 40];
 const MUTED: RGB = [95, 95, 95];
-const WHITE: RGB = [255, 255, 255];
 
 interface QuotationItem {
   description: string;
@@ -82,11 +86,11 @@ const brandHeader: ReportNodeInput<QuotationItem> = {
   measure: () => 18,
   draw: (doc, { x, y, contentWidth }) => {
     doc.addImage(logo, 'PNG', x, y, 14, 14); // source PNG is 1:1, so a square box keeps the aspect
-    setText(doc, 12, 'bold', BRAND);
+    setText(doc, 12, 'bold', BRAND_TEXT);
     drawText(doc, 'KAPOM TRAVEL', x + 17, y + 7);
     drawText(doc, 'AND TOURS', x + 17, y + 12);
 
-    setText(doc, 8.5, 'normal', BRAND);
+    setText(doc, 8.5, 'normal', BRAND_TEXT);
     const right = x + contentWidth;
     rightText(doc, '123 ANYWHERE ST., ANY SUBURB, ANY CITY', right, y + 5);
     rightText(doc, '082 345 6789', right, y + 9.5);
@@ -99,7 +103,7 @@ const title: ReportNodeInput<QuotationItem> = {
   type: 'raw',
   measure: () => 12,
   draw: (doc, { x, y, contentWidth }) => {
-    setText(doc, 24, 'bold', BRAND);
+    setText(doc, 24, 'bold', BRAND_TEXT);
     centerText(doc, 'QUOTATION', x + contentWidth / 2, y + 9);
   },
 };
@@ -187,7 +191,7 @@ const itemsTable: TableNode<QuotationItem> = {
     },
   ],
   data: quotation.items,
-  style: { zebra: { even: [242, 242, 242] } },
+  style: { zebra: { even: ZEBRA_FILL } },
 };
 
 const TOTAL_PITCH = 6.5;
@@ -209,9 +213,9 @@ const totalsBlock: ReportNodeInput<QuotationItem> = {
     const totalBaseline = y + 4 + 2 * TOTAL_PITCH;
     setText(doc, 10.5, 'bold', INK);
     drawText(doc, 'Total', labelX, totalBaseline);
-    doc.setFillColor(BRAND[0], BRAND[1], BRAND[2]);
+    doc.setFillColor(BRAND_FILL[0], BRAND_FILL[1], BRAND_FILL[2]);
     doc.rect(right - 40, totalBaseline - 5, 40, 7.5, 'F');
-    setText(doc, 10.5, 'bold', WHITE);
+    setText(doc, 10.5, 'bold', BRAND_DARK);
     rightText(doc, money(grandTotal), right - 2, totalBaseline);
   },
 };
@@ -225,7 +229,7 @@ const report = createKapomReport<QuotationItem>({
     { type: 'spacer', height: 4 },
     infoBlock,
     { type: 'spacer', height: 4 },
-    { type: 'divider', thickness: 1, color: BRAND },
+    { type: 'divider', thickness: 1, color: BRAND_LINE },
     { type: 'spacer', height: 6 },
     labeledSection('PROJECT DESCRIPTION', quotation.projectDescription),
     { type: 'spacer', height: 4 },
@@ -233,7 +237,7 @@ const report = createKapomReport<QuotationItem>({
     { type: 'spacer', height: 6 },
     totalsBlock,
     { type: 'spacer', height: 4 },
-    { type: 'divider', thickness: 1, color: BRAND },
+    { type: 'divider', thickness: 1, color: BRAND_LINE },
     { type: 'spacer', height: 6 },
     labeledSection('TERMS & CONDITIONS', quotation.terms, 'PLEASE CONFIRM YOUR ACCEPTANCE OF THIS QUOTE'),
     { type: 'spacer', height: 10 },
