@@ -104,7 +104,8 @@ export class RenderEngine {
     const measureCtx = this.createMeasureContext();
     const renderCtx = this.createRenderContext();
     for (const block of blocks) {
-      const height = block.measureHeight(measureCtx);
+      // a self-splitting block (breakable box) only needs room to start — full height otherwise
+      const height = block.minStartHeight?.(measureCtx) ?? block.measureHeight(measureCtx);
       this.cursor.ensureSpace(height);
       block.render(renderCtx);
     }

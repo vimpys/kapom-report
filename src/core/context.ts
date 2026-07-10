@@ -62,6 +62,15 @@ export interface RenderContext {
 export interface MeasurableBlock {
   /** total height (recursive for composites like group/nested) */
   measureHeight(ctx: MeasureContext): number;
+  /**
+   * optional — the minimum height needed to *start* rendering, for a block that splits itself
+   * across pages (e.g. a breakable box: just its first child + padding). The engine's render
+   * loop (and StackBlock's per-child loop) uses this instead of measureHeight for the
+   * break-before decision, so such a block can start in the space left on the current page and
+   * continue on the next, instead of being pushed whole to a fresh page. Absent = the block
+   * needs its full measureHeight up front (every non-splitting block).
+   */
+  minStartHeight?(ctx: MeasureContext): number;
   /** draw onto the doc; must not compute page-breaks itself — use ctx.ensureSpace */
   render(ctx: RenderContext): void;
 }

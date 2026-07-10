@@ -18,7 +18,8 @@ export class StackBlock implements MeasurableBlock {
   render(ctx: RenderContext): void {
     const measureCtx = deriveMeasureContext(ctx);
     for (const child of this.children) {
-      const height = child.measureHeight(measureCtx);
+      // same contract as the engine loop: a self-splitting child only needs room to start
+      const height = child.minStartHeight?.(measureCtx) ?? child.measureHeight(measureCtx);
       ctx.ensureSpace(height);
       child.render(ctx);
     }

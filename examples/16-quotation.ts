@@ -2,15 +2,15 @@
  * Demo — Quotation (a real-world branded business document)
  * Focus: composing a complete document declaratively — `row` for the side-by-side layouts
  * (brand header / meta+customer / label+paragraph sections / right-aligned totals), `keyValue`
- * for label:value rows, and `align` on plain text for the centered title. No manual x/y anywhere;
- * the single remaining { type: 'raw' } block is the highlighted grand-total box — a deliberate
- * example of the escape hatch coexisting with declarative blocks in one document.
+ * for label:value rows, `align` on plain text for the centered title, and `box` for the
+ * highlighted grand total. 100% declarative — no manual x/y, no raw jsPDF access anywhere
+ * (see 15-raw-escape-hatch for when the raw escape hatch is the right tool).
  */
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createKapomReport, drawText } from '../src/index';
-import type { ReportNodeInput, RGB } from '../src/index';
+import { createKapomReport } from '../src/index';
+import type { RGB } from '../src/index';
 import { fontConfig, saveReport } from './shared';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -63,28 +63,6 @@ const money = (n: number) =>
 const contactStyle = { fontSize: 8.5, color: BRAND_TEXT } as const;
 const companyStyle = { fontSize: 12, fontStyle: 'bold', color: BRAND_TEXT } as const;
 const headingStyle = { fontSize: 10.5, fontStyle: 'bold', color: INK } as const;
-
-/**
- * grand total in a filled brand-color box — the one layout the declarative blocks don't cover
- * (a text with a painted background), kept as a raw escape hatch on purpose
- */
-const grandTotalBox: ReportNodeInput<QuotationItem> = {
-  type: 'raw',
-  measure: () => 8.5,
-  draw: (doc, { x, y, contentWidth }) => {
-    const right = x + contentWidth;
-    doc.setFontSize(10.5);
-    doc.setFont('Sarabun', 'bold');
-    doc.setTextColor(INK[0], INK[1], INK[2]);
-    drawText(doc, 'Total', x, y + 5.5);
-
-    doc.setFillColor(BRAND_FILL[0], BRAND_FILL[1], BRAND_FILL[2]);
-    doc.rect(right - 40, y, 40, 7.5, 'F');
-    doc.setTextColor(BRAND_DARK[0], BRAND_DARK[1], BRAND_DARK[2]);
-    const value = money(grandTotal);
-    drawText(doc, value, right - 2 - doc.getTextWidth(value), y + 5.5);
-  },
-};
 
 const report = createKapomReport<QuotationItem>({
   font: fontConfig,
@@ -178,7 +156,7 @@ const report = createKapomReport<QuotationItem>({
     },
     { type: 'spacer', height: 6 },
 
-    // ── totals — right column only; keyValue right-aligns the numbers, raw box for the total ──
+    // ── totals — right column only; keyValue right-aligns the numbers, box highlights the total ──
     {
       type: 'row',
       columns: [
@@ -195,7 +173,29 @@ const report = createKapomReport<QuotationItem>({
               ],
             },
             { type: 'spacer', height: 2 },
-            grandTotalBox,
+            {
+              type: 'row',
+              columns: [
+                { children: [{ content: 'Total', style: headingStyle }] },
+                {
+                  width: 40,
+                  children: [
+                    {
+                      type: 'box',
+                      background: BRAND_FILL,
+                      padding: 1.5,
+                      children: [
+                        {
+                          content: money(grandTotal),
+                          align: 'right',
+                          style: { fontSize: 10.5, fontStyle: 'bold', color: BRAND_DARK },
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
           ],
         },
       ],

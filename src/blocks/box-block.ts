@@ -65,6 +65,19 @@ export class BoxBlock implements MeasurableBlock {
     );
   }
 
+  /**
+   * a breakable box only needs room for its first child (+ padding) to start on the current
+   * page — without this, the engine's break-before check (which uses full measureHeight) would
+   * push a long box whole to a fresh page and the mid-page split would never happen; a
+   * keepTogether box genuinely needs its full height, so it reports exactly that
+   */
+  minStartHeight(ctx: MeasureContext): number {
+    if (this.options.keepTogether) return this.measureHeight(ctx);
+    const inner: MeasureContext = { ...ctx, contentWidth: this.innerWidth(ctx.contentWidth) };
+    const first = this.children[0];
+    return (first ? first.measureHeight(inner) : 0) + 2 * this.options.padding;
+  }
+
   render(ctx: RenderContext): void {
     const { padding, keepTogether } = this.options;
     const innerWidth = this.innerWidth(ctx.contentWidth);

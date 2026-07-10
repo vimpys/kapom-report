@@ -183,6 +183,34 @@ describe('BoxBlock — page break (clone mode)', () => {
   });
 });
 
+describe('BoxBlock — minStartHeight (engine ไม่ดันกล่อง breakable ไปหน้าใหม่ทั้งก้อน)', () => {
+  it('กล่องยาวเกินพื้นที่เหลือ → เริ่ม segment แรกกลางหน้าปัจจุบัน ไม่ใช่ถูกดันไปหัวหน้าใหม่', () => {
+    const { stub, doc } = makeStubDoc(['line1']);
+    const engine = new RenderEngine(doc);
+    // title 1 บรรทัด แล้วตามด้วยกล่อง 70 ลูก (~288mm รวม padding — เกิน 1 หน้าแน่นอน)
+    const title = new TextBlock({ type: 'text', content: 'title' });
+    const box = textBoxBlock(70, { background: [200, 200, 200] });
+
+    engine.render([title, box]);
+
+    // เดิม (ก่อนมี minStartHeight): ensureSpace(288) จะ break ก่อน → rect แรกอยู่ y=15 หน้า 2
+    // ตอนนี้: กล่องเริ่มต่อจาก title บนหน้า 1 แล้วค่อยตัดเอง
+    const firstRectY = stub.rect.mock.calls[0]?.[1] as number;
+    expect(firstRectY).toBeCloseTo(15 + LINE_HEIGHT, 6);
+    expect(stub.addPage).toHaveBeenCalledTimes(1); // ตัด 1 ครั้งระหว่างกล่อง ไม่ใช่ก่อนกล่อง
+    expect(stub.rect).toHaveBeenCalledTimes(2); // 2 segments = 2 กล่อง
+  });
+
+  it('keepTogether: minStartHeight = ความสูงเต็ม (ต้องมีที่ทั้งก้อนเท่านั้น)', () => {
+    const { doc } = makeStubDoc(['line1']);
+    const engine = new RenderEngine(doc);
+    const block = textBoxBlock(2, { keepTogether: true });
+    const ctx = engine.createMeasureContext();
+
+    expect(block.minStartHeight(ctx)).toBeCloseTo(block.measureHeight(ctx), 6);
+  });
+});
+
 describe('RowBlock — overflow guard (แก้พร้อม box)', () => {
   it('row สูงเกินหน้าเต็ม → throw KapomLayoutError แทนวาดล้นเงียบ', () => {
     const { doc } = makeStubDoc(Array.from({ length: 70 }, (_, i) => `line${i}`));
