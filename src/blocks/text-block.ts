@@ -46,6 +46,7 @@ export class TextBlock implements MeasurableBlock {
   render(ctx: RenderContext): void {
     const style = resolveTextStyle(ctx.typography, this.node.role, this.node.style);
     const { doc, cursor, contentWidth } = ctx;
+    const align = this.node.align ?? 'left';
 
     applyTextStyle(doc, style);
 
@@ -53,7 +54,19 @@ export class TextBlock implements MeasurableBlock {
     const singleLineHeight = lineHeightOf(doc, style.fontSize);
     // jsPDF treats y as the first line's baseline, not the top edge — shift down by 1
     // line-height to match cursor.y's meaning, which the whole engine treats as a box's top edge
-    drawText(doc, lines, cursor.x, cursor.y + singleLineHeight);
+    const firstBaseline = cursor.y + singleLineHeight;
+
+    if (align === 'left') {
+      drawText(doc, lines, cursor.x, firstBaseline);
+    } else {
+      // center/right positions vary per line — draw each line at its own x
+      // (getTextWidth reads the fontSize applyTextStyle already set on the doc)
+      lines.forEach((line, i) => {
+        const free = contentWidth - doc.getTextWidth(line);
+        const x = align === 'center' ? cursor.x + free / 2 : cursor.x + free;
+        drawText(doc, line, x, firstBaseline + i * singleLineHeight);
+      });
+    }
 
     ctx.advanceY(lines.length * singleLineHeight);
   }

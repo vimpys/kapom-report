@@ -1,6 +1,6 @@
 import type { jsPDF } from 'jspdf';
 import type { ReportColumn } from './column';
-import type { CellStyle, RGB, TextStyle } from './primitives';
+import type { CellStyle, HAlign, RGB, TextStyle } from './primitives';
 import type { Typography } from './typography';
 
 /** the position + available width the engine hands a RawNode's draw callback */
@@ -16,6 +16,8 @@ export interface TextNode {
   /** use a Typography token (e.g. 'reportTitle'/'reportSubtitle'/'sectionHeading') as the base style instead of DEFAULT_TEXT_STYLE — style overrides one property at a time */
   role?: keyof Typography;
   style?: Partial<TextStyle>;
+  /** horizontal alignment within the content width (applied per line after wrapping) — default 'left' */
+  align?: HAlign;
 }
 
 export interface SpacerNode {

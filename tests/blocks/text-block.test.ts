@@ -92,6 +92,54 @@ describe('TextBlock — render', () => {
     expect(stub.setFont).toHaveBeenCalledWith('helvetica', DEFAULT_TYPOGRAPHY.reportTitle.fontStyle);
   });
 
+  it('align: center — x ต่อบรรทัด = cursor.x + (contentWidth - textWidth)/2', () => {
+    // stub getTextWidth = length*2 → 'line1' กว้าง 10; contentWidth 180 → x = 15 + (180-10)/2 = 100
+    const { stub, doc } = makeStubDoc(['line1']);
+    const engine = new RenderEngine(doc);
+    const block = new TextBlock({ type: 'text', content: 'hello', align: 'center' });
+
+    block.render(engine.createRenderContext());
+
+    const expectedLineHeight = (DEFAULT_TEXT_STYLE.fontSize * 1.15) / SCALE_FACTOR;
+    expect(stub.text).toHaveBeenCalledWith('line1', 100, 15 + expectedLineHeight);
+  });
+
+  it('align: right — x ต่อบรรทัด = cursor.x + contentWidth - textWidth', () => {
+    const { stub, doc } = makeStubDoc(['line1']);
+    const engine = new RenderEngine(doc);
+    const block = new TextBlock({ type: 'text', content: 'hello', align: 'right' });
+
+    block.render(engine.createRenderContext());
+
+    const expectedLineHeight = (DEFAULT_TEXT_STYLE.fontSize * 1.15) / SCALE_FACTOR;
+    expect(stub.text).toHaveBeenCalledWith('line1', 15 + 180 - 10, 15 + expectedLineHeight);
+  });
+
+  it('align กับหลายบรรทัด — แต่ละบรรทัดคำนวณ x ของตัวเอง + baseline เลื่อนลงทีละ line-height', () => {
+    // 'line1' กว้าง 10, 'ab' กว้าง 4 — จุดกึ่งกลางต่างกัน
+    const { stub, doc } = makeStubDoc(['line1', 'ab']);
+    const engine = new RenderEngine(doc);
+    const block = new TextBlock({ type: 'text', content: 'hello', align: 'center' });
+
+    block.render(engine.createRenderContext());
+
+    const lineHeight = (DEFAULT_TEXT_STYLE.fontSize * 1.15) / SCALE_FACTOR;
+    expect(stub.text).toHaveBeenNthCalledWith(1, 'line1', 100, 15 + lineHeight);
+    expect(stub.text).toHaveBeenNthCalledWith(2, 'ab', 15 + (180 - 4) / 2, 15 + 2 * lineHeight);
+  });
+
+  it('align ไม่กระทบระยะ advance cursor (ยังเท่าจำนวนบรรทัด × line-height)', () => {
+    const { doc } = makeStubDoc(['line1', 'line2']);
+    const engine = new RenderEngine(doc);
+    const block = new TextBlock({ type: 'text', content: 'hello', align: 'right' });
+    const ctx = engine.createRenderContext();
+
+    block.render(ctx);
+
+    const lineHeight = (DEFAULT_TEXT_STYLE.fontSize * 1.15) / SCALE_FACTOR;
+    expect(ctx.cursor.y).toBeCloseTo(15 + 2 * lineHeight, 6);
+  });
+
   it('style override ทับ role token ทีละ property เท่านั้น', () => {
     const { stub, doc } = makeStubDoc(['line1']);
     const engine = new RenderEngine(doc);
