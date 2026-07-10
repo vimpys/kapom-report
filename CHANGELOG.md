@@ -11,7 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Declarative report tree** — `ReportNode` as single source of truth; fluent chain optional wrapper
 - **Core blocks**: text, spacer, divider, image, table (flat + grouped + nested master-detail)
-- **Composite layouts**: stack, section, signature (multi-slot), raw escape hatch for custom drawing
+- **Composite layouts**: stack, section, row (side-by-side columns with fixed/flexible widths, keep-together), keyValue (aligned label:value rows), signature (multi-slot), raw escape hatch for custom drawing
+- **Text alignment**: `align: 'left' | 'center' | 'right'` on text blocks (per line, after wrapping)
 - **Table features**: 
   - Row numbers (continuous/per-group/per-page)
   - Computed columns, running totals
@@ -33,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Numeric strategy**: arithmetic boundary; supports Decimalish (number|string) with `NumericStrategy` contract
 - **Number formatting**: Intl.NumberFormat with locale (default th-TH, 2 decimals) + column-level override
 - **Date formatting**: Intl.DateTimeFormat with Buddhist calendar opt-in (default en-CA)
-- **15 runnable examples** covering: facade zero-config, text/image blocks, save/preview, flat table, styled table, grouped table, nested group, nested table (master-detail), report header/section, composite multi-section report, page header/footer, page number, system fields + anchor, signature + watermark, raw escape hatch
+- **16 runnable examples** covering: facade zero-config, text/image blocks, save/preview, flat table, styled table, grouped table, nested group, nested table (master-detail), report header/section, composite multi-section report, page header/footer, page number, system fields + anchor, signature + watermark, raw escape hatch, quotation (real-world branded document composed from row/keyValue/align)
 
 ### Technical
 
@@ -46,7 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Project Structure
 
 - `src/core/` — cursor, engine, context, page-band, watermark, system-field, anchor, page-number, errors, text metrics/normalizer/draw
-- `src/blocks/` — text, spacer, divider, image, table, signature, stack, section, raw, block registry
+- `src/blocks/` — text, spacer, divider, image, table, signature, stack, section, row, keyValue, raw, block registry
 - `src/table/` — column resolver, group resolver, group tree (recursive), column width computation, aggregates
 - `src/format/` — number format, date format
 - `src/font/` — font config, register fonts
