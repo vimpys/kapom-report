@@ -171,6 +171,32 @@ export interface KeyValueNode {
   valueAlign?: HAlign;
 }
 
+/**
+ * a painted container: fill/border/padding around a vertical stack of blocks. By default it
+ * splits across pages at child boundaries, "clone" style — each page's segment closes its own
+ * background/border + padding, then a fresh box continues at the top of the next page (a single
+ * text node never splits internally — it moves to the next segment whole, so a one-child box
+ * effectively keeps together automatically). Children that paginate themselves or force
+ * page-breaks (table/section) are rejected fail-fast at build time, same as RowNode.
+ */
+export interface BoxNode<T> {
+  type: 'box';
+  children: readonly ReportNodeInput<T>[];
+  /** fill color behind the content — unset = no fill (a transparent padded group) */
+  background?: RGB;
+  /** border stroke color — unset = no border */
+  borderColor?: RGB;
+  /** border stroke width (mm) — default DEFAULT_BOX_BORDER_WIDTH; only used when borderColor is set */
+  borderWidth?: number;
+  /** uniform inner padding (mm) — default DEFAULT_BOX_PADDING */
+  padding?: number;
+  /**
+   * never split: not enough room = the whole box moves to the next page, and content taller
+   * than one full page throws KapomLayoutError — default false (split between children)
+   */
+  keepTogether?: boolean;
+}
+
 /** composite: renders children in order, measureHeight sums recursively — children accept text shorthand */
 export interface StackNode<T> {
   type: 'stack';
@@ -201,7 +227,8 @@ export type ReportNode<T = unknown> =
   | StackNode<T>
   | SectionNode<T>
   | RowNode<T>
-  | KeyValueNode;
+  | KeyValueNode
+  | BoxNode<T>;
 
 /** a TextNode without the need for `type` — used as input shorthand (`{ content: 'x', role?, style? }`) */
 export type TextNodeShorthand = Omit<TextNode, 'type'>;

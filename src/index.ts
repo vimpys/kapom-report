@@ -51,12 +51,14 @@ export type {
   RowColumn,
   RowNode,
   KeyValueNode,
+  BoxNode,
   ReportNode,
   TextNodeShorthand,
   ReportNodeInput,
 } from './types/node';
 export { resolveNodeInput } from './types/node';
 export { DEFAULT_ROW_GAP } from './blocks/row-block';
+export { DEFAULT_BOX_PADDING, DEFAULT_BOX_BORDER_WIDTH } from './blocks/box-block';
 
 export type { Typography } from './types/typography';
 export { DEFAULT_TYPOGRAPHY, resolveTypography } from './types/typography';

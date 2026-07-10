@@ -8,9 +8,11 @@ import { TableBlock } from './table-block';
 import { StackBlock } from './stack-block';
 import { SectionBlock } from './section-block';
 import { RawBlock } from './raw-block';
-import { assertRowNodeValid, DEFAULT_ROW_GAP, RowBlock } from './row-block';
+import { assertConfinedChildAllowed, assertRowNodeValid, DEFAULT_ROW_GAP, RowBlock } from './row-block';
 import { KeyValueBlock } from './key-value-block';
+import { assertBoxNodeValid, BoxBlock, DEFAULT_BOX_BORDER_WIDTH, DEFAULT_BOX_PADDING } from './box-block';
 import type {
+  BoxNode,
   DividerNode,
   ImageNode,
   KeyValueNode,
@@ -70,4 +72,19 @@ export function registerBuiltinBlocks(): void {
     );
   });
   registerBlockType('keyValue', (node) => new KeyValueBlock(node as KeyValueNode));
+  registerBlockType('box', (node) => {
+    const boxNode = node as BoxNode<unknown>;
+    assertBoxNodeValid(boxNode);
+    for (const child of boxNode.children) assertConfinedChildAllowed(child, 'box');
+    return new BoxBlock(
+      boxNode.children.map((child) => createBlock(child)),
+      {
+        background: boxNode.background,
+        borderColor: boxNode.borderColor,
+        borderWidth: boxNode.borderWidth ?? DEFAULT_BOX_BORDER_WIDTH,
+        padding: boxNode.padding ?? DEFAULT_BOX_PADDING,
+        keepTogether: boxNode.keepTogether ?? false,
+      },
+    );
+  });
 }

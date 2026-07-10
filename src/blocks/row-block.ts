@@ -1,3 +1,4 @@
+import { buildConfinedContext } from '../core/confined-context';
 import type { MeasurableBlock, MeasureContext, RenderContext } from '../core/context';
 import { KapomError, KapomLayoutError } from '../core/errors';
 import { deriveMeasureContext } from '../core/measure-context';
@@ -51,24 +52,25 @@ export function resolveRowColumnWidths(
 }
 
 /**
- * v1 scope guard: a row is a keep-together unit rendered inside a fixed box — children that
- * paginate themselves (table syncs the cursor across pages) or force page-breaks (section)
- * can't work inside it, so reject them fail-fast at build time instead of failing mid-render.
- * Walks nested stack/row children too, since the restriction is about what ends up rendering.
+ * Scope guard shared by the confined composites (row column / box): children render inside a
+ * fixed reserved box, so blocks that paginate themselves (table syncs the cursor across pages)
+ * or force page-breaks (section) can't work inside — reject them fail-fast at build time instead
+ * of failing mid-render. Walks nested stack/row/box children too, since the restriction is about
+ * what ends up rendering.
  */
-export function assertRowChildAllowed(input: ReportNodeInput<unknown>): void {
+export function assertConfinedChildAllowed(input: ReportNodeInput<unknown>, container: string): void {
   const node = resolveNodeInput(input);
   if (node.type === 'table' || node.type === 'section') {
     throw new KapomError(
-      `row: a '${node.type}' block is not supported inside a row column (v1) — it paginates or breaks pages itself, which conflicts with the row's keep-together box`,
+      `${container}: a '${node.type}' block is not supported inside a ${container} (v1) — it paginates or breaks pages itself, which conflicts with the reserved box it would render into`,
     );
   }
-  if (node.type === 'stack') {
-    for (const child of node.children) assertRowChildAllowed(child);
+  if (node.type === 'stack' || node.type === 'box') {
+    for (const child of node.children) assertConfinedChildAllowed(child, container);
   }
   if (node.type === 'row') {
     for (const column of node.columns) {
-      for (const child of column.children) assertRowChildAllowed(child);
+      for (const child of column.children) assertConfinedChildAllowed(child, container);
     }
   }
 }
@@ -82,7 +84,7 @@ export function assertRowNodeValid(node: RowNode<unknown>): void {
     if (column.width !== undefined && (!Number.isFinite(column.width) || column.width <= 0)) {
       throw new KapomLayoutError(`row: column width must be > 0 (got ${column.width})`);
     }
-    for (const child of column.children) assertRowChildAllowed(child);
+    for (const child of column.children) assertConfinedChildAllowed(child, 'row column');
   }
   if (node.gap !== undefined && (!Number.isFinite(node.gap) || node.gap < 0)) {
     throw new KapomLayoutError(`row: gap must be >= 0 (got ${node.gap})`);
@@ -132,6 +134,15 @@ export class RowBlock implements MeasurableBlock {
       ...this.columns.map((column, i) => this.columnHeight(measureCtx, column, resolved[i]?.width ?? 0)),
     );
 
+    // a row never breaks inside itself — taller than one full page means the content can't fit
+    // anywhere; fail fast instead of silently drawing past the bottom of the content area
+    const fullPageHeight = ctx.contentBottom - ctx.contentTop;
+    if (rowHeight > fullPageHeight) {
+      throw new KapomLayoutError(
+        `row: content height ${rowHeight.toFixed(2)} exceeds one full page (${fullPageHeight.toFixed(2)}) — a row keeps together and cannot split; shorten the content or use plain blocks`,
+      );
+    }
+
     ctx.ensureSpace(rowHeight);
     const top = ctx.cursor.y;
     const left = ctx.margins.left; // margins.left (not cursor.x) follows an indent override, same lesson as drawGroupBand
@@ -139,7 +150,7 @@ export class RowBlock implements MeasurableBlock {
     this.columns.forEach((column, i) => {
       const box = resolved[i];
       if (!box) return;
-      const columnCtx = buildColumnContext(ctx, left + box.x, box.width, top);
+      const columnCtx = buildConfinedContext(ctx, left + box.x, box.width, top, 'row column');
       for (const block of column.blocks) {
         block.render(columnCtx);
       }
@@ -152,52 +163,4 @@ export class RowBlock implements MeasurableBlock {
     const columnCtx: MeasureContext = { ...ctx, contentWidth: width };
     return column.blocks.reduce((sum, block) => sum + block.measureHeight(columnCtx), 0);
   }
-}
-
-/**
- * A RenderContext confined to one column's box: cursor.x pinned to the column's left edge,
- * cursor.y tracked locally from the row's top (advanceY moves only this column), margins/
- * contentWidth describe the column. ensureSpace is a no-op — the row already reserved its full
- * height. syncCursor/forcePageBreak throw (their callers are rejected at build time anyway).
- */
-function buildColumnContext(
-  ctx: RenderContext,
-  columnX: number,
-  columnWidth: number,
-  top: number,
-): RenderContext {
-  const pageWidth = ctx.margins.left + ctx.contentWidth + ctx.margins.right;
-  const state = { y: top };
-  return {
-    ...ctx,
-    cursor: {
-      get x() {
-        return columnX;
-      },
-      get y() {
-        return state.y;
-      },
-      get pageIndex() {
-        return ctx.cursor.pageIndex;
-      },
-    },
-    margins: {
-      ...ctx.margins,
-      left: columnX,
-      right: pageWidth - columnX - columnWidth,
-    },
-    contentWidth: columnWidth,
-    advanceY: (amount) => {
-      state.y += amount;
-    },
-    ensureSpace: () => {
-      /* no-op — the row reserved its full height before any column rendered */
-    },
-    syncCursor: () => {
-      throw new KapomLayoutError('row: a block that paginates itself cannot render inside a row column');
-    },
-    forcePageBreak: () => {
-      throw new KapomLayoutError('row: forcePageBreak is not supported inside a row column');
-    },
-  };
 }
