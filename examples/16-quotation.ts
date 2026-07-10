@@ -1,23 +1,20 @@
 /**
  * Demo — Quotation (a real-world branded business document)
- * Focus: composing a complete document by mixing facade blocks (table/divider/signature/spacer)
- * with { type: 'raw' } escape hatches for the layouts the lib has no block for: a two-column
- * brand header, a centered title, side-by-side label+paragraph sections, and a highlighted
- * grand-total box. The engine still owns the cursor and page-breaks throughout — each raw block
- * only fills in measure() + draw(), and all text goes through the exported drawText() facade.
+ * Focus: composing a complete document declaratively — `row` for the side-by-side layouts
+ * (brand header / meta+customer / label+paragraph sections / right-aligned totals), `keyValue`
+ * for label:value rows, and `align` on plain text for the centered title. No manual x/y anywhere;
+ * the single remaining { type: 'raw' } block is the highlighted grand-total box — a deliberate
+ * example of the escape hatch coexisting with declarative blocks in one document.
  */
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createKapomReport, drawText } from '../src/index';
-import type { RawNode, ReportNodeInput, RGB, TableNode } from '../src/index';
+import type { ReportNodeInput, RGB } from '../src/index';
 import { fontConfig, saveReport } from './shared';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const logo = new Uint8Array(readFileSync(join(here, '../src/assets/kapom-report.png')));
-
-/** jsPDF doc type, without the demo having to import jspdf itself */
-type Doc = Parameters<RawNode['draw']>[0];
 
 /** pastel green theme — soft fills with sage text accents (deliberately its own palette, not the reference mockup's) */
 const BRAND_TEXT: RGB = [106, 158, 120]; // sage green — company name / title / contact lines
@@ -43,20 +40,16 @@ const quotation = {
     name: 'Gerrit Kruger',
     lines: ['123 Anywhere St., Any City', 'Limpopo, 1234', '082 345 6789'],
   },
-  projectDescription: [
-    'Private 4-person travel package in Chiang Mai: a full-day city tour,',
-    'round-trip airport transfers, and 7-day travel insurance for the group.',
-  ],
+  projectDescription:
+    'Private 4-person travel package in Chiang Mai: a full-day city tour, round-trip airport transfers, and 7-day travel insurance for the group.',
   items: [
     { description: 'City tour package — full day (per person)', qty: 4, unitPrice: 1500 },
     { description: 'Airport transfer — round trip (per van)', qty: 2, unitPrice: 900 },
     { description: 'Travel insurance — 7 days (per person)', qty: 4, unitPrice: 350 },
   ] as readonly QuotationItem[],
   vatRate: 0.07,
-  terms: [
-    'Above information is not an invoice and only an estimate of the services described.',
-    'Payment will be due prior to provision of the services listed above.',
-  ],
+  terms:
+    'Above information is not an invoice and only an estimate of the services described. Payment will be due prior to provision of the services listed above.',
 };
 
 const subtotal = quotation.items.reduce((sum, item) => sum + item.qty * item.unitPrice, 0);
@@ -66,181 +59,165 @@ const grandTotal = subtotal + vat;
 const money = (n: number) =>
   n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-function setText(doc: Doc, size: number, style: 'normal' | 'bold', color: RGB): void {
-  doc.setFontSize(size);
-  doc.setFont('Sarabun', style);
-  doc.setTextColor(color[0], color[1], color[2]);
-}
+const contactStyle = { fontSize: 8.5, color: BRAND_TEXT } as const;
+const companyStyle = { fontSize: 12, fontStyle: 'bold', color: BRAND_TEXT } as const;
+const headingStyle = { fontSize: 10.5, fontStyle: 'bold', color: INK } as const;
 
-function rightText(doc: Doc, text: string, rightX: number, baseline: number): void {
-  drawText(doc, text, rightX - doc.getTextWidth(text), baseline);
-}
-
-function centerText(doc: Doc, text: string, centerX: number, baseline: number): void {
-  drawText(doc, text, centerX - doc.getTextWidth(text) / 2, baseline);
-}
-
-/** brand header — logo + company name on the left, contact lines right-aligned (raw: two columns on one row) */
-const brandHeader: ReportNodeInput<QuotationItem> = {
+/**
+ * grand total in a filled brand-color box — the one layout the declarative blocks don't cover
+ * (a text with a painted background), kept as a raw escape hatch on purpose
+ */
+const grandTotalBox: ReportNodeInput<QuotationItem> = {
   type: 'raw',
-  measure: () => 18,
-  draw: (doc, { x, y, contentWidth }) => {
-    doc.addImage(logo, 'PNG', x, y, 14, 14); // source PNG is 1:1, so a square box keeps the aspect
-    setText(doc, 12, 'bold', BRAND_TEXT);
-    drawText(doc, 'KAPOM TRAVEL', x + 17, y + 7);
-    drawText(doc, 'AND TOURS', x + 17, y + 12);
-
-    setText(doc, 8.5, 'normal', BRAND_TEXT);
-    const right = x + contentWidth;
-    rightText(doc, '123 ANYWHERE ST., ANY SUBURB, ANY CITY', right, y + 5);
-    rightText(doc, '082 345 6789', right, y + 9.5);
-    rightText(doc, 'WWW.KAPOMTRAVEL.COM', right, y + 14);
-  },
-};
-
-/** centered page title (raw: TextNode has no center alignment) */
-const title: ReportNodeInput<QuotationItem> = {
-  type: 'raw',
-  measure: () => 12,
-  draw: (doc, { x, y, contentWidth }) => {
-    setText(doc, 24, 'bold', BRAND_TEXT);
-    centerText(doc, 'QUOTATION', x + contentWidth / 2, y + 9);
-  },
-};
-
-const INFO_PITCH = 5.5;
-const infoRows: ReadonlyArray<readonly [string, string]> = [
-  ['Quotation No:', quotation.number],
-  ['Date:', quotation.date],
-  ['Valid Until:', quotation.validUntil],
-  ['Customer ID:', quotation.customerId],
-];
-
-/** quotation meta (bold label + value) on the left, customer block on the right */
-const infoBlock: ReportNodeInput<QuotationItem> = {
-  type: 'raw',
-  measure: () => infoRows.length * INFO_PITCH + 2,
-  draw: (doc, { x, y, contentWidth }) => {
-    infoRows.forEach(([label, value], i) => {
-      const baseline = y + 4 + i * INFO_PITCH;
-      setText(doc, 10, 'bold', INK);
-      drawText(doc, label, x, baseline);
-      setText(doc, 10, 'normal', INK);
-      drawText(doc, value, x + 32, baseline);
-    });
-
-    const rightCol = x + contentWidth * 0.55;
-    setText(doc, 10, 'bold', INK);
-    drawText(doc, quotation.customer.name, rightCol, y + 4);
-    setText(doc, 10, 'normal', INK);
-    quotation.customer.lines.forEach((line, i) => {
-      drawText(doc, line, rightCol, y + 4 + (i + 1) * INFO_PITCH);
-    });
-  },
-};
-
-const SECTION_LABEL_WIDTH = 52;
-const SECTION_PITCH = 5;
-
-/** bold section label on the left + paragraph lines on the right (+ optional bold confirm line below) */
-function labeledSection(
-  label: string,
-  paragraph: readonly string[],
-  confirmLine?: string,
-): ReportNodeInput<QuotationItem> {
-  const rows = Math.max(1, paragraph.length) + (confirmLine !== undefined ? 2 : 0);
-  return {
-    type: 'raw',
-    measure: () => rows * SECTION_PITCH + 2,
-    draw: (doc, { x, y }) => {
-      const firstBaseline = y + 4;
-      setText(doc, 10.5, 'bold', INK);
-      drawText(doc, label, x, firstBaseline);
-
-      setText(doc, 10, 'normal', MUTED);
-      paragraph.forEach((line, i) => {
-        drawText(doc, line, x + SECTION_LABEL_WIDTH, firstBaseline + i * SECTION_PITCH);
-      });
-
-      if (confirmLine !== undefined) {
-        setText(doc, 10.5, 'bold', INK);
-        drawText(
-          doc,
-          confirmLine,
-          x + SECTION_LABEL_WIDTH,
-          firstBaseline + (paragraph.length + 1) * SECTION_PITCH,
-        );
-      }
-    },
-  };
-}
-
-/** line items — a plain table block; Total is a computed column, zebra gives the striped body */
-const itemsTable: TableNode<QuotationItem> = {
-  type: 'table',
-  columns: [
-    { type: 'data', key: 'description', header: 'Description' },
-    { type: 'data', key: 'qty', header: 'Quantity', align: 'center' },
-    { type: 'data', key: 'unitPrice', header: 'Price', align: 'right', numberFormat: {} },
-    {
-      type: 'computed',
-      header: 'Total',
-      align: 'right',
-      compute: (row) => row.qty * row.unitPrice,
-      numberFormat: {},
-    },
-  ],
-  data: quotation.items,
-  style: { zebra: { even: ZEBRA_FILL } },
-};
-
-const TOTAL_PITCH = 6.5;
-
-/** summary column on the right — Subtotal / VAT rows, then the grand total in a filled brand-color box */
-const totalsBlock: ReportNodeInput<QuotationItem> = {
-  type: 'raw',
-  measure: () => 3 * TOTAL_PITCH + 3,
+  measure: () => 8.5,
   draw: (doc, { x, y, contentWidth }) => {
     const right = x + contentWidth;
-    const labelX = right - 78;
+    doc.setFontSize(10.5);
+    doc.setFont('Sarabun', 'bold');
+    doc.setTextColor(INK[0], INK[1], INK[2]);
+    drawText(doc, 'Total', x, y + 5.5);
 
-    setText(doc, 10, 'normal', INK);
-    drawText(doc, 'Subtotal', labelX, y + 4);
-    rightText(doc, money(subtotal), right - 2, y + 4);
-    drawText(doc, 'VAT (7%)', labelX, y + 4 + TOTAL_PITCH);
-    rightText(doc, money(vat), right - 2, y + 4 + TOTAL_PITCH);
-
-    const totalBaseline = y + 4 + 2 * TOTAL_PITCH;
-    setText(doc, 10.5, 'bold', INK);
-    drawText(doc, 'Total', labelX, totalBaseline);
     doc.setFillColor(BRAND_FILL[0], BRAND_FILL[1], BRAND_FILL[2]);
-    doc.rect(right - 40, totalBaseline - 5, 40, 7.5, 'F');
-    setText(doc, 10.5, 'bold', BRAND_DARK);
-    rightText(doc, money(grandTotal), right - 2, totalBaseline);
+    doc.rect(right - 40, y, 40, 7.5, 'F');
+    doc.setTextColor(BRAND_DARK[0], BRAND_DARK[1], BRAND_DARK[2]);
+    const value = money(grandTotal);
+    drawText(doc, value, right - 2 - doc.getTextWidth(value), y + 5.5);
   },
 };
 
 const report = createKapomReport<QuotationItem>({
   font: fontConfig,
   blocks: [
-    brandHeader,
-    { type: 'spacer', height: 2 },
-    title,
+    // ── brand header: logo + company name (left) | contact lines right-aligned (right) ──
+    {
+      type: 'row',
+      columns: [
+        { width: 14, children: [{ type: 'image', data: logo, format: 'PNG', width: 14, height: 14 }] },
+        {
+          children: [
+            { type: 'spacer', height: 2.5 },
+            { content: 'KAPOM TRAVEL', style: companyStyle },
+            { content: 'AND TOURS', style: companyStyle },
+          ],
+        },
+        {
+          children: [
+            { type: 'spacer', height: 1.5 },
+            { content: '123 ANYWHERE ST., ANY SUBURB, ANY CITY', align: 'right', style: contactStyle },
+            { content: '082 345 6789', align: 'right', style: contactStyle },
+            { content: 'WWW.KAPOMTRAVEL.COM', align: 'right', style: contactStyle },
+          ],
+        },
+      ],
+    },
     { type: 'spacer', height: 4 },
-    infoBlock,
+
+    // ── centered title — plain text with align, no raw block needed ──
+    { content: 'QUOTATION', align: 'center', style: { fontSize: 24, fontStyle: 'bold', color: BRAND_TEXT } },
+    { type: 'spacer', height: 5 },
+
+    // ── quotation meta (left) | customer (right) ──
+    {
+      type: 'row',
+      columns: [
+        {
+          children: [
+            {
+              type: 'keyValue',
+              labelWidth: 32,
+              rows: [
+                ['Quotation No:', quotation.number],
+                ['Date:', quotation.date],
+                ['Valid Until:', quotation.validUntil],
+                ['Customer ID:', quotation.customerId],
+              ],
+            },
+          ],
+        },
+        {
+          children: [
+            { content: quotation.customer.name, style: { fontSize: 10, fontStyle: 'bold', color: INK } },
+            ...quotation.customer.lines,
+          ],
+        },
+      ],
+    },
     { type: 'spacer', height: 4 },
     { type: 'divider', thickness: 1, color: BRAND_LINE },
     { type: 'spacer', height: 6 },
-    labeledSection('PROJECT DESCRIPTION', quotation.projectDescription),
+
+    // ── PROJECT DESCRIPTION — label column + auto-wrapping paragraph ──
+    {
+      type: 'row',
+      columns: [
+        { width: 52, children: [{ content: 'PROJECT DESCRIPTION', style: headingStyle }] },
+        { children: [{ content: quotation.projectDescription, style: { fontSize: 10, color: MUTED } }] },
+      ],
+    },
     { type: 'spacer', height: 4 },
-    itemsTable,
+
+    // ── line items — Total is a computed column, zebra gives the striped body ──
+    {
+      type: 'table',
+      columns: [
+        { type: 'data', key: 'description', header: 'Description' },
+        { type: 'data', key: 'qty', header: 'Quantity', align: 'center' },
+        { type: 'data', key: 'unitPrice', header: 'Price', align: 'right', numberFormat: {} },
+        {
+          type: 'computed',
+          header: 'Total',
+          align: 'right',
+          compute: (row) => row.qty * row.unitPrice,
+          numberFormat: {},
+        },
+      ],
+      data: quotation.items,
+      style: { zebra: { even: ZEBRA_FILL } },
+    },
     { type: 'spacer', height: 6 },
-    totalsBlock,
+
+    // ── totals — right column only; keyValue right-aligns the numbers, raw box for the total ──
+    {
+      type: 'row',
+      columns: [
+        { children: [] },
+        {
+          width: 78,
+          children: [
+            {
+              type: 'keyValue',
+              valueAlign: 'right',
+              rows: [
+                ['Subtotal', money(subtotal)],
+                ['VAT (7%)', money(vat)],
+              ],
+            },
+            { type: 'spacer', height: 2 },
+            grandTotalBox,
+          ],
+        },
+      ],
+    },
     { type: 'spacer', height: 4 },
     { type: 'divider', thickness: 1, color: BRAND_LINE },
     { type: 'spacer', height: 6 },
-    labeledSection('TERMS & CONDITIONS', quotation.terms, 'PLEASE CONFIRM YOUR ACCEPTANCE OF THIS QUOTE'),
+
+    // ── terms — same two-column shape as the description section ──
+    {
+      type: 'row',
+      columns: [
+        { width: 52, children: [{ content: 'TERMS & CONDITIONS', style: headingStyle }] },
+        {
+          children: [
+            { content: quotation.terms, style: { fontSize: 10, color: MUTED } },
+            { type: 'spacer', height: 5 },
+            { content: 'PLEASE CONFIRM YOUR ACCEPTANCE OF THIS QUOTE', style: headingStyle },
+          ],
+        },
+      ],
+    },
     { type: 'spacer', height: 10 },
+
     {
       type: 'signature',
       slots: [{ label: 'Signature over printed name' }, { label: 'Date signed' }],
