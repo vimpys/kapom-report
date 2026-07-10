@@ -86,6 +86,12 @@ export interface ZebraOption {
 export interface TableStyleOptions<T> {
   zebra?: ZebraOption;
   conditional?: (row: T, rowIndex: number) => Partial<CellStyle> | undefined;
+  /**
+   * head-section style override merged over the Typography.columnHeader token (e.g. a brand
+   * fillColor instead of AutoTable's default) — head only, no interplay with zebra/conditional
+   * (those are body-only by design); per-column headerAlign still wins over `halign` here
+   */
+  header?: Partial<CellStyle>;
 }
 
 export interface TableNode<T> {

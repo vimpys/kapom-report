@@ -18,6 +18,7 @@ const logo = new Uint8Array(readFileSync(join(here, '../src/assets/kapom-report.
 
 /** pastel green theme — soft fills with sage text accents (deliberately its own palette, not the reference mockup's) */
 const BRAND_TEXT: RGB = [106, 158, 120]; // sage green — company name / title / contact lines
+const BRAND_HEAD: RGB = [126, 172, 139]; // deeper pastel green — table head fill (white text on top)
 const BRAND_FILL: RGB = [205, 231, 208]; // pastel green — grand-total box fill
 const BRAND_LINE: RGB = [178, 214, 186]; // soft green — dividers
 const BRAND_DARK: RGB = [47, 93, 63]; // deep green — readable text on the pastel fill
@@ -172,7 +173,8 @@ const report = createKapomReport<QuotationItem>({
         },
       ],
       data: quotation.items,
-      style: { zebra: { even: ZEBRA_FILL } },
+      // header: brand fill replacing AutoTable's theme default; zebra tints the body rows
+      style: { header: { fillColor: BRAND_HEAD }, zebra: { even: ZEBRA_FILL } },
     },
     { type: 'spacer', height: 6 },
 

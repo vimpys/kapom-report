@@ -285,6 +285,36 @@ describe('TableBlock — Typography tokens × jsPDF จริง', () => {
       DEFAULT_TYPOGRAPHY.detailRow.fontSize,
     );
   });
+
+  it('style.header override fillColor/textColor ของ head จริง (แทน AutoTable theme default)', () => {
+    const doc = new jsPDF();
+    const engine = new RenderEngine(doc);
+
+    engine.render([
+      createBlock(
+        ledgerNode([{ label: 'a', amount: 1 }], {
+          style: { header: { fillColor: [106, 158, 120], textColor: [255, 255, 255] } },
+        }),
+      ),
+    ]);
+
+    const headCell = doc.lastAutoTable?.head[0]?.cells['0'];
+    expect(headCell?.styles.fillColor).toEqual([106, 158, 120]);
+    expect(headCell?.styles.textColor).toEqual([255, 255, 255]);
+    // body ไม่โดนกระทบ — header เป็น head-section เท่านั้น
+    expect(doc.lastAutoTable?.body[0]?.cells['0']?.styles.fillColor).not.toEqual([106, 158, 120]);
+  });
+
+  it('style.header ไม่ตั้ง → head ยังใช้ token + theme default เดิม (backward compatible)', () => {
+    const doc = new jsPDF();
+    const engine = new RenderEngine(doc);
+
+    engine.render([createBlock(ledgerNode([{ label: 'a', amount: 1 }]))]);
+
+    const headCell = doc.lastAutoTable?.head[0]?.cells['0'];
+    expect(headCell?.styles.fontSize).toBe(DEFAULT_TYPOGRAPHY.columnHeader.fontSize);
+    expect(headCell?.styles.textColor).toEqual([...(DEFAULT_TYPOGRAPHY.columnHeader.color ?? [])]);
+  });
 });
 
 describe('TableBlock — zebra/conditional (Style resolver) × jsPDF จริง', () => {

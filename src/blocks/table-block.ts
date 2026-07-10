@@ -193,7 +193,7 @@ export class TableBlock<T> implements MeasurableBlock {
     this.runAutoTable(ctx, {
       head: [head],
       body: [[{ content: text, colSpan: columns.length, styles: { halign: 'center' } }]],
-      headStyles: this.resolveTokenStyles(ctx, ctx.typography.columnHeader),
+      headStyles: this.resolveHeadStyles(ctx),
       bodyStyles: this.resolveTokenStyles(ctx, ctx.typography.detailRow),
       didParseCell: this.alignHook(aligns),
     });
@@ -526,7 +526,7 @@ export class TableBlock<T> implements MeasurableBlock {
       body,
       ...(foot ? { foot: [mergeFootLabel(foot, labelIndex)] } : {}),
       columnStyles,
-      headStyles: this.resolveTokenStyles(ctx, ctx.typography.columnHeader),
+      headStyles: this.resolveHeadStyles(ctx),
       bodyStyles: this.resolveTokenStyles(ctx, ctx.typography.detailRow),
       footStyles: this.resolveTokenStyles(ctx, footToken),
       didParseCell: this.cellHook(aligns, columns, rows, this.node.style),
@@ -661,6 +661,24 @@ export class TableBlock<T> implements MeasurableBlock {
       styles.fontStyle = this.resolveSupportedFontStyle(ctx.doc, fontName, styles.fontStyle);
     }
     return styles;
+  }
+
+  /**
+   * head section = Typography.columnHeader token + TableStyleOptions.header override (e.g. a
+   * brand fillColor — without it the head keeps AutoTable's theme default); the override goes
+   * through the same fontStyle-variant guard as the token
+   */
+  private resolveHeadStyles(ctx: RenderContext): Partial<Styles> {
+    const base = this.resolveTokenStyles(ctx, ctx.typography.columnHeader);
+    const override = this.node.style?.header;
+    if (!override) return base;
+
+    const merged = { ...base, ...cellStyleToAutoTableStyles(override) };
+    if (merged.fontStyle) {
+      const fontName = merged.font ?? ctx.doc.getFont().fontName;
+      merged.fontStyle = this.resolveSupportedFontStyle(ctx.doc, fontName, merged.fontStyle);
+    }
+    return merged;
   }
 
   /**
