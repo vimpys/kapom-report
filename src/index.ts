@@ -140,7 +140,7 @@ export { registerBlockType } from './blocks/block-registry';
 export { DEFAULT_NUMBER_FORMAT, formatNumber, getNumberFormatter } from './format/number-format';
 
 export type { DateFormat } from './format/date-format';
-export { DEFAULT_DATE_FORMAT, formatDate, formatTime, formatDateTime } from './format/date-format';
+export { DEFAULT_DATE_FORMAT, formatDate, formatTime, formatDateTime, formatTimestamp } from './format/date-format';
 
 export type { ResolvedTableContent, SegmentState } from './table/column-resolver';
 export {

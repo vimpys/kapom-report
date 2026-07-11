@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDate, formatDateTime, formatTime } from '../../src/format/date-format';
+import { formatDate, formatDateTime, formatTime, formatTimestamp } from '../../src/format/date-format';
 
 const SAMPLE = new Date(Date.UTC(2026, 6, 5, 14, 30, 0));
 
@@ -30,6 +30,17 @@ describe('date-format', () => {
   it('formatDateTime รวม date+time', () => {
     const result = formatDateTime(SAMPLE, { locale: 'en-US', dateStyle: 'short', timeStyle: 'short' });
     expect(result).toContain('7/5/26');
+  });
+
+  it('formatTimestamp → YYYY-MM-DD HH:mm (24 ชม., local time, ไม่มี comma/AM-PM)', () => {
+    // สร้างด้วยเวลา local เพื่อไม่ผูก timezone ของเครื่องรัน
+    const local = new Date(2026, 6, 5, 9, 7); // 2026-07-05 09:07 local
+    expect(formatTimestamp(local)).toBe('2026-07-05 09:07');
+  });
+
+  it('formatTimestamp pad เลขเดือน/วัน/ชม./นาที เป็น 2 หลัก', () => {
+    const local = new Date(2026, 0, 3, 3, 5); // ม.ค. 3, 03:05
+    expect(formatTimestamp(local)).toBe('2026-01-03 03:05');
   });
 
   it('formatter cache ไม่ throw เมื่อเรียกซ้ำด้วย options เดิม', () => {

@@ -50,3 +50,14 @@ export function formatDateTime(date: Date, format?: DateFormat): string {
   const timeStyle = format?.timeStyle ?? 'short';
   return getDateTimeFormatter(locale, { dateStyle, timeStyle }).format(date);
 }
+
+/**
+ * A compact, locale-independent timestamp `YYYY-MM-DD HH:mm` (24-hour, local time) — handy for a
+ * "Printed:" stamp where you want a fixed, unambiguous shape regardless of locale. Built by hand
+ * (not Intl) so there's no comma / a.m.-p.m. / calendar surprises; `formatDateTime` is the
+ * Intl/locale-aware alternative when you want the reader's locale conventions instead.
+ */
+export function formatTimestamp(date: Date): string {
+  const pad = (n: number): string => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}

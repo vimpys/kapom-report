@@ -15,7 +15,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { reportBuilder } from '../../src/index';
+import { formatTimestamp, reportBuilder } from '../../src/index';
 import type { KapomReport, ReportNodeInput, RGB, TableNode } from '../../src/index';
 import { fontConfig } from '../shared';
 import type { Sale } from './data';
@@ -51,11 +51,6 @@ export interface SalesReportOptions {
   reportTitle?: string;
   /** one-line description under the report name */
   reportDescription?: string;
-}
-
-function formatPrintedAt(d: Date): string {
-  const pad = (n: number): string => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 /** the brand row of the header band: logo + company (left), report metadata (right) */
@@ -113,7 +108,7 @@ export function buildSalesReport(sales: Sale[], options: SalesReportOptions): Ka
 
   // page header band, built block by block — its reserved height is auto-measured (no magic number)
   report.pageHeader
-    .addBlock(brandRow(options, formatPrintedAt(new Date())))
+    .addBlock(brandRow(options, formatTimestamp(new Date())))
     .addBlock({ type: 'spacer', height: 1.5 })
     .addBlock({ type: 'divider', thickness: 0.2, color: RULE })
     .addBlock({ type: 'spacer', height: 1.5 })
