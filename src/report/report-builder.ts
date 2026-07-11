@@ -66,6 +66,20 @@ export class KapomReportBuilder<T = unknown> {
     return this;
   }
 
+  // ── page setup ────────────────────────────────────────────────
+  /**
+   * paper size / orientation / unit + margins in one place (the "Page Setup" grouping) — e.g.
+   * `.pageSetup({ format: 'a4', orientation: 'landscape', margins: { top: 20, ... } })`. Splits
+   * internally: `format`/`orientation`/`unit` go to `new jsPDF()`, `margins` to the layout engine.
+   * `.document()` / `.margins()` remain as the granular equivalents.
+   */
+  pageSetup(setup: Opt<'document'> & { margins?: Opt<'margins'> }): this {
+    const { margins, ...document } = setup;
+    if (margins !== undefined) this.options.margins = margins;
+    if (Object.keys(document).length > 0) this.options.document = document;
+    return this;
+  }
+
   // ── report-wide settings ──────────────────────────────────────
   font(config: Opt<'font'>): this {
     this.options.font = config;

@@ -62,6 +62,26 @@ describe('reportBuilder — toConfig (pure assembly)', () => {
     ]);
   });
 
+  it('pageSetup แยก format/orientation → document, margins → margins', () => {
+    const config = reportBuilder()
+      .content('body')
+      .pageSetup({ format: 'letter', orientation: 'landscape', margins: { top: 20, bottom: 20, left: 25, right: 25 } })
+      .toConfig();
+
+    expect(config.document).toEqual({ format: 'letter', orientation: 'landscape' });
+    expect(config.margins).toEqual({ top: 20, bottom: 20, left: 25, right: 25 });
+  });
+
+  it('pageSetup ใส่แค่ margins → ไม่ตั้ง document (คงค่า default a4/portrait)', () => {
+    const config = reportBuilder()
+      .content('body')
+      .pageSetup({ margins: { top: 10, bottom: 10, left: 10, right: 10 } })
+      .toConfig();
+
+    expect(config.margins).toEqual({ top: 10, bottom: 10, left: 10, right: 10 });
+    expect(config.document).toBeUndefined();
+  });
+
   it('page-frame + settings map เข้า config option ตรงๆ', () => {
     const config = reportBuilder()
       .content('body')
