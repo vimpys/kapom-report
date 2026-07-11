@@ -34,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Numeric strategy**: arithmetic boundary; supports Decimalish (number|string) with `NumericStrategy` contract
 - **Number formatting**: Intl.NumberFormat with locale (default th-TH, 2 decimals) + column-level override
 - **Date formatting**: Intl.DateTimeFormat with Buddhist calendar opt-in (default en-CA)
-- **18 runnable examples** covering: facade zero-config, text/image blocks, save/preview, flat table, styled table, grouped table, nested group, nested table (master-detail), report header/section, composite multi-section report, page header/footer, page number, system fields + anchor, signature + watermark, raw escape hatch, quotation (real-world branded document composed from row/keyValue/align), field service form (blank printable form composed from box/row/divider), sales report (multi-page paginated table with repeating header + page numbers)
+- **19 runnable examples** covering: facade zero-config, text/image blocks, save/preview, flat table, styled table, grouped table, nested group, nested table (master-detail), report header/section, composite multi-section report, page header/footer, page number, system fields + anchor, signature + watermark, raw escape hatch, quotation (real-world branded document composed from row/keyValue/align), field service form (blank printable form composed from box/row/divider), sales report (multi-page paginated table with repeating header + page numbers), modular report (a 3-file split — raw data / reusable template / runner — showing separation of concerns)
 
 ### Technical
 
