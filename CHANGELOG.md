@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Nested table (master-detail; row can expand to show child table with different columns)
   - Zebra striping, conditional row styles, column-level style overrides, table-level header style override (brand fill/text color)
   - No-data fallback message
-- **Page composition**: repeating page header/footer bands, page-number annotation (margin-only, non-reserved), system field placeholders (`{pageNumber}`, `{totalPages}`, `{date}`, `{time}`, `{dateTime}`), watermarks
+- **Page composition**: repeating page header/footer bands (raw render callback or a declarative block tree), page-number annotation (margin-only, non-reserved), system field placeholders (`{pageNumber}`, `{totalPages}`, `{date}`, `{time}`, `{dateTime}`), watermarks
 - **Multi-section reports**: `ReportRegistry` to compose sections by name with shared context, `breakBefore` policy for section page breaks
 - **Typography system**: 9 semantic tokens (reportTitle, reportSubtitle, sectionHeading, columnHeader, detailRow, groupHeader, groupFooter, summary, pageHeaderFooter)
 - **Font registration**: non-standard script support (e.g., Thai) with fail-fast Thai-font guard; base64/Uint8Array input

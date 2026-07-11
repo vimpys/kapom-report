@@ -1,4 +1,5 @@
 import type { jsPDF } from 'jspdf';
+import type { MeasurableBlock } from './context';
 
 /**
  * The context a band renderer receives — draws in the reserved zone (header/footer) of one page
@@ -29,4 +30,25 @@ export interface PageBand {
   render: PageBandRenderer;
   /** draw on the first page too? — default true */
   showOnFirstPage?: boolean;
+}
+
+/**
+ * a declarative page band — the header/footer content is a block tree (already resolved into
+ * MeasurableBlocks), rendered into the reserved zone on every page via a confined context, so
+ * no raw `doc` render callback is needed. The engine draws these; the facade resolves a user's
+ * `children` into `blocks`. Children are restricted the same way a row/box's are (no table/
+ * section — they'd paginate inside a fixed zone).
+ */
+export interface BlockBand {
+  height: number;
+  blocks: readonly MeasurableBlock[];
+  /** draw on the first page too? — default true */
+  showOnFirstPage?: boolean;
+}
+
+/** a band is either a raw render callback (PageBand) or a resolved block tree (BlockBand) */
+export type PageBandLike = PageBand | BlockBand;
+
+export function isBlockBand(band: PageBandLike): band is BlockBand {
+  return 'blocks' in band;
 }

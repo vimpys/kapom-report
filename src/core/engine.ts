@@ -12,9 +12,11 @@ import type {
   PageMargins,
   RenderContext,
 } from './context';
+import { buildConfinedContext } from './confined-context';
 import { PdfCursor } from './cursor';
 import { drawText } from './draw-text';
-import type { PageBand } from './page-band';
+import type { PageBandLike } from './page-band';
+import { isBlockBand } from './page-band';
 import { deriveMeasureContext } from './measure-context';
 import type { PageNumberInput } from './page-number';
 import { renderPageNumber, resolvePageNumber } from './page-number';
@@ -28,10 +30,10 @@ export interface RenderEngineOptions {
   font?: FontConfig;
   /** font token per row-type (columnHeader/detailRow/groupHeader/...) — merges over DEFAULT_TYPOGRAPHY one token at a time */
   typography?: DeepPartial<Typography>;
-  /** page header repeated on every page — reserves space at the top (subtracted from the content area); drawn at finalize() */
-  pageHeader?: PageBand;
+  /** page header repeated on every page — reserves space at the top (subtracted from the content area); drawn at finalize(). A raw render callback (PageBand) or a resolved block tree (BlockBand) */
+  pageHeader?: PageBandLike;
   /** page footer repeated on every page — reserves space at the bottom; drawn at finalize() */
-  pageFooter?: PageBand;
+  pageFooter?: PageBandLike;
   /**
    * watermark repeated on every page — doesn't reserve content-area space (unlike page header/footer); drawn at finalize() before the bands
    * accepts a preset `{ text: 'DRAFT', ... }` or a full render callback (escape hatch)
@@ -63,8 +65,8 @@ export class RenderEngine {
   private readonly margins: PageMargins;
   private readonly numeric: NumericStrategy;
   private readonly typography: Typography;
-  private readonly pageHeader: PageBand | undefined;
-  private readonly pageFooter: PageBand | undefined;
+  private readonly pageHeader: PageBandLike | undefined;
+  private readonly pageFooter: PageBandLike | undefined;
   private readonly watermark: Watermark | undefined;
   private readonly pageNumber: ReturnType<typeof resolvePageNumber>;
 
@@ -191,12 +193,21 @@ export class RenderEngine {
   }
 
   private drawBand(
-    band: PageBand,
+    band: PageBandLike,
     top: number,
     width: number,
     pageIndex: number,
     pageCount: number,
   ): void {
+    if (isBlockBand(band)) {
+      // render the block tree into the band's reserved rect via a confined context (cursor pinned
+      // to the band's top-left, ensureSpace a no-op) — the doc is already on the right page (setPage)
+      const ctx = buildConfinedContext(this.createRenderContext(), this.margins.left, width, top, 'page band');
+      for (const block of band.blocks) {
+        block.render(ctx);
+      }
+      return;
+    }
     band.render({
       doc: this.doc,
       pageIndex,

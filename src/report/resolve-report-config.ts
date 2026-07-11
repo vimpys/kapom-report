@@ -1,8 +1,10 @@
 import type { jsPDFOptions } from 'jspdf';
+import { createBlock } from '../blocks/create-block';
+import { assertConfinedChildAllowed } from '../blocks/row-block';
 import { KapomError } from '../core/errors';
 import type { NumericStrategy } from '../numeric/numeric-strategy';
 import type { PageMargins } from '../core/context';
-import type { PageBand } from '../core/page-band';
+import type { PageBand, PageBandLike } from '../core/page-band';
 import type { PageNumberInput } from '../core/page-number';
 import type { WatermarkInput } from '../core/watermark';
 import type { RenderEngineOptions } from '../core/engine';
@@ -24,14 +26,31 @@ export type KapomColumnInput<T> = ReportColumn<T> | DataColumnShorthand<T>;
  */
 export type KapomGroupInput<T> = keyof T | readonly (keyof T)[] | GroupResolver<T>;
 
+/**
+ * a page header/footer as a declarative block tree — no raw `doc` callback needed. `children`
+ * render into the band's reserved zone on every page (via a confined context), the same block
+ * types you use in `blocks`. Restricted like a row/box column: no table/section inside (they'd
+ * paginate within a fixed zone). Use the full `PageBand` (render callback) only when you need
+ * raw jsPDF drawing the tree can't express.
+ */
+export interface KapomDeclarativeBand {
+  height: number;
+  children: readonly ReportNodeInput<unknown>[];
+  /** draw on the first page too? — default true */
+  showOnFirstPage?: boolean;
+}
+
+/** a band is either a declarative block tree (layer 1/2) or a raw render callback (layer 3 escape hatch) */
+export type KapomPageBandInput = KapomDeclarativeBand | PageBand;
+
 /** report-level options shared by both the single-table config and the blocks config */
 export interface KapomReportBaseOptions {
   typography?: DeepPartial<Typography>;
   font?: FontConfig;
   margins?: Partial<PageMargins>;
   numeric?: NumericStrategy;
-  pageHeader?: PageBand;
-  pageFooter?: PageBand;
+  pageHeader?: KapomPageBandInput;
+  pageFooter?: KapomPageBandInput;
   /** a preset `{ text: 'DRAFT', ... }` or a full render callback (escape hatch) */
   watermark?: WatermarkInput;
   /** a lightweight page-number annotation drawn inside the page margin — doesn't reduce content area (unlike pageHeader/pageFooter); `true` for the default (bottom-left), a position string, or a full object */
@@ -114,14 +133,25 @@ function resolveTableNode<T>(config: KapomReportConfig<T>): TableNode<T> {
   };
 }
 
+/** a declarative band (has `children`) → resolve into a BlockBand; a raw PageBand passes through */
+function resolveBand(band: KapomPageBandInput): PageBandLike {
+  if (!('children' in band)) return band;
+  for (const child of band.children) assertConfinedChildAllowed(child, 'page band');
+  return {
+    height: band.height,
+    blocks: band.children.map((child) => createBlock(child)),
+    ...(band.showOnFirstPage !== undefined ? { showOnFirstPage: band.showOnFirstPage } : {}),
+  };
+}
+
 function resolveEngineOptions(config: KapomReportBaseOptions): RenderEngineOptions {
   return {
     ...(config.margins !== undefined ? { margins: config.margins } : {}),
     ...(config.numeric !== undefined ? { numeric: config.numeric } : {}),
     ...(config.font !== undefined ? { font: config.font } : {}),
     ...(config.typography !== undefined ? { typography: config.typography } : {}),
-    ...(config.pageHeader !== undefined ? { pageHeader: config.pageHeader } : {}),
-    ...(config.pageFooter !== undefined ? { pageFooter: config.pageFooter } : {}),
+    ...(config.pageHeader !== undefined ? { pageHeader: resolveBand(config.pageHeader) } : {}),
+    ...(config.pageFooter !== undefined ? { pageFooter: resolveBand(config.pageFooter) } : {}),
     ...(config.watermark !== undefined ? { watermark: config.watermark } : {}),
     ...(config.pageNumber !== undefined ? { pageNumber: config.pageNumber } : {}),
   };

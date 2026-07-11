@@ -79,7 +79,7 @@ export { PdfCursor } from './core/cursor';
 export type { RenderEngineOptions } from './core/engine';
 export { RenderEngine, DEFAULT_PAGE_MARGINS } from './core/engine';
 
-export type { PageBand, PageBandContext, PageBandRenderer } from './core/page-band';
+export type { PageBand, PageBandContext, PageBandRenderer, BlockBand, PageBandLike } from './core/page-band';
 
 export type { Watermark, WatermarkContext, WatermarkRenderer, TextWatermark, WatermarkInput } from './core/watermark';
 export {
@@ -173,6 +173,8 @@ export type {
   DataColumnShorthand,
   KapomColumnInput,
   KapomGroupInput,
+  KapomDeclarativeBand,
+  KapomPageBandInput,
   KapomReportBaseOptions,
   KapomReportConfig,
   KapomBlocksConfig,

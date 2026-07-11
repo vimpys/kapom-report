@@ -5,12 +5,16 @@
  * striping, page numbers), exposed as a single `buildSalesReport(sales, options)` function.
  * Swap in any `Sale[]` — or different company/report metadata — and get the same formatted,
  * paginated report. The data itself lives in data.ts.
+ *
+ * The header is a *declarative* page band: `children` is an ordinary block tree (row / image /
+ * text / divider), rendered into the reserved zone on every page. No raw jsPDF drawing needed —
+ * the logo is an image block, the note is a text block that wraps on its own.
  */
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createKapomReport } from '../../src/index';
-import type { KapomReport, PageBand, RGB, TableNode } from '../../src/index';
+import type { KapomDeclarativeBand, KapomReport, RGB, TableNode } from '../../src/index';
 import { fontConfig } from '../shared';
 import type { Sale } from './data';
 
@@ -52,51 +56,39 @@ function formatPrintedAt(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-/** header band drawn on every page: logo + company (left), report metadata (right), a divider, then the standing note */
-function buildHeaderBand(options: SalesReportOptions, printedAt: string): PageBand {
+/** declarative header band (drawn on every page): logo + company (left), report metadata (right), a divider, then the standing note */
+function buildHeaderBand(options: SalesReportOptions, printedAt: string): KapomDeclarativeBand {
   const title = options.reportTitle ?? 'Sales Report';
   const description = options.reportDescription ?? 'Quarterly sales by product and customer';
 
   return {
-    // just tall enough for the note's bottom line — a smaller height leaves only a thin gap
-    // before the table starts (the band's reserved height is what pushes the content down)
-    height: 27,
-    render: ({ doc, x, y, width, drawText }): void => {
-      const right = x + width;
-      const setText = (size: number, style: 'normal' | 'bold', color: RGB): void => {
-        doc.setFont('Sarabun', style);
-        doc.setFontSize(size);
-        doc.setTextColor(color[0], color[1], color[2]);
-      };
-      const rightText = (text: string, baseline: number): void =>
-        drawText(text, right - doc.getTextWidth(text), baseline);
-
-      // left: logo + company name + tagline
-      doc.addImage(logo, 'PNG', x, y, 13, 13);
-      setText(13, 'bold', NAVY);
-      drawText(options.companyName, x + 16, y + 6);
-      setText(8, 'normal', GRAY);
-      drawText('kapom-soft', x + 16, y + 10.5);
-
-      // right: report title / description / print timestamp
-      setText(16, 'bold', NAVY);
-      rightText(title, y + 5.5);
-      setText(8.5, 'normal', GRAY);
-      rightText(description, y + 10);
-      setText(8, 'normal', GRAY);
-      rightText(`Printed: ${printedAt}`, y + 14);
-
-      // divider between the metadata row and the note
-      doc.setDrawColor(RULE[0], RULE[1], RULE[2]);
-      doc.setLineWidth(0.2);
-      doc.line(x, y + 17, right, y + 17);
-
-      // standing note — wrapped to the band width, drawn line by line
-      setText(8, 'normal', GRAY);
-      const split: unknown = doc.splitTextToSize(STANDING_NOTE, width);
-      const noteLines = Array.isArray(split) ? (split as string[]) : [STANDING_NOTE];
-      noteLines.forEach((line, i) => drawText(line, x, y + 21 + i * 3.8));
-    },
+    height: 26,
+    children: [
+      {
+        type: 'row',
+        columns: [
+          { width: 14, children: [{ type: 'image', data: logo, format: 'PNG', width: 14, height: 14 }] },
+          {
+            children: [
+              { type: 'spacer', height: 2 },
+              { content: options.companyName, style: { fontSize: 13, fontStyle: 'bold', color: NAVY } },
+              { content: 'kapom-soft', style: { fontSize: 8, color: GRAY } },
+            ],
+          },
+          {
+            children: [
+              { content: title, align: 'right', style: { fontSize: 16, fontStyle: 'bold', color: NAVY } },
+              { content: description, align: 'right', style: { fontSize: 8.5, color: GRAY } },
+              { content: `Printed: ${printedAt}`, align: 'right', style: { fontSize: 8, color: GRAY } },
+            ],
+          },
+        ],
+      },
+      { type: 'spacer', height: 1.5 },
+      { type: 'divider', thickness: 0.2, color: RULE },
+      { type: 'spacer', height: 1.5 },
+      { content: STANDING_NOTE, style: { fontSize: 8, color: GRAY } },
+    ],
   };
 }
 
