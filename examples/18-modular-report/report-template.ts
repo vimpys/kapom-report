@@ -9,11 +9,15 @@
  * The header is a *declarative* page band: `children` is an ordinary block tree (row / image /
  * text / divider), rendered into the reserved zone on every page. No raw jsPDF drawing needed —
  * the logo is an image block, the note is a text block that wraps on its own.
+ *
+ * Built with the fluent `reportBuilder()` chain — method names follow the report anatomy
+ * (pageHeader/pageNumber = every page, content = the flowing body). It emits the same config the
+ * object form `createKapomReport({ ... })` takes; either style produces an identical report.
  */
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createKapomReport } from '../../src/index';
+import { reportBuilder } from '../../src/index';
 import type { KapomDeclarativeBand, KapomReport, RGB, TableNode } from '../../src/index';
 import { fontConfig } from '../shared';
 import type { Sale } from './data';
@@ -117,10 +121,10 @@ export function buildSalesReport(sales: Sale[], options: SalesReportOptions): Ka
     style: { header: { fillColor: NAVY }, zebra: { even: ZEBRA } },
   };
 
-  return createKapomReport<Sale>({
-    font: fontConfig,
-    pageHeader: buildHeaderBand(options, formatPrintedAt(new Date())),
-    pageNumber: { position: 'bottom-center', format: 'Page {pageNumber} of {totalPages}' },
-    blocks: [salesTable],
-  });
+  return reportBuilder<Sale>()
+    .font(fontConfig)
+    .pageHeader(buildHeaderBand(options, formatPrintedAt(new Date())))
+    .pageNumber({ position: 'bottom-center', format: 'Page {pageNumber} of {totalPages}' })
+    .content(salesTable)
+    .build();
 }

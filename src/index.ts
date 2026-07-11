@@ -185,4 +185,6 @@ export type {
 export { resolveReportConfig } from './report/resolve-report-config';
 
 export type { KapomReport } from './report/create-kapom-report';
+
+export { KapomReportBuilder, reportBuilder } from './report/report-builder';
 export { createKapomReport } from './report/create-kapom-report';

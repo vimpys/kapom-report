@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Typography system**: 9 semantic tokens (reportTitle, reportSubtitle, sectionHeading, columnHeader, detailRow, groupHeader, groupFooter, summary, pageHeaderFooter)
 - **Font registration**: non-standard script support (e.g., Thai) with fail-fast Thai-font guard; base64/Uint8Array input
 - **Text normalization**: tab→spaces, CRLF→LF, zero-width/bidi/control strip, NBSP→space
+- **Two ways to build a report**: `createKapomReport({ ... })` (object config) and `reportBuilder()` (fluent chain — `.title()/.pageHeader()/.content()/.pageFooter()/.pageNumber()/.summary()...build()`, method names following the report anatomy); both emit the same tree
 - **Progressive disclosure**: zero-config sensible defaults → shorthand syntax → full declarative tree (pattern applied consistently across all config)
 - **Strict TypeScript**: no `any`, `noUncheckedIndexedAccess` + `exactOptionalPropertyTypes` enforced
 - **Block registry pattern**: extensible type system; built-in blocks self-register (Open/Closed Principle)
