@@ -4,7 +4,7 @@
  * report-template.ts, then saves the PDF. This is the only file that knows about both — swapping
  * the data source or reusing the template for another company touches nothing else.
  *
- * Run with: `tsx examples/19-modular-report/index.ts`
+ * Run with: `tsx examples/18-modular-report/index.ts`
  */
 import { saveReport } from '../shared';
 import { sales } from './data';
@@ -16,4 +16,4 @@ const report = buildSalesReport(sales, {
   reportDescription: 'Quarterly sales by product and customer — FY2026',
 });
 
-saveReport(report, '19-modular-report');
+saveReport(report, '18-modular-report');
