@@ -40,7 +40,8 @@ export interface PageBand {
  * section — they'd paginate inside a fixed zone).
  */
 export interface BlockBand {
-  height: number;
+  /** reserved zone height (mm); omit = the engine auto-measures the blocks' total height */
+  height?: number;
   blocks: readonly MeasurableBlock[];
   /** draw on the first page too? — default true */
   showOnFirstPage?: boolean;

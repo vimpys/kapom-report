@@ -6,19 +6,17 @@
  * Swap in any `Sale[]` — or different company/report metadata — and get the same formatted,
  * paginated report. The data itself lives in data.ts.
  *
- * The header is a *declarative* page band: `children` is an ordinary block tree (row / image /
- * text / divider), rendered into the reserved zone on every page. No raw jsPDF drawing needed —
- * the logo is an image block, the note is a text block that wraps on its own.
- *
- * Built with the fluent `reportBuilder()` chain — method names follow the report anatomy
- * (pageHeader/pageNumber = every page, content = the flowing body). It emits the same config the
- * object form `createKapomReport({ ... })` takes; either style produces an identical report.
+ * Built with the `reportBuilder()` chain, section names following the report anatomy. The page
+ * header is a sub-builder: `report.pageHeader.addBlock(...)` — blocks are ordinary (row / image /
+ * text / divider, no raw jsPDF), and the band's reserved height is auto-measured from them (no
+ * magic number). `content` is the flowing body. Either style — chain or `createKapomReport({...})`
+ * object — produces an identical report.
  */
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { reportBuilder } from '../../src/index';
-import type { KapomDeclarativeBand, KapomReport, RGB, TableNode } from '../../src/index';
+import type { KapomReport, ReportNodeInput, RGB, TableNode } from '../../src/index';
 import { fontConfig } from '../shared';
 import type { Sale } from './data';
 
@@ -60,38 +58,28 @@ function formatPrintedAt(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-/** declarative header band (drawn on every page): logo + company (left), report metadata (right), a divider, then the standing note */
-function buildHeaderBand(options: SalesReportOptions, printedAt: string): KapomDeclarativeBand {
+/** the brand row of the header band: logo + company (left), report metadata (right) */
+function brandRow(options: SalesReportOptions, printedAt: string): ReportNodeInput {
   const title = options.reportTitle ?? 'Sales Report';
   const description = options.reportDescription ?? 'Quarterly sales by product and customer';
-
   return {
-    height: 26,
-    children: [
+    type: 'row',
+    columns: [
+      { width: 14, children: [{ type: 'image', data: logo, format: 'PNG', width: 14, height: 14 }] },
       {
-        type: 'row',
-        columns: [
-          { width: 14, children: [{ type: 'image', data: logo, format: 'PNG', width: 14, height: 14 }] },
-          {
-            children: [
-              { type: 'spacer', height: 2 },
-              { content: options.companyName, style: { fontSize: 13, fontStyle: 'bold', color: NAVY } },
-              { content: 'kapom-soft', style: { fontSize: 8, color: GRAY } },
-            ],
-          },
-          {
-            children: [
-              { content: title, align: 'right', style: { fontSize: 16, fontStyle: 'bold', color: NAVY } },
-              { content: description, align: 'right', style: { fontSize: 8.5, color: GRAY } },
-              { content: `Printed: ${printedAt}`, align: 'right', style: { fontSize: 8, color: GRAY } },
-            ],
-          },
+        children: [
+          { type: 'spacer', height: 2 },
+          { content: options.companyName, style: { fontSize: 13, fontStyle: 'bold', color: NAVY } },
+          { content: 'kapom-soft', style: { fontSize: 8, color: GRAY } },
         ],
       },
-      { type: 'spacer', height: 1.5 },
-      { type: 'divider', thickness: 0.2, color: RULE },
-      { type: 'spacer', height: 1.5 },
-      { content: STANDING_NOTE, style: { fontSize: 8, color: GRAY } },
+      {
+        children: [
+          { content: title, align: 'right', style: { fontSize: 16, fontStyle: 'bold', color: NAVY } },
+          { content: description, align: 'right', style: { fontSize: 8.5, color: GRAY } },
+          { content: `Printed: ${printedAt}`, align: 'right', style: { fontSize: 8, color: GRAY } },
+        ],
+      },
     ],
   };
 }
@@ -121,10 +109,19 @@ export function buildSalesReport(sales: Sale[], options: SalesReportOptions): Ka
     style: { header: { fillColor: NAVY }, zebra: { even: ZEBRA } },
   };
 
-  return reportBuilder<Sale>()
-    .font(fontConfig)
-    .pageHeader(buildHeaderBand(options, formatPrintedAt(new Date())))
-    .pageNumber({ position: 'bottom-center', format: 'Page {pageNumber} of {totalPages}' })
-    .content(salesTable)
-    .build();
+  const report = reportBuilder<Sale>().font(fontConfig);
+
+  // page header band, built block by block — its reserved height is auto-measured (no magic number)
+  report.pageHeader
+    .addBlock(brandRow(options, formatPrintedAt(new Date())))
+    .addBlock({ type: 'spacer', height: 1.5 })
+    .addBlock({ type: 'divider', thickness: 0.2, color: RULE })
+    .addBlock({ type: 'spacer', height: 1.5 })
+    .addBlock({ content: STANDING_NOTE, style: { fontSize: 8, color: GRAY } })
+    .addBlock({ type: 'spacer', height: 2 }); // small gap before the table
+
+  report.pageNumber({ position: 'bottom-center', format: 'Page {pageNumber} of {totalPages}' });
+  report.content(salesTable);
+
+  return report.build();
 }

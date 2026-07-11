@@ -83,18 +83,37 @@ describe('reportBuilder — toConfig (pure assembly)', () => {
   });
 
   it('page-frame + settings map เข้า config option ตรงๆ', () => {
-    const config = reportBuilder()
+    const builder = reportBuilder()
       .content('body')
       .pageNumber('bottom-center')
-      .pageHeader({ height: 10, children: ['H'] })
       .margins({ top: 20, bottom: 20, left: 20, right: 20 })
-      .document({ orientation: 'landscape' })
-      .toConfig();
+      .document({ orientation: 'landscape' });
+    builder.pageHeader.addBlock('H').height(10);
+    const config = builder.toConfig();
 
     expect(config.pageNumber).toBe('bottom-center');
     expect(config.pageHeader).toEqual({ height: 10, children: ['H'] });
     expect(config.margins).toEqual({ top: 20, bottom: 20, left: 20, right: 20 });
     expect(config.document).toEqual({ orientation: 'landscape' });
+  });
+
+  it('pageHeader sub-builder: addBlock ต่อเนื่อง, ไม่ตั้ง height → auto (config ไม่มี height)', () => {
+    const builder = reportBuilder().content('body');
+    builder.pageHeader.addBlock('A').addBlock('B');
+    const config = builder.toConfig();
+
+    expect(config.pageHeader).toEqual({ children: ['A', 'B'] }); // ไม่มี height = auto-measure ที่ engine
+  });
+
+  it('pageHeader ว่าง (ไม่ addBlock) → ไม่มี pageHeader ใน config', () => {
+    const config = reportBuilder().content('body').toConfig();
+    expect(config.pageHeader).toBeUndefined();
+  });
+
+  it('showOnFirstPage(false) map ลง band', () => {
+    const builder = reportBuilder().content('body');
+    builder.pageHeader.addBlock('H').showOnFirstPage(false);
+    expect(builder.toConfig().pageHeader).toEqual({ children: ['H'], showOnFirstPage: false });
   });
 });
 

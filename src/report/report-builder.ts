@@ -1,28 +1,89 @@
+import type { PageBandRenderer } from '../core/page-band';
 import type { ReportNodeInput } from '../types/node';
 import { createKapomReport } from './create-kapom-report';
 import type { KapomReport } from './create-kapom-report';
-import type { KapomBlocksConfig, KapomReportBaseOptions } from './resolve-report-config';
+import type { KapomBlocksConfig, KapomPageBandInput, KapomReportBaseOptions } from './resolve-report-config';
 
 /** a config field without its `undefined` (the builder methods always set a value) */
 type Opt<K extends keyof KapomReportBaseOptions> = NonNullable<KapomReportBaseOptions[K]>;
 
 /**
- * Fluent chain over `createKapomReport` — the optional convenience layer from concept.md. It
- * accumulates blocks/options and, on `build()`, emits the exact same `{ blocks, ... }` config the
- * object form takes, so both produce an identical report (no behavior only reachable one way).
+ * Sub-builder for a page-frame band (page header / footer) — a band reserves space on every page,
+ * so it has its own config beyond just blocks: add blocks incrementally with `addBlock()`, and the
+ * reserved height is auto-measured from them (no magic number) unless you pin it with `height()`.
+ * Empty = no band. For a layout the block tree can't express, drop to a raw `render()` callback.
+ */
+export class BandBuilder {
+  // not generic in T — a band can't hold a table/section (rejected at build), only layout blocks,
+  // none of which depend on the row type; a TableNode<T> is (correctly) not assignable here
+  private readonly blocks: ReportNodeInput[] = [];
+  private customHeight: number | undefined;
+  private firstPage = true;
+  private rawRender: PageBandRenderer | undefined;
+
+  /** append one or more blocks to the band (row / image / text / divider …) */
+  addBlock(...blocks: ReportNodeInput[]): this {
+    this.blocks.push(...blocks);
+    return this;
+  }
+
+  /** pin the reserved height (mm) — default: auto-measured from the blocks */
+  height(mm: number): this {
+    this.customHeight = mm;
+    return this;
+  }
+
+  /** draw on the first page too? — default true */
+  showOnFirstPage(show: boolean): this {
+    this.firstPage = show;
+    return this;
+  }
+
+  /** raw jsPDF escape hatch — draw the band yourself; a height is required (can't auto-measure a callback) */
+  render(callback: PageBandRenderer, height: number): this {
+    this.rawRender = callback;
+    this.customHeight = height;
+    return this;
+  }
+
+  /** the band config, or undefined if nothing was configured */
+  toBand(): KapomPageBandInput | undefined {
+    const firstPage = this.firstPage ? {} : { showOnFirstPage: false as const };
+    if (this.rawRender) {
+      return { height: this.customHeight ?? 0, render: this.rawRender, ...firstPage };
+    }
+    if (this.blocks.length === 0) return undefined;
+    return {
+      ...(this.customHeight !== undefined ? { height: this.customHeight } : {}),
+      children: this.blocks,
+      ...firstPage,
+    };
+  }
+}
+
+/**
+ * Fluent report builder — the chain counterpart to the object-config `createKapomReport`, shaped
+ * around the report anatomy. Band sections that reserve space are sub-builders you configure in
+ * detail (`report.pageHeader.addBlock(...)`); the flowing/once sections and settings are methods
+ * (`report.content(...)`, `report.pageNumber(...)`). `build()` emits the exact same config the
+ * object form takes, so both produce an identical report.
  *
- * Method names follow the report anatomy so each one says *when* it shows: no `page` prefix =
- * printed once (`title` first page, `summary` last page); a `page` prefix = repeated every page
- * (`pageHeader`/`pageFooter`/`pageNumber`). `content` is the body that flows across pages.
+ * Method/section names follow the anatomy: no `page` prefix = printed once (`title` first page,
+ * `summary` last page); a `page` prefix = repeated every page. `content` flows across pages.
  */
 export class KapomReportBuilder<T = unknown> {
+  /** page header band — repeats every page; `report.pageHeader.addBlock(...)` (height auto-measured) */
+  readonly pageHeader = new BandBuilder();
+  /** page footer band — repeats every page */
+  readonly pageFooter = new BandBuilder();
+
   private readonly titleBlocks: ReportNodeInput<T>[] = [];
   private readonly bodyBlocks: ReportNodeInput<T>[] = [];
   private readonly summaryBlocks: ReportNodeInput<T>[] = [];
   private readonly options: Partial<KapomReportBaseOptions> = {};
 
-  // ── printed once ──────────────────────────────────────────────
-  /** report title (once, first page) — a plain string becomes a `reportTitle` text + spacer; a node is prepended as-is. Repeatable. */
+  // ── flow + once sections (methods, chainable) ─────────────────
+  /** report title (once, first page) — a plain string becomes a `reportTitle` text + spacer; a node is prepended as-is */
   title(block: string | ReportNodeInput<T>): this {
     if (typeof block === 'string') {
       this.titleBlocks.push({ type: 'text', content: block, role: 'reportTitle' }, { type: 'spacer', height: 6 });
@@ -32,30 +93,19 @@ export class KapomReportBuilder<T = unknown> {
     return this;
   }
 
+  /** the content/detail — appended in order; flows and paginates. Repeatable. */
+  content(...blocks: ReportNodeInput<T>[]): this {
+    this.bodyBlocks.push(...blocks);
+    return this;
+  }
+
   /** report footer / summary (once, last page) — pinned to the page bottom (wrapped in a bottomAnchor at build). Repeatable. */
   summary(...blocks: ReportNodeInput<T>[]): this {
     this.summaryBlocks.push(...blocks);
     return this;
   }
 
-  // ── the body (flows across pages) ─────────────────────────────
-  /** the content/detail — appended in order; flows and paginates. Call multiple times to keep adding. */
-  content(...blocks: ReportNodeInput<T>[]): this {
-    this.bodyBlocks.push(...blocks);
-    return this;
-  }
-
-  // ── repeated every page (the page frame) ──────────────────────
-  pageHeader(band: Opt<'pageHeader'>): this {
-    this.options.pageHeader = band;
-    return this;
-  }
-
-  pageFooter(band: Opt<'pageFooter'>): this {
-    this.options.pageFooter = band;
-    return this;
-  }
-
+  // ── page-frame annotations + settings (methods) ───────────────
   pageNumber(input: Opt<'pageNumber'>): this {
     this.options.pageNumber = input;
     return this;
@@ -66,13 +116,7 @@ export class KapomReportBuilder<T = unknown> {
     return this;
   }
 
-  // ── page setup ────────────────────────────────────────────────
-  /**
-   * paper size / orientation / unit + margins in one place (the "Page Setup" grouping) — e.g.
-   * `.pageSetup({ format: 'a4', orientation: 'landscape', margins: { top: 20, ... } })`. Splits
-   * internally: `format`/`orientation`/`unit` go to `new jsPDF()`, `margins` to the layout engine.
-   * `.document()` / `.margins()` remain as the granular equivalents.
-   */
+  /** paper size / orientation / unit + margins in one place; splits internally (format/orientation/unit → jsPDF, margins → layout) */
   pageSetup(setup: Opt<'document'> & { margins?: Opt<'margins'> }): this {
     const { margins, ...document } = setup;
     if (margins !== undefined) this.options.margins = margins;
@@ -80,7 +124,6 @@ export class KapomReportBuilder<T = unknown> {
     return this;
   }
 
-  // ── report-wide settings ──────────────────────────────────────
   font(config: Opt<'font'>): this {
     this.options.font = config;
     return this;
@@ -88,6 +131,11 @@ export class KapomReportBuilder<T = unknown> {
 
   margins(margins: Opt<'margins'>): this {
     this.options.margins = margins;
+    return this;
+  }
+
+  document(document: Opt<'document'>): this {
+    this.options.document = document;
     return this;
   }
 
@@ -101,11 +149,6 @@ export class KapomReportBuilder<T = unknown> {
     return this;
   }
 
-  document(document: Opt<'document'>): this {
-    this.options.document = document;
-    return this;
-  }
-
   // ── output ────────────────────────────────────────────────────
   /** the assembled config — the same shape the object form takes (title first, body, summary pinned to the bottom last) */
   toConfig(): KapomBlocksConfig<T> {
@@ -116,7 +159,14 @@ export class KapomReportBuilder<T = unknown> {
         ? [{ type: 'bottomAnchor', children: this.summaryBlocks } as ReportNodeInput<T>]
         : []),
     ];
-    return { ...this.options, blocks };
+    const pageHeader = this.pageHeader.toBand();
+    const pageFooter = this.pageFooter.toBand();
+    return {
+      ...this.options,
+      ...(pageHeader !== undefined ? { pageHeader } : {}),
+      ...(pageFooter !== undefined ? { pageFooter } : {}),
+      blocks,
+    };
   }
 
   /** compile to a KapomReport (raw jsPDF doc + save/preview) — identical to createKapomReport(toConfig()) */

@@ -18,6 +18,7 @@ import { drawText } from './draw-text';
 import type { PageBandLike } from './page-band';
 import { isBlockBand } from './page-band';
 import { deriveMeasureContext } from './measure-context';
+import { measureTextBlockHeight } from './text-metrics';
 import type { PageNumberInput } from './page-number';
 import { renderPageNumber, resolvePageNumber } from './page-number';
 import type { Watermark, WatermarkInput } from './watermark';
@@ -67,6 +68,9 @@ export class RenderEngine {
   private readonly typography: Typography;
   private readonly pageHeader: PageBandLike | undefined;
   private readonly pageFooter: PageBandLike | undefined;
+  /** resolved reserved heights — a block band with no explicit height is auto-measured here */
+  private readonly headerHeight: number;
+  private readonly footerHeight: number;
   private readonly watermark: Watermark | undefined;
   private readonly pageNumber: ReturnType<typeof resolvePageNumber>;
 
@@ -86,16 +90,42 @@ export class RenderEngine {
       doc.setFont(defaultFamily, 'normal');
     }
 
+    // resolve band heights after fonts are registered (auto-measure needs the real font metrics)
+    // and before the cursor is built (it reserves these heights from the content area)
+    this.headerHeight = this.pageHeader ? this.resolveBandHeight(this.pageHeader) : 0;
+    this.footerHeight = this.pageFooter ? this.resolveBandHeight(this.pageFooter) : 0;
+
     this.cursor = new PdfCursor({
       pageWidth: doc.internal.pageSize.getWidth(),
       pageHeight: doc.internal.pageSize.getHeight(),
       margins: this.margins,
-      headerHeight: this.pageHeader?.height ?? 0,
-      footerHeight: this.pageFooter?.height ?? 0,
+      headerHeight: this.headerHeight,
+      footerHeight: this.footerHeight,
       onPageBreak: () => {
         this.doc.addPage();
       },
     });
+  }
+
+  /** a block band with no explicit height = auto-measured (sum of its blocks); otherwise the given height */
+  private resolveBandHeight(band: PageBandLike): number {
+    if (isBlockBand(band)) {
+      return band.height ?? this.measureBandHeight(band.blocks);
+    }
+    return band.height;
+  }
+
+  /** total natural height of a band's blocks — a MeasureContext that doesn't need the cursor (built before it) */
+  private measureBandHeight(blocks: readonly MeasurableBlock[]): number {
+    const pageWidth = this.doc.internal.pageSize.getWidth();
+    const measureCtx: MeasureContext = {
+      pageWidth,
+      contentWidth: pageWidth - this.margins.left - this.margins.right,
+      numeric: this.numeric,
+      typography: this.typography,
+      measureText: (text, fontSize, maxWidth) => measureTextBlockHeight(this.doc, text, fontSize, maxWidth),
+    };
+    return blocks.reduce((sum, block) => sum + block.measureHeight(measureCtx), 0);
   }
 
   /**
@@ -181,7 +211,7 @@ export class RenderEngine {
         this.drawBand(this.pageHeader, this.margins.top, bandWidth, pageIndex, pageCount);
       }
       if (this.pageFooter && (page > 1 || this.pageFooter.showOnFirstPage !== false)) {
-        const footerTop = pageHeight - this.margins.bottom - this.pageFooter.height;
+        const footerTop = pageHeight - this.margins.bottom - this.footerHeight;
         this.drawBand(this.pageFooter, footerTop, bandWidth, pageIndex, pageCount);
       }
       if (this.pageNumber && (page > 1 || this.pageNumber.showOnFirstPage)) {

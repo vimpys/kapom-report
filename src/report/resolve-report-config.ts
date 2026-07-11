@@ -34,7 +34,8 @@ export type KapomGroupInput<T> = keyof T | readonly (keyof T)[] | GroupResolver<
  * raw jsPDF drawing the tree can't express.
  */
 export interface KapomDeclarativeBand {
-  height: number;
+  /** reserved zone height (mm); omit = auto-measured from the children's total height */
+  height?: number;
   children: readonly ReportNodeInput<unknown>[];
   /** draw on the first page too? — default true */
   showOnFirstPage?: boolean;
@@ -138,7 +139,7 @@ function resolveBand(band: KapomPageBandInput): PageBandLike {
   if (!('children' in band)) return band;
   for (const child of band.children) assertConfinedChildAllowed(child, 'page band');
   return {
-    height: band.height,
+    ...(band.height !== undefined ? { height: band.height } : {}), // omit = engine auto-measures
     blocks: band.children.map((child) => createBlock(child)),
     ...(band.showOnFirstPage !== undefined ? { showOnFirstPage: band.showOnFirstPage } : {}),
   };

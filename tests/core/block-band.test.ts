@@ -5,7 +5,7 @@ import { KapomError } from '../../src/core/errors';
 import type { BlockBand } from '../../src/core/page-band';
 import { resolveReportConfig } from '../../src/report/resolve-report-config';
 import type { ReportNodeInput } from '../../src/types/node';
-import { makeStubDoc } from '../helpers/stub-doc';
+import { makeStubDoc, SCALE_FACTOR } from '../helpers/stub-doc';
 
 /** build a resolved BlockBand from declarative children, the way the facade does */
 function blockBand(children: ReportNodeInput<unknown>[], height: number): BlockBand {
@@ -63,6 +63,18 @@ describe('BlockBand (declarative page band) — engine finalize', () => {
     const ctx = withBand.createRenderContext();
     // contentTop ถูกดันลงมาเท่า header height (margins.top 15 + 30)
     expect(ctx.contentTop).toBe(45);
+  });
+
+  it('auto-height: band ไม่ระบุ height → engine วัดจาก block เอง แล้วหัก content area เท่าที่วัดได้', () => {
+    const { doc } = makeStubDoc(['line1', 'line2']); // แต่ละ text = 2 บรรทัด
+    // band ไม่มี height (auto) — 1 text block สูง 2 บรรทัด
+    const band = { blocks: [createBlock({ type: 'text', content: 'H' })] };
+    const engine = new RenderEngine(doc, { pageHeader: band });
+    const ctx = engine.createRenderContext();
+
+    const lineHeight = (10 * 1.15) / SCALE_FACTOR; // default text fontSize 10
+    // contentTop = margins.top (15) + measured band height (2 บรรทัด)
+    expect(ctx.contentTop).toBeCloseTo(15 + 2 * lineHeight, 6);
   });
 });
 
