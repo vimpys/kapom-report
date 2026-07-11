@@ -58,7 +58,9 @@ function buildHeaderBand(options: SalesReportOptions, printedAt: string): PageBa
   const description = options.reportDescription ?? 'Quarterly sales by product and customer';
 
   return {
-    height: 34,
+    // just tall enough for the note's bottom line — a smaller height leaves only a thin gap
+    // before the table starts (the band's reserved height is what pushes the content down)
+    height: 27,
     render: ({ doc, x, y, width, drawText }): void => {
       const right = x + width;
       const setText = (size: number, style: 'normal' | 'bold', color: RGB): void => {
