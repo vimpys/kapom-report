@@ -10,6 +10,10 @@ import { saveReport } from '../shared';
 import { sales } from './data';
 import { buildSalesReport } from './report-template';
 
-const report = buildSalesReport(sales, { companyName: '[COMPANY NAME]', title: 'Sales Report' });
+const report = buildSalesReport(sales, {
+  companyName: 'Kapom Company',
+  reportTitle: 'Sales Report',
+  reportDescription: 'Quarterly sales by product and customer — FY2026',
+});
 
 saveReport(report, '19-modular-report');
