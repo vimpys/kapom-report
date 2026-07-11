@@ -11,7 +11,9 @@ import { RawBlock } from './raw-block';
 import { assertConfinedChildAllowed, assertRowNodeValid, DEFAULT_ROW_GAP, RowBlock } from './row-block';
 import { KeyValueBlock } from './key-value-block';
 import { assertBoxNodeValid, BoxBlock, DEFAULT_BOX_BORDER_WIDTH, DEFAULT_BOX_PADDING } from './box-block';
+import { BottomAnchorBlock } from './bottom-anchor-block';
 import type {
+  BottomAnchorNode,
   BoxNode,
   DividerNode,
   ImageNode,
@@ -72,6 +74,10 @@ export function registerBuiltinBlocks(): void {
     );
   });
   registerBlockType('keyValue', (node) => new KeyValueBlock(node as KeyValueNode));
+  registerBlockType('bottomAnchor', (node) => {
+    const anchorNode = node as BottomAnchorNode<unknown>;
+    return new BottomAnchorBlock(anchorNode.children.map((child) => createBlock(child)));
+  });
   registerBlockType('box', (node) => {
     const boxNode = node as BoxNode<unknown>;
     assertBoxNodeValid(boxNode);

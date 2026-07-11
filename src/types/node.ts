@@ -197,6 +197,18 @@ export interface BoxNode<T> {
   keepTogether?: boolean;
 }
 
+/**
+ * pins its children to the bottom of the current page: advances the cursor to fill the gap
+ * first (contentBottom − cursor.y − children height), then renders the children — a report
+ * footer / signature that should sit at the page bottom rather than flowing right after the
+ * body. Use as the last block (content after it starts at the page bottom); if the body already
+ * reaches near the bottom there's no gap to fill and the children render right after it.
+ */
+export interface BottomAnchorNode<T> {
+  type: 'bottomAnchor';
+  children: readonly ReportNodeInput<T>[];
+}
+
 /** composite: renders children in order, measureHeight sums recursively — children accept text shorthand */
 export interface StackNode<T> {
   type: 'stack';
@@ -228,7 +240,8 @@ export type ReportNode<T = unknown> =
   | SectionNode<T>
   | RowNode<T>
   | KeyValueNode
-  | BoxNode<T>;
+  | BoxNode<T>
+  | BottomAnchorNode<T>;
 
 /** a TextNode without the need for `type` — used as input shorthand (`{ content: 'x', role?, style? }`) */
 export type TextNodeShorthand = Omit<TextNode, 'type'>;

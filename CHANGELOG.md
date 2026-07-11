@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Declarative report tree** — `ReportNode` as single source of truth; fluent chain optional wrapper
 - **Core blocks**: text, spacer, divider, image, table (flat + grouped + nested master-detail)
-- **Composite layouts**: stack, section, row (side-by-side columns with fixed/flexible widths, keep-together), keyValue (aligned label:value rows), box (painted background/border container that splits across pages clone-style), signature (multi-slot), raw escape hatch for custom drawing
+- **Composite layouts**: stack, section, row (side-by-side columns with fixed/flexible widths, keep-together), keyValue (aligned label:value rows), box (painted background/border container that splits across pages clone-style), bottomAnchor (pins children to the page bottom — a signature / report footer), signature (multi-slot), raw escape hatch for custom drawing
 - **Text alignment**: `align: 'left' | 'center' | 'right'` on text blocks (per line, after wrapping)
 - **Table features**: 
   - Row numbers (continuous/per-group/per-page)

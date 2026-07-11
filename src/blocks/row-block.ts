@@ -65,6 +65,11 @@ export function assertConfinedChildAllowed(input: ReportNodeInput<unknown>, cont
       `${container}: a '${node.type}' block is not supported inside a ${container} (v1) — it paginates or breaks pages itself, which conflicts with the reserved box it would render into`,
     );
   }
+  if (node.type === 'bottomAnchor') {
+    throw new KapomError(
+      `${container}: a 'bottomAnchor' block is not supported inside a ${container} — it pins to the page bottom (contentBottom), which has no meaning inside a fixed zone; use it at the top level`,
+    );
+  }
   if (node.type === 'stack' || node.type === 'box') {
     for (const child of node.children) assertConfinedChildAllowed(child, container);
   }

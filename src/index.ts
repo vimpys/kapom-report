@@ -52,6 +52,7 @@ export type {
   RowNode,
   KeyValueNode,
   BoxNode,
+  BottomAnchorNode,
   ReportNode,
   TextNodeShorthand,
   ReportNodeInput,

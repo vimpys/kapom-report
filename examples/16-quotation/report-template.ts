@@ -190,12 +190,16 @@ export function buildQuotation(quotation: Quotation): KapomReport {
           },
         ],
       },
-      { type: 'spacer', height: 10 },
-
+      // signature pinned to the bottom of the page, not flowing right after the terms
       {
-        type: 'signature',
-        slots: [{ label: 'Signature over printed name' }, { label: 'Date signed' }],
-        signHeight: 12,
+        type: 'bottomAnchor',
+        children: [
+          {
+            type: 'signature',
+            slots: [{ label: 'Signature over printed name' }, { label: 'Date signed' }],
+            signHeight: 12,
+          },
+        ],
       },
     ],
   });
