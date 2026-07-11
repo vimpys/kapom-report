@@ -22,7 +22,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
-    "demo": "tsx examples/01-facade.ts && tsx examples/02-text-blocks.ts && tsx examples/03-save-preview.ts && tsx examples/04-sales-table.ts && tsx examples/05-styled-ledger.ts && tsx examples/06-grouped-report.ts && tsx examples/07-nested-group.ts && tsx examples/08-master-detail.ts && tsx examples/09-report-header-section.ts && tsx examples/10-composite-report.ts && tsx examples/11-page-header-footer.ts && tsx examples/12-page-number.ts && tsx examples/13-system-field-anchor.ts && tsx examples/14-signature-watermark.ts && tsx examples/15-raw-escape-hatch.ts && tsx examples/16-quotation.ts && tsx examples/17-field-service-form.ts && tsx examples/18-sales-report.ts && tsx examples/19-modular-report/index.ts",
+    "demo": "tsx examples/01-facade.ts && tsx examples/02-text-blocks.ts && tsx examples/03-save-preview.ts && tsx examples/04-sales-table.ts && tsx examples/05-styled-ledger.ts && tsx examples/06-grouped-report.ts && tsx examples/07-nested-group.ts && tsx examples/08-master-detail.ts && tsx examples/09-report-header-section.ts && tsx examples/10-composite-report.ts && tsx examples/11-page-header-footer.ts && tsx examples/12-page-number.ts && tsx examples/13-system-field-anchor.ts && tsx examples/14-signature-watermark.ts && tsx examples/15-raw-escape-hatch.ts && tsx examples/16-quotation/index.ts && tsx examples/17-field-service/index.ts && tsx examples/18-sales-report.ts && tsx examples/19-modular-report/index.ts",
     "prepublishOnly": "npm run typecheck && npm run lint && npm test && npm run build"
   },
   "keywords": [
