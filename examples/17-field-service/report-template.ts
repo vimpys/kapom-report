@@ -3,8 +3,12 @@
  * The field-service form layout, now *filled from data* — the same box/row/divider composition as
  * a blank form, but the empty cells and writing areas carry the actual values. Exposed as
  * `buildFieldServiceReport(report)`. Checkboxes render `[x]` for the service type performed.
+ *
+ * Assembled with the `reportBuilder()` fluent chain (same as demo 18): `title` is the once-per-
+ * report heading, `content` is the flowing body. Either style — chain or `createKapomReport({...})`
+ * object — produces an identical report.
  */
-import { createKapomReport } from '../../src/index';
+import { reportBuilder } from '../../src/index';
 import type { KapomReport, ReportNodeInput, RGB, TableNode } from '../../src/index';
 import { fontConfig } from '../shared';
 import type { FieldServiceReport, PartUsed } from './data';
@@ -18,7 +22,7 @@ const WHITE: RGB = [255, 255, 255];
 
 const SERVICE_TYPES = ['Installation', 'Repair', 'Maintenance', 'Inspection', 'Emergency'] as const;
 
-/** the report's block type — the whole form is one createKapomReport<PartUsed>, so its layout blocks share that T (ReportNode is invariant in T; the parts table is the only block that actually uses it) */
+/** the report's block type — the whole form is one reportBuilder<PartUsed>, so its layout blocks share that T (ReportNode is invariant in T; the parts table is the only block that actually uses it) */
 type Node = ReportNodeInput<PartUsed>;
 
 const barText = { fontSize: 10, fontStyle: 'bold', color: WHITE } as const;
@@ -108,66 +112,74 @@ function partsTable(parts: readonly PartUsed[]): TableNode<PartUsed> {
 export function buildFieldServiceReport(report: FieldServiceReport): KapomReport {
   const { company, customer, job } = report;
 
-  return createKapomReport<PartUsed>({
-    font: fontConfig,
-    blocks: [
+  const builder = reportBuilder<PartUsed>().font(fontConfig);
+
+  // the once-per-report heading (a stack keeps the two centered lines + spacer together)
+  builder.title({
+    type: 'stack',
+    children: [
       { content: 'FIELD SERVICE REPORT', align: 'center', style: { fontSize: 20, fontStyle: 'bold', color: NAVY } },
       { content: 'Service Documentation Form', align: 'center', style: { fontSize: 10, color: MUTED } },
       { type: 'spacer', height: 6 },
-
-      {
-        type: 'row',
-        columns: [
-          {
-            children: [
-              detailUnit('COMPANY DETAILS', [
-                ['Company:', company.name],
-                ['Technician:', company.technician],
-                ['Phone:', company.phone],
-                ['License #:', company.license],
-              ]),
-            ],
-          },
-          {
-            children: [
-              detailUnit('CUSTOMER DETAILS', [
-                ['Name:', customer.name],
-                ['Address:', customer.address],
-                ['Phone:', customer.phone],
-                ['Email:', customer.email],
-              ]),
-            ],
-          },
-        ],
-      },
-      { type: 'spacer', height: 6 },
-
-      sectionBar('JOB DETAILS'),
-      fieldRow('Work Order #', job.workOrder),
-      fieldRow('Service Date', job.serviceDate),
-      fieldRow('Time In / Out', job.timeInOut),
-      fieldRow('Service Address', job.serviceAddress),
-      { type: 'spacer', height: 6 },
-
-      sectionBar('SERVICE TYPE'),
-      { type: 'box', borderColor: BORDER, padding: 2, children: [{ content: checkboxLine(report.serviceType), style: valueText }] },
-      { type: 'spacer', height: 6 },
-
-      sectionBar('PROBLEM REPORTED BY CUSTOMER'),
-      textArea(report.problemReported),
-      { type: 'spacer', height: 6 },
-
-      sectionBar('PROBLEM FOUND ON ARRIVAL'),
-      textArea(report.problemFound),
-      { type: 'spacer', height: 6 },
-
-      sectionBar('WORK PERFORMED'),
-      listArea(report.workPerformed),
-      { type: 'spacer', height: 6 },
-
-      sectionBar('PARTS & MATERIALS USED'),
-      { type: 'spacer', height: 2 },
-      partsTable(report.parts),
     ],
   });
+
+  // the form body — flows in order down the page
+  builder.content(
+    {
+      type: 'row',
+      columns: [
+        {
+          children: [
+            detailUnit('COMPANY DETAILS', [
+              ['Company:', company.name],
+              ['Technician:', company.technician],
+              ['Phone:', company.phone],
+              ['License #:', company.license],
+            ]),
+          ],
+        },
+        {
+          children: [
+            detailUnit('CUSTOMER DETAILS', [
+              ['Name:', customer.name],
+              ['Address:', customer.address],
+              ['Phone:', customer.phone],
+              ['Email:', customer.email],
+            ]),
+          ],
+        },
+      ],
+    },
+    { type: 'spacer', height: 6 },
+
+    sectionBar('JOB DETAILS'),
+    fieldRow('Work Order #', job.workOrder),
+    fieldRow('Service Date', job.serviceDate),
+    fieldRow('Time In / Out', job.timeInOut),
+    fieldRow('Service Address', job.serviceAddress),
+    { type: 'spacer', height: 6 },
+
+    sectionBar('SERVICE TYPE'),
+    { type: 'box', borderColor: BORDER, padding: 2, children: [{ content: checkboxLine(report.serviceType), style: valueText }] },
+    { type: 'spacer', height: 6 },
+
+    sectionBar('PROBLEM REPORTED BY CUSTOMER'),
+    textArea(report.problemReported),
+    { type: 'spacer', height: 6 },
+
+    sectionBar('PROBLEM FOUND ON ARRIVAL'),
+    textArea(report.problemFound),
+    { type: 'spacer', height: 6 },
+
+    sectionBar('WORK PERFORMED'),
+    listArea(report.workPerformed),
+    { type: 'spacer', height: 6 },
+
+    sectionBar('PARTS & MATERIALS USED'),
+    { type: 'spacer', height: 2 },
+    partsTable(report.parts),
+  );
+
+  return builder.build();
 }
