@@ -13,7 +13,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { reportBuilder } from '../../src/index';
+import { reportBuilder, spacer } from '../../src/index';
 import type { KapomReport, ReportNodeInput, RGB } from '../../src/index';
 import { fontConfig } from '../shared';
 import type { Quotation, QuotationItem } from './data';
@@ -41,6 +41,9 @@ const headingStyle = { fontSize: 10.5, fontStyle: 'bold', color: INK } as const;
 /** a block written anywhere in this quotation (T isn't used by the layout blocks, only the table) */
 type Node = ReportNodeInput<QuotationItem>;
 
+/** the brand rule reused between sections (same thickness/color both times → a const beats a factory) */
+const rule: Node = { type: 'divider', thickness: 1, color: BRAND_LINE };
+
 /** brand letterhead: logo + company name (left) | contact lines right-aligned (right) */
 const letterhead: Node = {
   type: 'row',
@@ -48,14 +51,14 @@ const letterhead: Node = {
     { width: 14, children: [{ type: 'image', data: logo, format: 'PNG', width: 14, height: 14 }] },
     {
       children: [
-        { type: 'spacer', height: 2.5 },
+        spacer(2.5),
         { content: 'KAPOM TRAVEL', style: companyStyle },
         { content: 'AND TOURS', style: companyStyle },
       ],
     },
     {
       children: [
-        { type: 'spacer', height: 1.5 },
+        spacer(1.5),
         { content: '123 ANYWHERE ST., ANY SUBURB, ANY CITY', align: 'right', style: contactStyle },
         { content: '082 345 6789', align: 'right', style: contactStyle },
         { content: 'WWW.KAPOMTRAVEL.COM', align: 'right', style: contactStyle },
@@ -74,135 +77,140 @@ export function buildQuotation(quotation: Quotation): KapomReport {
   // ── the once-at-top region: letterhead + document title, chained one block at a time ──
   builder
     .title(letterhead)
-    .title({ type: 'spacer', height: 4 })
+    .title(spacer(4))
     .title({ content: 'QUOTATION', align: 'center', style: { fontSize: 24, fontStyle: 'bold', color: BRAND_TEXT } })
-    .title({ type: 'spacer', height: 5 });
+    .title(spacer(5));
 
-  // ── the flowing body ──
-  builder.content(
-    // ── quotation meta (left) | customer (right) ──
-    {
-      type: 'row',
-      columns: [
-        {
-          children: [
-            {
-              type: 'keyValue',
-              labelWidth: 32,
-              rows: [
-                ['Quotation No:', quotation.number],
-                ['Date:', quotation.date],
-                ['Valid Until:', quotation.validUntil],
-                ['Customer ID:', quotation.customerId],
-              ],
-            },
-          ],
-        },
-        {
-          children: [
-            { content: quotation.customer.name, style: { fontSize: 10, fontStyle: 'bold', color: INK } },
-            ...quotation.customer.lines,
-          ],
-        },
-      ],
-    },
-    { type: 'spacer', height: 4 },
-    { type: 'divider', thickness: 1, color: BRAND_LINE },
-    { type: 'spacer', height: 6 },
-
-    // ── PROJECT DESCRIPTION — label column + auto-wrapping paragraph ──
-    {
-      type: 'row',
-      columns: [
-        { width: 52, children: [{ content: 'PROJECT DESCRIPTION', style: headingStyle }] },
-        { children: [{ content: quotation.projectDescription, style: { fontSize: 10, color: MUTED } }] },
-      ],
-    },
-    { type: 'spacer', height: 4 },
-
-    // ── line items — Total is a computed column, zebra tints the body ──
-    {
-      type: 'table',
-      columns: [
-        { type: 'data', key: 'description', header: 'Description' },
-        { type: 'data', key: 'qty', header: 'Quantity', align: 'center' },
-        { type: 'data', key: 'unitPrice', header: 'Price', align: 'right', numberFormat: {} },
-        {
-          type: 'computed',
-          header: 'Total',
-          align: 'right',
-          compute: (row) => row.qty * row.unitPrice,
-          numberFormat: {},
-        },
-      ],
-      data: quotation.items,
-      style: { header: { fillColor: BRAND_HEAD }, zebra: { even: ZEBRA_FILL } },
-    },
-    { type: 'spacer', height: 6 },
-
-    // ── totals — right column only; keyValue right-aligns the numbers, box highlights the total ──
-    {
-      type: 'row',
-      columns: [
-        { children: [] },
-        {
-          width: 78,
-          children: [
-            {
-              type: 'keyValue',
-              valueAlign: 'right',
-              rows: [
-                ['Subtotal', money(subtotal)],
-                ['VAT (7%)', money(vat)],
-              ],
-            },
-            { type: 'spacer', height: 2 },
-            {
-              type: 'row',
-              columns: [
-                { children: [{ content: 'Total', style: headingStyle }] },
-                {
-                  width: 40,
-                  children: [
-                    {
-                      type: 'box',
-                      background: BRAND_FILL,
-                      padding: 1.5,
-                      children: [
-                        {
-                          content: money(grandTotal),
-                          align: 'right',
-                          style: { fontSize: 10.5, fontStyle: 'bold', color: BRAND_DARK },
-                        },
-                      ],
-                    },
-                  ],
-                },
-              ],
-            },
-          ],
-        },
-      ],
-    },
-    { type: 'spacer', height: 4 },
-    { type: 'divider', thickness: 1, color: BRAND_LINE },
-    { type: 'spacer', height: 6 },
-
-    // ── terms — same two-column shape as the description section ──
-    {
-      type: 'row',
-      columns: [
-        { width: 52, children: [{ content: 'TERMS & CONDITIONS', style: headingStyle }] },
-        {
-          children: [
-            { content: quotation.terms, style: { fontSize: 10, color: MUTED } },
-            { type: 'spacer', height: 5 },
-            { content: 'PLEASE CONFIRM YOUR ACCEPTANCE OF THIS QUOTE', style: headingStyle },
-          ],
-        },
-      ],
-    },
-  );
+  // ── the flowing body — one .content() call per section (each takes all the section's blocks at once) ──
+  builder
+    // quotation meta (left) | customer (right)
+    .content(
+      {
+        type: 'row',
+        columns: [
+          {
+            children: [
+              {
+                type: 'keyValue',
+                labelWidth: 32,
+                rows: [
+                  ['Quotation No:', quotation.number],
+                  ['Date:', quotation.date],
+                  ['Valid Until:', quotation.validUntil],
+                  ['Customer ID:', quotation.customerId],
+                ],
+              },
+            ],
+          },
+          {
+            children: [
+              { content: quotation.customer.name, style: { fontSize: 10, fontStyle: 'bold', color: INK } },
+              ...quotation.customer.lines,
+            ],
+          },
+        ],
+      },
+      spacer(4),
+      rule,
+      spacer(6),
+    )
+    // PROJECT DESCRIPTION — label column + auto-wrapping paragraph
+    .content(
+      {
+        type: 'row',
+        columns: [
+          { width: 52, children: [{ content: 'PROJECT DESCRIPTION', style: headingStyle }] },
+          { children: [{ content: quotation.projectDescription, style: { fontSize: 10, color: MUTED } }] },
+        ],
+      },
+      spacer(4),
+    )
+    // line items — Total is a computed column, zebra tints the body
+    .content(
+      {
+        type: 'table',
+        columns: [
+          { type: 'data', key: 'description', header: 'Description' },
+          { type: 'data', key: 'qty', header: 'Quantity', align: 'center' },
+          { type: 'data', key: 'unitPrice', header: 'Price', align: 'right', numberFormat: {} },
+          {
+            type: 'computed',
+            header: 'Total',
+            align: 'right',
+            compute: (row) => row.qty * row.unitPrice,
+            numberFormat: {},
+          },
+        ],
+        data: quotation.items,
+        style: { header: { fillColor: BRAND_HEAD }, zebra: { even: ZEBRA_FILL } },
+      },
+      spacer(6),
+    )
+    // totals — right column only; keyValue right-aligns the numbers, box highlights the total
+    .content(
+      {
+        type: 'row',
+        columns: [
+          { children: [] },
+          {
+            width: 78,
+            children: [
+              {
+                type: 'keyValue',
+                valueAlign: 'right',
+                rows: [
+                  ['Subtotal', money(subtotal)],
+                  ['VAT (7%)', money(vat)],
+                ],
+              },
+              spacer(2),
+              {
+                type: 'row',
+                columns: [
+                  { children: [{ content: 'Total', style: headingStyle }] },
+                  {
+                    width: 40,
+                    children: [
+                      {
+                        type: 'box',
+                        background: BRAND_FILL,
+                        padding: 1.5,
+                        children: [
+                          {
+                            content: money(grandTotal),
+                            align: 'right',
+                            style: { fontSize: 10.5, fontStyle: 'bold', color: BRAND_DARK },
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      spacer(4),
+      rule,
+      spacer(6),
+    )
+    // terms — same two-column shape as the description section
+    .content(
+      {
+        type: 'row',
+        columns: [
+          { width: 52, children: [{ content: 'TERMS & CONDITIONS', style: headingStyle }] },
+          {
+            children: [
+              { content: quotation.terms, style: { fontSize: 10, color: MUTED } },
+              spacer(5),
+              { content: 'PLEASE CONFIRM YOUR ACCEPTANCE OF THIS QUOTE', style: headingStyle },
+            ],
+          },
+        ],
+      },
+    );
 
   // ── signature pinned to the bottom of the page, not flowing right after the terms
   //    (summary wraps it in a bottomAnchor at build) ──

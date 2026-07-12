@@ -61,7 +61,7 @@ export type {
   TextNodeShorthand,
   ReportNodeInput,
 } from './types/node';
-export { resolveNodeInput } from './types/node';
+export { resolveNodeInput, spacer } from './types/node';
 export { DEFAULT_ROW_GAP } from './blocks/row-block';
 export { DEFAULT_BOX_PADDING, DEFAULT_BOX_BORDER_WIDTH } from './blocks/box-block';
 

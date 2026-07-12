@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { RenderEngine } from '../../src/core/engine';
 import { SpacerBlock } from '../../src/blocks/spacer-block';
 import { KapomLayoutError } from '../../src/core/errors';
+import { spacer } from '../../src/types/node';
 import { makeStubDoc } from '../helpers/stub-doc';
 
 describe('SpacerBlock', () => {
@@ -37,5 +38,11 @@ describe('SpacerBlock', () => {
 
   it('height เป็น 0 คือค่าที่ถูกกฎ', () => {
     expect(() => new SpacerBlock({ type: 'spacer', height: 0 })).not.toThrow();
+  });
+});
+
+describe('spacer() shorthand', () => {
+  it('คืน SpacerNode ที่มี height ตามที่ส่ง', () => {
+    expect(spacer(4)).toEqual({ type: 'spacer', height: 4 });
   });
 });

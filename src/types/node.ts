@@ -261,3 +261,6 @@ export function resolveNodeInput<T>(input: ReportNodeInput<T>): ReportNode<T> {
   if (!('type' in input)) return { type: 'text', ...input };
   return input;
 }
+
+/** shorthand constructor for a vertical gap — `spacer(4)` instead of `{ type: 'spacer', height: 4 }` (used a lot, so worth the tiny helper) */
+export const spacer = (height: number): SpacerNode => ({ type: 'spacer', height });
