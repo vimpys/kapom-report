@@ -106,6 +106,9 @@ function resolveCell<T>(
   numeric: NumericStrategy,
 ): string {
   switch (col.type) {
+    // `undefined` = the `type: 'data'` shorthand (columns are normalized before reaching here, but
+    // the static type still carries the optional so the switch must cover it) — same branch as 'data'
+    case undefined:
     case 'data': {
       const value = row[col.key];
       if (col.cellRenderer) return col.cellRenderer(value, row);
@@ -145,6 +148,8 @@ function resolveCell<T>(
         : formatNumber(accumulated, numeric, col.numberFormat);
     }
   }
+  const exhaustive: never = col;
+  return exhaustive;
 }
 
 /** true when an aggregate row has nothing to put in this column (no aggregate declared, or not a data/computed column) — the exact rule resolveAggregateRow uses to find the label's slot */
@@ -212,10 +217,12 @@ export function resolveAggregateRow<T>(
       return formatAggregateResult(col, col.aggregate(rows), numeric);
     }
 
+    // discriminate on the positive 'computed' — a DataColumn's `type` is optional ('data' | undefined),
+    // so `=== 'data'` wouldn't exclude it from the negative branch
     const values =
-      col.type === 'data'
-        ? rows.map((row) => asDecimalishCell(row[col.key], col.header))
-        : rows.map((row) => col.compute(row));
+      col.type === 'computed'
+        ? rows.map((row) => col.compute(row))
+        : rows.map((row) => asDecimalishCell(row[col.key], col.header));
 
     const result = computeAggregate(col.aggregate, values, numeric);
     // count is always a whole number — formatting it to 2 decimal places would read oddly (e.g. "3.00")

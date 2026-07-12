@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Composite layouts**: stack, section, row (side-by-side columns with fixed/flexible widths, keep-together), keyValue (aligned label:value rows), box (painted background/border container that splits across pages clone-style), bottomAnchor (pins children to the page bottom — a signature / report footer), signature (multi-slot), raw escape hatch for custom drawing
 - **Text alignment**: `align: 'left' | 'center' | 'right'` on text blocks (per line, after wrapping)
 - **Table features**: 
+  - Data columns are the default kind — `type: 'data'` may be omitted (write `{ key, header }`); only non-data columns (`rowNumber`/`computed`/`runningTotal`/`group`) need an explicit `type`
   - Row numbers (continuous/per-group/per-page)
   - Computed columns, running totals
   - Aggregates (sum/avg/count/min/max/custom function)

@@ -96,7 +96,7 @@ export interface TableStyleOptions<T> {
 
 export interface TableNode<T> {
   type: 'table';
-  /** top-level columns — leaf columns and/or `ColumnGroup`s (a group renders a spanning super-header) */
+  /** top-level columns — leaf columns and/or `ColumnGroup`s; the `type: 'data'` shorthand may be omitted anywhere (a group renders a spanning super-header) */
   columns: readonly TableColumn<T>[];
   data: readonly T[];
   group?: GroupResolver<T>;

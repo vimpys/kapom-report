@@ -31,8 +31,10 @@ export type {
   ReportColumn,
   ColumnGroup,
   TableColumn,
+  DataColumnShorthand,
   ResolvedAlign,
 } from './types/column';
+export { normalizeColumn } from './types/column';
 export { resolveColumnAlign, isColumnVisible, isColumnGroup, flattenColumns, columnDepth } from './types/column';
 
 export type {
@@ -173,7 +175,6 @@ export type { SectionBuilder } from './report/report-registry';
 export { ReportRegistry } from './report/report-registry';
 
 export type {
-  DataColumnShorthand,
   KapomColumnInput,
   KapomGroupInput,
   KapomDeclarativeBand,

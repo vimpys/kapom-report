@@ -21,7 +21,8 @@ interface ColumnBase {
 }
 
 export interface DataColumn<T> extends ColumnBase {
-  type: 'data';
+  /** the default column kind — may be omitted; normalized to 'data' at build time */
+  type?: 'data';
   key: keyof T;
   numberFormat?: NumberFormat;
   /** the engine automatically sums this column in the group footer + summary */
@@ -78,13 +79,21 @@ export interface ColumnGroup<T> {
 /** a table column at any level — either a leaf column or a group spanning several columns */
 export type TableColumn<T> = ReportColumn<T> | ColumnGroup<T>;
 
+/** alias for a data column with `type` omitted — the default kind (kept for the facade's shorthand type) */
+export type DataColumnShorthand<T> = Omit<DataColumn<T>, 'type'>;
+
+/** fill in the default `type: 'data'` when a leaf column omits it — everything downstream sees a resolved column */
+export function normalizeColumn<T>(col: ReportColumn<T>): ReportColumn<T> {
+  return col.type === undefined ? { ...col, type: 'data' } : col;
+}
+
 export function isColumnGroup<T>(col: TableColumn<T>): col is ColumnGroup<T> {
   return col.type === 'group';
 }
 
-/** expand any groups (recursively) into their leaf columns — body/width/aggregate all run on the flattened leaves */
+/** expand any groups (recursively) into their leaf columns, filling the default `type: 'data'` — body/width/aggregate all run on these */
 export function flattenColumns<T>(columns: readonly TableColumn<T>[]): ReportColumn<T>[] {
-  return columns.flatMap((col) => (isColumnGroup(col) ? flattenColumns(col.columns) : [col]));
+  return columns.flatMap((col) => (isColumnGroup(col) ? flattenColumns(col.columns) : [normalizeColumn(col)]));
 }
 
 /** the number of header rows this column needs — 1 for a leaf, 1 + the deepest child for a group (drives the multi-row header) */
@@ -105,7 +114,8 @@ export function resolveColumnAlign<T>(col: ReportColumn<T>): ResolvedAlign {
   return { data, header: col.headerAlign ?? 'center' };
 }
 
-export function isColumnVisible<T>(col: ReportColumn<T>): boolean {
+/** structural param so it accepts a leaf, a shorthand, or a group (a group has no `visible` → always shown) */
+export function isColumnVisible(col: { visible?: boolean | (() => boolean) }): boolean {
   if (col.visible === undefined) return true;
   return typeof col.visible === 'function' ? col.visible() : col.visible;
 }

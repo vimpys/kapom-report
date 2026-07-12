@@ -11,11 +11,8 @@ import type { RenderEngineOptions } from '../core/engine';
 import type { FontConfig } from '../font/font-config';
 import type { DeepPartial } from '../types/primitives';
 import type { Typography } from '../types/typography';
-import type { DataColumn, ReportColumn } from '../types/column';
+import type { DataColumnShorthand, ReportColumn } from '../types/column';
 import type { GroupResolver, ReportNode, ReportNodeInput, TableNode, TableStyleOptions } from '../types/node';
-
-/** without `type`, normalized into a DataColumn inside resolveReportConfig() (Progressive Disclosure layer 1) */
-export type DataColumnShorthand<T> = Omit<DataColumn<T>, 'type'>;
 
 /** layer 1: the shorthand `{ key, header }`; layer 3: a full ReportColumn (rowNumber/computed/runningTotal still need `type`) */
 export type KapomColumnInput<T> = ReportColumn<T> | DataColumnShorthand<T>;

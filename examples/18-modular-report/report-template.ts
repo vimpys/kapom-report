@@ -16,7 +16,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { formatTimestamp, reportBuilder } from '../../src/index';
-import type { ColumnGroup, KapomReport, ReportColumn, ReportNodeInput, RGB, TableNode } from '../../src/index';
+import type { ColumnGroup, DataColumn, KapomReport, ReportNodeInput, RGB, TableNode } from '../../src/index';
 import { fontConfig } from '../shared';
 import type { Sale } from './data';
 
@@ -39,9 +39,8 @@ type MonthKey =
 /** plain integer with a thousands separator (dash for zero) — used for the month + total columns */
 const compact = (n: number): string => (n > 0 ? n.toLocaleString('en-US') : '-');
 
-// no explicit width — AutoTable auto-sizes the 12 month columns to fill the remaining page width
-const month = (key: MonthKey, header: string): ReportColumn<Sale> => ({
-  type: 'data',
+// `type: 'data'` is the default — omit it; no explicit width lets AutoTable auto-size the 12 months
+const month = (key: MonthKey, header: string): DataColumn<Sale> => ({
   key,
   header,
   align: 'right',
@@ -98,9 +97,9 @@ export function buildSalesReport(sales: Sale[], options: SalesReportOptions): Ka
   const salesTable: TableNode<Sale> = {
     type: 'table',
     columns: [
-      // header align is centered by default now — no need to set headerAlign per column
-      { type: 'data', key: 'product', header: 'Product', width: 30 },
-      { type: 'data', key: 'customer', header: 'Customer', width: 22 },
+      // `type: 'data'` omitted (the default); header align is centered by default too
+      { key: 'product', header: 'Product', width: 30 },
+      { key: 'customer', header: 'Customer', width: 22 },
       // 3-level header: Quarterly → Qtr 1-4 → the three months of each quarter
       {
         type: 'group',

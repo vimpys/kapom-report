@@ -25,7 +25,7 @@ import {
   flattenGroupTreeRows,
 } from '../table/group-tree';
 import type { ReportColumn, ResolvedAlign, RowNumberColumn, TableColumn } from '../types/column';
-import { columnDepth, DEFAULT_ROW_NUMBER_MODE, flattenColumns, isAggregatableColumn, isColumnGroup, isColumnVisible, resolveColumnAlign } from '../types/column';
+import { columnDepth, DEFAULT_ROW_NUMBER_MODE, flattenColumns, isAggregatableColumn, isColumnGroup, isColumnVisible, normalizeColumn, resolveColumnAlign } from '../types/column';
 import type { GroupResolver, TableNode, TableStyleOptions } from '../types/node';
 import type { CellStyle, RGB, TextStyle } from '../types/primitives';
 
@@ -698,11 +698,12 @@ export class TableBlock<T> implements MeasurableBlock {
         });
         for (const child of col.columns) place(child, depth + 1);
       } else if (isColumnVisible(col)) {
+        const leaf = normalizeColumn(col); // shorthand → data, so headCellStyles/resolveColumnAlign work
         // a leaf stretches from its own row down to the bottom (rowSpan) → vertically centered
         rowAt(depth).push({
-          content: normalizeText(col.header),
+          content: normalizeText(leaf.header),
           rowSpan: totalRows - depth,
-          styles: { ...this.headCellStyles(col), valign: 'middle' },
+          styles: { ...this.headCellStyles(leaf), valign: 'middle' },
         });
       }
     };
