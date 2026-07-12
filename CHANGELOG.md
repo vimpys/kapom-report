@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Nested group (N-level recursive, band + subtotals + keep-together per level)
   - Nested table (master-detail; row can expand to show child table with different columns)
   - Zebra striping, conditional row styles, column-level style overrides, table-level header style override (brand fill/text color)
+  - Column groups (`type: 'group'`) — a spanning super-header over several columns, rendered as a 2-row header
   - No-data fallback message
 - **Page composition**: repeating page header/footer bands (raw render callback or a declarative block tree), page-number annotation (margin-only, non-reserved), system field placeholders (`{pageNumber}`, `{totalPages}`, `{date}`, `{time}`, `{dateTime}`), watermarks
 - **Multi-section reports**: `ReportRegistry` to compose sections by name with shared context, `breakBefore` policy for section page breaks

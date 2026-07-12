@@ -16,7 +16,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { formatTimestamp, reportBuilder } from '../../src/index';
-import type { KapomReport, ReportNodeInput, RGB, TableNode } from '../../src/index';
+import type { KapomReport, ReportColumn, ReportNodeInput, RGB, TableNode } from '../../src/index';
 import { fontConfig } from '../shared';
 import type { Sale } from './data';
 
@@ -36,7 +36,7 @@ const STANDING_NOTE =
 const money = (n: number): string =>
   n > 0 ? `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-';
 
-const quarter = (key: 'q1' | 'q2' | 'q3' | 'q4', header: string): TableNode<Sale>['columns'][number] => ({
+const quarter = (key: 'q1' | 'q2' | 'q3' | 'q4', header: string): ReportColumn<Sale> => ({
   type: 'data',
   key,
   header,
@@ -86,10 +86,12 @@ export function buildSalesReport(sales: Sale[], options: SalesReportOptions): Ka
     columns: [
       { type: 'data', key: 'product', header: 'Product', width: 34 },
       { type: 'data', key: 'customer', header: 'Customer', width: 24 },
-      quarter('q1', 'Qtr 1'),
-      quarter('q2', 'Qtr 2'),
-      quarter('q3', 'Qtr 3'),
-      quarter('q4', 'Qtr 4'),
+      // a "Quarterly" super-header spanning the four quarter columns (a 2-row header)
+      {
+        type: 'group',
+        header: 'Quarterly',
+        columns: [quarter('q1', 'Qtr 1'), quarter('q2', 'Qtr 2'), quarter('q3', 'Qtr 3'), quarter('q4', 'Qtr 4')],
+      },
       {
         type: 'computed',
         header: 'Total',

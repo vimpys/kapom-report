@@ -1,5 +1,5 @@
 import type { jsPDF } from 'jspdf';
-import type { ReportColumn } from './column';
+import type { TableColumn } from './column';
 import type { CellStyle, HAlign, RGB, TextStyle } from './primitives';
 import type { Typography } from './typography';
 
@@ -96,7 +96,8 @@ export interface TableStyleOptions<T> {
 
 export interface TableNode<T> {
   type: 'table';
-  columns: readonly ReportColumn<T>[];
+  /** top-level columns — leaf columns and/or `ColumnGroup`s (a group renders a spanning super-header) */
+  columns: readonly TableColumn<T>[];
   data: readonly T[];
   group?: GroupResolver<T>;
   /**

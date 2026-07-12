@@ -3,8 +3,8 @@ import { normalizeText } from '../core/text-normalizer';
 import { formatNumber } from '../format/number-format';
 import { computeAggregate } from './aggregate';
 import type { Decimalish, NumericStrategy } from '../numeric/numeric-strategy';
-import type { ComputedColumn, DataColumn, ReportColumn, ResolvedAlign } from '../types/column';
-import { DEFAULT_ROW_NUMBER_MODE, isAggregatableColumn, isColumnVisible, resolveColumnAlign } from '../types/column';
+import type { ComputedColumn, DataColumn, ReportColumn, ResolvedAlign, TableColumn } from '../types/column';
+import { DEFAULT_ROW_NUMBER_MODE, flattenColumns, isAggregatableColumn, isColumnVisible, resolveColumnAlign } from '../types/column';
 import type { NumberFormat } from '../types/primitives';
 import type { TableNode } from '../types/node';
 
@@ -49,11 +49,11 @@ export function createSegmentState(columnCount: number): SegmentState {
   };
 }
 
-/** filters by visibility + fails fast if no columns remain */
+/** flattens any groups into leaf columns, filters by visibility + fails fast if none remain */
 export function visibleColumns<T>(
-  columns: readonly ReportColumn<T>[],
+  columns: readonly TableColumn<T>[],
 ): ReportColumn<T>[] {
-  const visible = columns.filter(isColumnVisible);
+  const visible = flattenColumns(columns).filter(isColumnVisible);
   if (visible.length === 0) {
     throw new KapomError('table requires at least 1 visible column');
   }

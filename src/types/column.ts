@@ -62,6 +62,31 @@ export type ReportColumn<T> =
   | ComputedColumn<T>
   | RunningTotalColumn<T>;
 
+/**
+ * a super-header spanning a run of leaf columns — renders a 2-row header where `header` sits above
+ * its `columns` with a colSpan (the leaf columns keep their own headers in the row below). Children
+ * are leaf columns only (no nested groups, one level — enforced by the `ReportColumn` type here).
+ */
+export interface ColumnGroup<T> {
+  type: 'group';
+  header: string;
+  columns: readonly ReportColumn<T>[];
+  /** super-header cell alignment — default 'center' */
+  headerAlign?: HAlign;
+}
+
+/** a table column at the top level — either a leaf column or a group spanning several leaves */
+export type TableColumn<T> = ReportColumn<T> | ColumnGroup<T>;
+
+export function isColumnGroup<T>(col: TableColumn<T>): col is ColumnGroup<T> {
+  return col.type === 'group';
+}
+
+/** expand any groups into their leaf columns — everything data-related (body/width/aggregate) runs on the flattened leaves */
+export function flattenColumns<T>(columns: readonly TableColumn<T>[]): ReportColumn<T>[] {
+  return columns.flatMap((col) => (isColumnGroup(col) ? [...col.columns] : [col]));
+}
+
 /** resolve alignment: header falls back to data, data falls back to 'left' */
 export interface ResolvedAlign {
   header: HAlign;

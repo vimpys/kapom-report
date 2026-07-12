@@ -1,5 +1,5 @@
 import { autoTable } from 'jspdf-autotable';
-import type { CellDef, FontStyle as AutoTableFontStyle, Styles, UserOptions } from 'jspdf-autotable';
+import type { CellDef, FontStyle as AutoTableFontStyle, RowInput, Styles, UserOptions } from 'jspdf-autotable';
 import type { MeasurableBlock, MeasureContext, RenderContext } from '../core/context';
 import { applyTextStyle, drawText } from '../core/draw-text';
 import { KapomError } from '../core/errors';
@@ -25,7 +25,7 @@ import {
   flattenGroupTreeRows,
 } from '../table/group-tree';
 import type { ReportColumn, ResolvedAlign, RowNumberColumn } from '../types/column';
-import { DEFAULT_ROW_NUMBER_MODE, isAggregatableColumn, resolveColumnAlign } from '../types/column';
+import { DEFAULT_ROW_NUMBER_MODE, flattenColumns, isAggregatableColumn, isColumnGroup, isColumnVisible, resolveColumnAlign } from '../types/column';
 import type { GroupResolver, TableNode, TableStyleOptions } from '../types/node';
 import type { CellStyle, RGB, TextStyle } from '../types/primitives';
 
@@ -187,11 +187,10 @@ export class TableBlock<T> implements MeasurableBlock {
   private renderNoData(ctx: RenderContext): void {
     const columns = visibleColumns(this.node.columns);
     const aligns = columns.map(resolveColumnAlign);
-    const head = columns.map((col) => normalizeText(col.header));
     const text = normalizeText(this.node.noDataText ?? DEFAULT_NO_DATA_TEXT);
 
     this.runAutoTable(ctx, {
-      head: [head],
+      head: this.buildHeadRows(),
       body: [[{ content: text, colSpan: columns.length, styles: { halign: 'center' } }]],
       headStyles: this.resolveHeadStyles(ctx),
       bodyStyles: this.resolveTokenStyles(ctx, ctx.typography.detailRow),
@@ -236,7 +235,7 @@ export class TableBlock<T> implements MeasurableBlock {
     });
 
     this.runSegmentTable(ctx, {
-      head: content.head,
+      head: this.buildHeadRows(),
       body: content.body,
       foot: content.foot,
       labelIndex: firstAggregateLabelIndex(columns),
@@ -307,7 +306,7 @@ export class TableBlock<T> implements MeasurableBlock {
       if (child === undefined) continue;
 
       this.runSegmentTable(ctx, {
-        head: content.head,
+        head: this.buildHeadRows(),
         body: content.body.slice(segmentStart, i + 1),
         foot: undefined,
         labelIndex,
@@ -325,7 +324,7 @@ export class TableBlock<T> implements MeasurableBlock {
 
     if (segmentStart < rows.length) {
       this.runSegmentTable(ctx, {
-        head: content.head,
+        head: this.buildHeadRows(),
         body: content.body.slice(segmentStart),
         foot: content.foot,
         labelIndex,
@@ -419,7 +418,7 @@ export class TableBlock<T> implements MeasurableBlock {
     const labelIndex = firstAggregateLabelIndex(columns);
 
     this.renderGroupTree(ctx, tree, {
-      head,
+      head: this.buildHeadRows(),
       aligns,
       columns,
       columnStyles,
@@ -451,7 +450,7 @@ export class TableBlock<T> implements MeasurableBlock {
     ctx: RenderContext,
     tree: readonly GroupTreeNode<T>[],
     shared: {
-      head: string[];
+      head: RowInput[];
       aligns: readonly ResolvedAlign[];
       columns: readonly ReportColumn<T>[];
       columnStyles: Record<string, Partial<Styles>>;
@@ -507,7 +506,7 @@ export class TableBlock<T> implements MeasurableBlock {
   private runSegmentTable(
     ctx: RenderContext,
     params: {
-      head: string[];
+      head: RowInput[];
       body: string[][];
       foot: readonly string[] | undefined;
       labelIndex: number;
@@ -522,7 +521,7 @@ export class TableBlock<T> implements MeasurableBlock {
     const { head, body, foot, labelIndex, columnStyles, aligns, columns, rows, footToken, perPage } = params;
     const willDrawCell = this.perPageRowNumberHook(ctx, columns, perPage);
     this.runAutoTable(ctx, {
-      head: [head],
+      head,
       body,
       ...(foot ? { foot: [mergeFootLabel(foot, labelIndex)] } : {}),
       columnStyles,
@@ -664,6 +663,47 @@ export class TableBlock<T> implements MeasurableBlock {
   }
 
   /**
+   * The head as AutoTable rows — a single row of leaf headers normally, or a 2-row header when any
+   * top-level column is a group: the group's `header` spans its leaves (colSpan) with the leaf
+   * headers below, non-grouped columns span both rows (rowSpan 2). Grouped-head cells carry their
+   * own inline styles, so cellHook skips styling any object head cell (see cellHook).
+   */
+  private buildHeadRows(): RowInput[] {
+    if (!this.node.columns.some(isColumnGroup)) {
+      const leaves = flattenColumns(this.node.columns).filter(isColumnVisible);
+      return [leaves.map((col) => normalizeText(col.header))];
+    }
+
+    const topRow: CellDef[] = [];
+    const bottomRow: CellDef[] = [];
+    for (const col of this.node.columns) {
+      if (isColumnGroup(col)) {
+        const leaves = col.columns.filter(isColumnVisible);
+        if (leaves.length === 0) continue;
+        topRow.push({
+          content: normalizeText(col.header),
+          colSpan: leaves.length,
+          styles: { halign: col.headerAlign ?? 'center' },
+        });
+        for (const leaf of leaves) {
+          bottomRow.push({ content: normalizeText(leaf.header), styles: this.headCellStyles(leaf) });
+        }
+      } else if (isColumnVisible(col)) {
+        topRow.push({ content: normalizeText(col.header), rowSpan: 2, styles: this.headCellStyles(col) });
+      }
+    }
+    return [topRow, bottomRow];
+  }
+
+  /** inline styles for a leaf head cell (halign + per-column headerStyle) — used in the 2-row grouped head, where cellHook skips object cells */
+  private headCellStyles(col: ReportColumn<T>): Partial<Styles> {
+    return {
+      halign: resolveColumnAlign(col).header,
+      ...partialTextStyleToAutoTableStyles(col.headerStyle),
+    };
+  }
+
+  /**
    * head section = Typography.columnHeader token + TableStyleOptions.header override (e.g. a
    * brand fillColor — without it the head keeps AutoTable's theme default); the override goes
    * through the same fontStyle-variant guard as the token
@@ -714,6 +754,9 @@ export class TableBlock<T> implements MeasurableBlock {
       const align = aligns[data.column.index];
 
       if (data.section === 'head') {
+        // a CellDef head cell (group super-header / rowSpan leaf in a 2-row head) carries its own
+        // inline styles — leave it alone (mirrors the foot branch's merged-label guard)
+        if (typeof data.cell.raw === 'object') return;
         if (align) data.cell.styles.halign = align.header;
         const column = columns[data.column.index];
         Object.assign(data.cell.styles, partialTextStyleToAutoTableStyles(column?.headerStyle));
@@ -738,7 +781,8 @@ export class TableBlock<T> implements MeasurableBlock {
     return (data) => {
       const align = aligns[data.column.index];
       if (!align) return;
-      if (data.section === 'head') data.cell.styles.halign = align.header;
+      // a CellDef head cell (group super-header) keeps its own inline halign
+      if (data.section === 'head' && typeof data.cell.raw !== 'object') data.cell.styles.halign = align.header;
       if (data.section === 'foot') data.cell.styles.halign = align.data;
     };
   }
@@ -800,6 +844,8 @@ export class TableBlock<T> implements MeasurableBlock {
   }
 
   private hasAggregate(): boolean {
-    return this.node.columns.some((col) => isAggregatableColumn(col) && col.aggregate !== undefined);
+    return flattenColumns(this.node.columns).some(
+      (col) => isAggregatableColumn(col) && col.aggregate !== undefined,
+    );
   }
 }

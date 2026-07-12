@@ -29,9 +29,11 @@ export type {
   ComputedColumn,
   RunningTotalColumn,
   ReportColumn,
+  ColumnGroup,
+  TableColumn,
   ResolvedAlign,
 } from './types/column';
-export { resolveColumnAlign, isColumnVisible } from './types/column';
+export { resolveColumnAlign, isColumnVisible, isColumnGroup, flattenColumns } from './types/column';
 
 export type {
   TextNode,
