@@ -14,7 +14,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { reportBuilder } from '../../src/index';
-import type { KapomReport, RGB } from '../../src/index';
+import type { KapomReport, ReportNodeInput, RGB } from '../../src/index';
 import { fontConfig } from '../shared';
 import type { Quotation, QuotationItem } from './data';
 
@@ -38,6 +38,32 @@ const contactStyle = { fontSize: 8.5, color: BRAND_TEXT } as const;
 const companyStyle = { fontSize: 12, fontStyle: 'bold', color: BRAND_TEXT } as const;
 const headingStyle = { fontSize: 10.5, fontStyle: 'bold', color: INK } as const;
 
+/** a block written anywhere in this quotation (T isn't used by the layout blocks, only the table) */
+type Node = ReportNodeInput<QuotationItem>;
+
+/** brand letterhead: logo + company name (left) | contact lines right-aligned (right) */
+const letterhead: Node = {
+  type: 'row',
+  columns: [
+    { width: 14, children: [{ type: 'image', data: logo, format: 'PNG', width: 14, height: 14 }] },
+    {
+      children: [
+        { type: 'spacer', height: 2.5 },
+        { content: 'KAPOM TRAVEL', style: companyStyle },
+        { content: 'AND TOURS', style: companyStyle },
+      ],
+    },
+    {
+      children: [
+        { type: 'spacer', height: 1.5 },
+        { content: '123 ANYWHERE ST., ANY SUBURB, ANY CITY', align: 'right', style: contactStyle },
+        { content: '082 345 6789', align: 'right', style: contactStyle },
+        { content: 'WWW.KAPOMTRAVEL.COM', align: 'right', style: contactStyle },
+      ],
+    },
+  ],
+};
+
 export function buildQuotation(quotation: Quotation): KapomReport {
   const subtotal = quotation.items.reduce((sum, item) => sum + item.qty * item.unitPrice, 0);
   const vat = subtotal * quotation.vatRate;
@@ -45,37 +71,12 @@ export function buildQuotation(quotation: Quotation): KapomReport {
 
   const builder = reportBuilder<QuotationItem>().font(fontConfig);
 
-  // ── the once-at-top region: letterhead + document title ──
-  builder.title({
-    type: 'stack',
-    children: [
-      // brand header: logo + company name (left) | contact lines right-aligned (right)
-      {
-        type: 'row',
-        columns: [
-          { width: 14, children: [{ type: 'image', data: logo, format: 'PNG', width: 14, height: 14 }] },
-          {
-            children: [
-              { type: 'spacer', height: 2.5 },
-              { content: 'KAPOM TRAVEL', style: companyStyle },
-              { content: 'AND TOURS', style: companyStyle },
-            ],
-          },
-          {
-            children: [
-              { type: 'spacer', height: 1.5 },
-              { content: '123 ANYWHERE ST., ANY SUBURB, ANY CITY', align: 'right', style: contactStyle },
-              { content: '082 345 6789', align: 'right', style: contactStyle },
-              { content: 'WWW.KAPOMTRAVEL.COM', align: 'right', style: contactStyle },
-            ],
-          },
-        ],
-      },
-      { type: 'spacer', height: 4 },
-      { content: 'QUOTATION', align: 'center', style: { fontSize: 24, fontStyle: 'bold', color: BRAND_TEXT } },
-      { type: 'spacer', height: 5 },
-    ],
-  });
+  // ── the once-at-top region: letterhead + document title, chained one block at a time ──
+  builder
+    .title(letterhead)
+    .title({ type: 'spacer', height: 4 })
+    .title({ content: 'QUOTATION', align: 'center', style: { fontSize: 24, fontStyle: 'bold', color: BRAND_TEXT } })
+    .title({ type: 'spacer', height: 5 });
 
   // ── the flowing body ──
   builder.content(
