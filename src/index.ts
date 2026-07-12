@@ -33,7 +33,7 @@ export type {
   TableColumn,
   ResolvedAlign,
 } from './types/column';
-export { resolveColumnAlign, isColumnVisible, isColumnGroup, flattenColumns } from './types/column';
+export { resolveColumnAlign, isColumnVisible, isColumnGroup, flattenColumns, columnDepth } from './types/column';
 
 export type {
   TextNode,

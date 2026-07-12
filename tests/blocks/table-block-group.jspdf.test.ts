@@ -101,6 +101,53 @@ describe('TableBlock × column group (spanned header) × jsPDF จริง', ()
     expect(options.body).toEqual([['1', '2', '3', '4']]);
   });
 
+  it('group ซ้อน group (3 ชั้น) → หัว 3 แถว, span คำนวณ recursive', () => {
+    const options = render([
+      { type: 'data', key: 'a', header: 'Product' },
+      { type: 'group', header: 'FY', columns: [
+        { type: 'group', header: 'H1', columns: [
+          { type: 'data', key: 'b', header: 'B' },
+          { type: 'data', key: 'c', header: 'C' },
+        ]},
+        { type: 'group', header: 'H2', columns: [
+          { type: 'data', key: 'd', header: 'D' },
+        ]},
+      ]},
+    ]);
+
+    const head = options.head as CellDef[][];
+    expect(head).toHaveLength(3); // 3 แถว
+
+    // แถว 0: Product(rowSpan3) | FY(colSpan3 = 3 leaf ใต้ตัว: B,C,D)
+    expect(head[0]?.[0]?.rowSpan).toBe(3);
+    expect(head[0]?.[1]?.content).toBe('FY');
+    expect(head[0]?.[1]?.colSpan).toBe(3);
+    // แถว 1: H1(colSpan2) | H2(colSpan1)
+    expect(head[1]?.map((c) => [c.content, c.colSpan])).toEqual([['H1', 2], ['H2', 1]]);
+    // แถว 2: leaf ทั้งหมด B, C, D
+    expect(head[2]?.map((c) => c.content)).toEqual(['B', 'C', 'D']);
+  });
+
+  it('ชั้นไม่เท่ากัน: leaf ตื้นกว่า rowSpan ยืดถึงล่างสุด', () => {
+    // 'a' อยู่ใต้ group ชั้นเดียว แต่ 'c' อยู่ใต้ group 2 ชั้น → totalRows 3; 'a' ต้อง rowSpan 2
+    const options = render([
+      { type: 'group', header: 'G1', columns: [{ type: 'data', key: 'a', header: 'A' }] },
+      { type: 'group', header: 'G2', columns: [
+        { type: 'group', header: 'G2a', columns: [
+          { type: 'data', key: 'b', header: 'B' },
+          { type: 'data', key: 'c', header: 'C' },
+        ]},
+      ]},
+      { type: 'data', key: 'd', header: 'D' },
+    ]);
+
+    const head = options.head as CellDef[][];
+    expect(head).toHaveLength(3);
+    // แถว 1 (ใต้ G1): A เป็น leaf ที่ depth 1 ในต้นไม้ลึก 3 → rowSpan = 3-1 = 2
+    const aCell = head[1]?.find((c) => c.content === 'A');
+    expect(aCell?.rowSpan).toBe(2);
+  });
+
   it('group.headerAlign override align ของ super-header ได้', () => {
     const options = render([
       { type: 'group', header: 'G', headerAlign: 'left', columns: [

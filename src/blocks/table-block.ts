@@ -24,8 +24,8 @@ import {
   countGroupBands,
   flattenGroupTreeRows,
 } from '../table/group-tree';
-import type { ReportColumn, ResolvedAlign, RowNumberColumn } from '../types/column';
-import { DEFAULT_ROW_NUMBER_MODE, flattenColumns, isAggregatableColumn, isColumnGroup, isColumnVisible, resolveColumnAlign } from '../types/column';
+import type { ReportColumn, ResolvedAlign, RowNumberColumn, TableColumn } from '../types/column';
+import { columnDepth, DEFAULT_ROW_NUMBER_MODE, flattenColumns, isAggregatableColumn, isColumnGroup, isColumnVisible, resolveColumnAlign } from '../types/column';
 import type { GroupResolver, TableNode, TableStyleOptions } from '../types/node';
 import type { CellStyle, RGB, TextStyle } from '../types/primitives';
 
@@ -126,16 +126,18 @@ export class TableBlock<T> implements MeasurableBlock {
     const lineHeight = ctx.measureText('X', fontSize, ctx.contentWidth);
     const rowHeight = lineHeight * ESTIMATED_ROW_HEIGHT_RATIO;
     const footRows = this.hasAggregate() ? 1 : 0;
+    // a grouped header is multiple rows tall (the deepest column tree) — 1 for a flat header
+    const headRows = Math.max(1, ...this.node.columns.map(columnDepth));
 
     // No-Data fallback: header + a single message row
-    if (this.node.data.length === 0) return 2 * rowHeight;
+    if (this.node.data.length === 0) return (headRows + 1) * rowHeight;
 
     if (this.node.nested) {
       return this.measureNested(ctx, rowHeight, footRows);
     }
 
     if (!this.node.group) {
-      return (1 + this.node.data.length + footRows) * rowHeight;
+      return (headRows + this.node.data.length + footRows) * rowHeight;
     }
 
     // grouped: every group at every level has a band + subtotal (if there's an aggregate); a leaf segment has its own head
@@ -663,41 +665,50 @@ export class TableBlock<T> implements MeasurableBlock {
   }
 
   /**
-   * The head as AutoTable rows — a single row of leaf headers normally, or a 2-row header when any
-   * top-level column is a group: the group's `header` spans its leaves (colSpan) with the leaf
-   * headers below, non-grouped columns span both rows (rowSpan 2). Grouped-head cells carry their
-   * own inline styles, so cellHook skips styling any object head cell (see cellHook).
+   * The head as AutoTable rows — a single row of leaf headers normally, or a multi-row header when
+   * any top-level column is a group (nested to any depth). Built recursively: a group's `header`
+   * gets `colSpan` = its visible-leaf count and sits on its own depth's row; a leaf's header gets
+   * `rowSpan` = the rows remaining below it (so it stretches to the bottom, vertically centered).
+   * Grouped-head cells carry their own inline styles, so cellHook skips styling any object head cell.
    */
   private buildHeadRows(): RowInput[] {
-    if (!this.node.columns.some(isColumnGroup)) {
-      const leaves = flattenColumns(this.node.columns).filter(isColumnVisible);
-      return [leaves.map((col) => normalizeText(col.header))];
+    const topColumns = this.node.columns.filter((col) => isColumnGroup(col) || isColumnVisible(col));
+
+    if (!topColumns.some(isColumnGroup)) {
+      // single row of plain strings — cellHook applies alignment (backward-compatible path unchanged)
+      return [flattenColumns(topColumns).filter(isColumnVisible).map((col) => normalizeText(col.header))];
     }
 
-    const topRow: CellDef[] = [];
-    const bottomRow: CellDef[] = [];
-    for (const col of this.node.columns) {
+    const totalRows = Math.max(...topColumns.map(columnDepth));
+    const rows: CellDef[][] = Array.from({ length: totalRows }, () => []);
+    const rowAt = (index: number): CellDef[] => {
+      const row = rows[index];
+      if (!row) throw new KapomError(`buildHeadRows: header row ${index} is out of range`);
+      return row;
+    };
+
+    const place = (col: TableColumn<T>, depth: number): void => {
       if (isColumnGroup(col)) {
-        const leaves = col.columns.filter(isColumnVisible);
-        if (leaves.length === 0) continue;
-        topRow.push({
+        const leaves = flattenColumns(col.columns).filter(isColumnVisible);
+        if (leaves.length === 0) return;
+        rowAt(depth).push({
           content: normalizeText(col.header),
           colSpan: leaves.length,
-          styles: { halign: col.headerAlign ?? 'center' },
+          styles: { halign: col.headerAlign ?? 'center', valign: 'middle' },
         });
-        for (const leaf of leaves) {
-          bottomRow.push({ content: normalizeText(leaf.header), styles: this.headCellStyles(leaf) });
-        }
+        for (const child of col.columns) place(child, depth + 1);
       } else if (isColumnVisible(col)) {
-        // rowSpan 2 = the cell is two header rows tall → center it vertically so it sits in the middle
-        topRow.push({
+        // a leaf stretches from its own row down to the bottom (rowSpan) → vertically centered
+        rowAt(depth).push({
           content: normalizeText(col.header),
-          rowSpan: 2,
+          rowSpan: totalRows - depth,
           styles: { ...this.headCellStyles(col), valign: 'middle' },
         });
       }
-    }
-    return [topRow, bottomRow];
+    };
+
+    for (const col of topColumns) place(col, 0);
+    return rows;
   }
 
   /** inline styles for a leaf head cell (halign + per-column headerStyle) — used in the 2-row grouped head, where cellHook skips object cells */

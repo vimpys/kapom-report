@@ -63,28 +63,33 @@ export type ReportColumn<T> =
   | RunningTotalColumn<T>;
 
 /**
- * a super-header spanning a run of leaf columns — renders a 2-row header where `header` sits above
- * its `columns` with a colSpan (the leaf columns keep their own headers in the row below). Children
- * are leaf columns only (no nested groups, one level — enforced by the `ReportColumn` type here).
+ * a super-header spanning its child columns — renders a multi-row header where `header` sits above
+ * its `columns` with a colSpan. Children can be leaf columns OR other groups (nested to any depth),
+ * so a 3+ level header (e.g. Year → Half → Quarter) is just groups inside groups.
  */
 export interface ColumnGroup<T> {
   type: 'group';
   header: string;
-  columns: readonly ReportColumn<T>[];
+  columns: readonly TableColumn<T>[];
   /** super-header cell alignment — default 'center' */
   headerAlign?: HAlign;
 }
 
-/** a table column at the top level — either a leaf column or a group spanning several leaves */
+/** a table column at any level — either a leaf column or a group spanning several columns */
 export type TableColumn<T> = ReportColumn<T> | ColumnGroup<T>;
 
 export function isColumnGroup<T>(col: TableColumn<T>): col is ColumnGroup<T> {
   return col.type === 'group';
 }
 
-/** expand any groups into their leaf columns — everything data-related (body/width/aggregate) runs on the flattened leaves */
+/** expand any groups (recursively) into their leaf columns — body/width/aggregate all run on the flattened leaves */
 export function flattenColumns<T>(columns: readonly TableColumn<T>[]): ReportColumn<T>[] {
-  return columns.flatMap((col) => (isColumnGroup(col) ? [...col.columns] : [col]));
+  return columns.flatMap((col) => (isColumnGroup(col) ? flattenColumns(col.columns) : [col]));
+}
+
+/** the number of header rows this column needs — 1 for a leaf, 1 + the deepest child for a group (drives the multi-row header) */
+export function columnDepth<T>(col: TableColumn<T>): number {
+  return isColumnGroup(col) ? 1 + Math.max(0, ...col.columns.map(columnDepth)) : 1;
 }
 
 /** resolve alignment: header falls back to data, data falls back to 'left' */
