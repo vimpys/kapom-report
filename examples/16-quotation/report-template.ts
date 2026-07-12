@@ -13,7 +13,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { reportBuilder, spacer } from '../../src/index';
+import { divider, reportBuilder, spacer } from '../../src/index';
 import type { KapomReport, ReportNodeInput, RGB } from '../../src/index';
 import { fontConfig } from '../shared';
 import type { Quotation, QuotationItem } from './data';
@@ -42,7 +42,7 @@ const headingStyle = { fontSize: 10.5, fontStyle: 'bold', color: INK } as const;
 type Node = ReportNodeInput<QuotationItem>;
 
 /** the brand rule reused between sections (same thickness/color both times → a const beats a factory) */
-const rule: Node = { type: 'divider', thickness: 1, color: BRAND_LINE };
+const rule: Node = divider({ thickness: 1, color: BRAND_LINE });
 
 /** brand letterhead: logo + company name (left) | contact lines right-aligned (right) */
 const letterhead: Node = {

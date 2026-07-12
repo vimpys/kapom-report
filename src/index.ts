@@ -61,7 +61,7 @@ export type {
   TextNodeShorthand,
   ReportNodeInput,
 } from './types/node';
-export { resolveNodeInput, spacer } from './types/node';
+export { resolveNodeInput, spacer, divider } from './types/node';
 export { DEFAULT_ROW_GAP } from './blocks/row-block';
 export { DEFAULT_BOX_PADDING, DEFAULT_BOX_BORDER_WIDTH } from './blocks/box-block';
 
@@ -119,7 +119,7 @@ export type { FontConfig, FontSource, FontVariantStyle } from './font/font-confi
 export { registerFonts } from './font/register-fonts';
 
 export { DEFAULT_TEXT_STYLE, TextBlock } from './blocks/text-block';
-export { SpacerBlock } from './blocks/spacer-block';
+export { DEFAULT_SPACER_HEIGHT, SpacerBlock } from './blocks/spacer-block';
 export {
   DEFAULT_DIVIDER_THICKNESS,
   DEFAULT_DIVIDER_COLOR,

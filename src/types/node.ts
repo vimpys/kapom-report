@@ -22,7 +22,8 @@ export interface TextNode {
 
 export interface SpacerNode {
   type: 'spacer';
-  height: number;
+  /** gap height (mm); omit for the zero-config default (DEFAULT_SPACER_HEIGHT) */
+  height?: number;
 }
 
 export interface DividerNode {
@@ -262,5 +263,9 @@ export function resolveNodeInput<T>(input: ReportNodeInput<T>): ReportNode<T> {
   return input;
 }
 
-/** shorthand constructor for a vertical gap — `spacer(4)` instead of `{ type: 'spacer', height: 4 }` (used a lot, so worth the tiny helper) */
-export const spacer = (height: number): SpacerNode => ({ type: 'spacer', height });
+/** shorthand constructor for a vertical gap — `spacer(4)` instead of `{ type: 'spacer', height: 4 }`, or `spacer()` for the zero-config default gap (used a lot, so worth the tiny helper) */
+export const spacer = (height?: number): SpacerNode =>
+  height === undefined ? { type: 'spacer' } : { type: 'spacer', height };
+
+/** shorthand constructor for a horizontal rule — `divider()` (zero-config) or `divider({ thickness, color })` instead of the full node */
+export const divider = (options: Omit<DividerNode, 'type'> = {}): DividerNode => ({ type: 'divider', ...options });

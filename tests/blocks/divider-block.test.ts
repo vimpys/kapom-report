@@ -6,6 +6,7 @@ import {
   DEFAULT_DIVIDER_COLOR,
 } from '../../src/blocks/divider-block';
 import { KapomLayoutError } from '../../src/core/errors';
+import { divider } from '../../src/types/node';
 import { makeStubDoc } from '../helpers/stub-doc';
 
 describe('DividerBlock', () => {
@@ -59,5 +60,19 @@ describe('DividerBlock', () => {
     expect(
       () => new DividerBlock({ type: 'divider', thickness: Number.NaN }),
     ).toThrow(KapomLayoutError);
+  });
+});
+
+describe('divider() shorthand', () => {
+  it('ไม่ส่ง options → zero-config node ล้วน', () => {
+    expect(divider()).toEqual({ type: 'divider' });
+  });
+
+  it('ส่ง options → merge เข้า node', () => {
+    expect(divider({ thickness: 1, color: [1, 2, 3] })).toEqual({
+      type: 'divider',
+      thickness: 1,
+      color: [1, 2, 3],
+    });
   });
 });
