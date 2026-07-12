@@ -4,11 +4,16 @@
  * customer columns, project description, line-items table, right-aligned totals with a
  * highlighted grand-total box, terms, signature), exposed as `buildQuotation(quotation)`.
  * 100% declarative — no manual x/y, no raw jsPDF. Swap in any `Quotation` and the layout holds.
+ *
+ * Assembled with the `reportBuilder()` fluent chain, using the full anatomy: `title` = the once-at-
+ * top region (letterhead + "QUOTATION"), `content` = the flowing body, `summary` = the signature
+ * pinned to the page bottom (the builder wraps it in a bottomAnchor). Either style — chain or
+ * `createKapomReport({...})` object — produces an identical report.
  */
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createKapomReport } from '../../src/index';
+import { reportBuilder } from '../../src/index';
 import type { KapomReport, RGB } from '../../src/index';
 import { fontConfig } from '../shared';
 import type { Quotation, QuotationItem } from './data';
@@ -38,10 +43,13 @@ export function buildQuotation(quotation: Quotation): KapomReport {
   const vat = subtotal * quotation.vatRate;
   const grandTotal = subtotal + vat;
 
-  return createKapomReport<QuotationItem>({
-    font: fontConfig,
-    blocks: [
-      // ── brand header: logo + company name (left) | contact lines right-aligned (right) ──
+  const builder = reportBuilder<QuotationItem>().font(fontConfig);
+
+  // ── the once-at-top region: letterhead + document title ──
+  builder.title({
+    type: 'stack',
+    children: [
+      // brand header: logo + company name (left) | contact lines right-aligned (right)
       {
         type: 'row',
         columns: [
@@ -64,143 +72,144 @@ export function buildQuotation(quotation: Quotation): KapomReport {
         ],
       },
       { type: 'spacer', height: 4 },
-
       { content: 'QUOTATION', align: 'center', style: { fontSize: 24, fontStyle: 'bold', color: BRAND_TEXT } },
       { type: 'spacer', height: 5 },
-
-      // ── quotation meta (left) | customer (right) ──
-      {
-        type: 'row',
-        columns: [
-          {
-            children: [
-              {
-                type: 'keyValue',
-                labelWidth: 32,
-                rows: [
-                  ['Quotation No:', quotation.number],
-                  ['Date:', quotation.date],
-                  ['Valid Until:', quotation.validUntil],
-                  ['Customer ID:', quotation.customerId],
-                ],
-              },
-            ],
-          },
-          {
-            children: [
-              { content: quotation.customer.name, style: { fontSize: 10, fontStyle: 'bold', color: INK } },
-              ...quotation.customer.lines,
-            ],
-          },
-        ],
-      },
-      { type: 'spacer', height: 4 },
-      { type: 'divider', thickness: 1, color: BRAND_LINE },
-      { type: 'spacer', height: 6 },
-
-      // ── PROJECT DESCRIPTION — label column + auto-wrapping paragraph ──
-      {
-        type: 'row',
-        columns: [
-          { width: 52, children: [{ content: 'PROJECT DESCRIPTION', style: headingStyle }] },
-          { children: [{ content: quotation.projectDescription, style: { fontSize: 10, color: MUTED } }] },
-        ],
-      },
-      { type: 'spacer', height: 4 },
-
-      // ── line items — Total is a computed column, zebra tints the body ──
-      {
-        type: 'table',
-        columns: [
-          { type: 'data', key: 'description', header: 'Description' },
-          { type: 'data', key: 'qty', header: 'Quantity', align: 'center' },
-          { type: 'data', key: 'unitPrice', header: 'Price', align: 'right', numberFormat: {} },
-          {
-            type: 'computed',
-            header: 'Total',
-            align: 'right',
-            compute: (row) => row.qty * row.unitPrice,
-            numberFormat: {},
-          },
-        ],
-        data: quotation.items,
-        style: { header: { fillColor: BRAND_HEAD }, zebra: { even: ZEBRA_FILL } },
-      },
-      { type: 'spacer', height: 6 },
-
-      // ── totals — right column only; keyValue right-aligns the numbers, box highlights the total ──
-      {
-        type: 'row',
-        columns: [
-          { children: [] },
-          {
-            width: 78,
-            children: [
-              {
-                type: 'keyValue',
-                valueAlign: 'right',
-                rows: [
-                  ['Subtotal', money(subtotal)],
-                  ['VAT (7%)', money(vat)],
-                ],
-              },
-              { type: 'spacer', height: 2 },
-              {
-                type: 'row',
-                columns: [
-                  { children: [{ content: 'Total', style: headingStyle }] },
-                  {
-                    width: 40,
-                    children: [
-                      {
-                        type: 'box',
-                        background: BRAND_FILL,
-                        padding: 1.5,
-                        children: [
-                          {
-                            content: money(grandTotal),
-                            align: 'right',
-                            style: { fontSize: 10.5, fontStyle: 'bold', color: BRAND_DARK },
-                          },
-                        ],
-                      },
-                    ],
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      },
-      { type: 'spacer', height: 4 },
-      { type: 'divider', thickness: 1, color: BRAND_LINE },
-      { type: 'spacer', height: 6 },
-
-      // ── terms — same two-column shape as the description section ──
-      {
-        type: 'row',
-        columns: [
-          { width: 52, children: [{ content: 'TERMS & CONDITIONS', style: headingStyle }] },
-          {
-            children: [
-              { content: quotation.terms, style: { fontSize: 10, color: MUTED } },
-              { type: 'spacer', height: 5 },
-              { content: 'PLEASE CONFIRM YOUR ACCEPTANCE OF THIS QUOTE', style: headingStyle },
-            ],
-          },
-        ],
-      },
-      // signature pinned to the bottom of the page, not flowing right after the terms
-      {
-        type: 'bottomAnchor',
-        children: [
-          {
-            type: 'signature',
-            slots: [{ label: 'Signature over printed name' }, { label: 'Date signed' }],
-            signHeight: 12,
-          },
-        ],
-      },
     ],
   });
+
+  // ── the flowing body ──
+  builder.content(
+    // ── quotation meta (left) | customer (right) ──
+    {
+      type: 'row',
+      columns: [
+        {
+          children: [
+            {
+              type: 'keyValue',
+              labelWidth: 32,
+              rows: [
+                ['Quotation No:', quotation.number],
+                ['Date:', quotation.date],
+                ['Valid Until:', quotation.validUntil],
+                ['Customer ID:', quotation.customerId],
+              ],
+            },
+          ],
+        },
+        {
+          children: [
+            { content: quotation.customer.name, style: { fontSize: 10, fontStyle: 'bold', color: INK } },
+            ...quotation.customer.lines,
+          ],
+        },
+      ],
+    },
+    { type: 'spacer', height: 4 },
+    { type: 'divider', thickness: 1, color: BRAND_LINE },
+    { type: 'spacer', height: 6 },
+
+    // ── PROJECT DESCRIPTION — label column + auto-wrapping paragraph ──
+    {
+      type: 'row',
+      columns: [
+        { width: 52, children: [{ content: 'PROJECT DESCRIPTION', style: headingStyle }] },
+        { children: [{ content: quotation.projectDescription, style: { fontSize: 10, color: MUTED } }] },
+      ],
+    },
+    { type: 'spacer', height: 4 },
+
+    // ── line items — Total is a computed column, zebra tints the body ──
+    {
+      type: 'table',
+      columns: [
+        { type: 'data', key: 'description', header: 'Description' },
+        { type: 'data', key: 'qty', header: 'Quantity', align: 'center' },
+        { type: 'data', key: 'unitPrice', header: 'Price', align: 'right', numberFormat: {} },
+        {
+          type: 'computed',
+          header: 'Total',
+          align: 'right',
+          compute: (row) => row.qty * row.unitPrice,
+          numberFormat: {},
+        },
+      ],
+      data: quotation.items,
+      style: { header: { fillColor: BRAND_HEAD }, zebra: { even: ZEBRA_FILL } },
+    },
+    { type: 'spacer', height: 6 },
+
+    // ── totals — right column only; keyValue right-aligns the numbers, box highlights the total ──
+    {
+      type: 'row',
+      columns: [
+        { children: [] },
+        {
+          width: 78,
+          children: [
+            {
+              type: 'keyValue',
+              valueAlign: 'right',
+              rows: [
+                ['Subtotal', money(subtotal)],
+                ['VAT (7%)', money(vat)],
+              ],
+            },
+            { type: 'spacer', height: 2 },
+            {
+              type: 'row',
+              columns: [
+                { children: [{ content: 'Total', style: headingStyle }] },
+                {
+                  width: 40,
+                  children: [
+                    {
+                      type: 'box',
+                      background: BRAND_FILL,
+                      padding: 1.5,
+                      children: [
+                        {
+                          content: money(grandTotal),
+                          align: 'right',
+                          style: { fontSize: 10.5, fontStyle: 'bold', color: BRAND_DARK },
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+    { type: 'spacer', height: 4 },
+    { type: 'divider', thickness: 1, color: BRAND_LINE },
+    { type: 'spacer', height: 6 },
+
+    // ── terms — same two-column shape as the description section ──
+    {
+      type: 'row',
+      columns: [
+        { width: 52, children: [{ content: 'TERMS & CONDITIONS', style: headingStyle }] },
+        {
+          children: [
+            { content: quotation.terms, style: { fontSize: 10, color: MUTED } },
+            { type: 'spacer', height: 5 },
+            { content: 'PLEASE CONFIRM YOUR ACCEPTANCE OF THIS QUOTE', style: headingStyle },
+          ],
+        },
+      ],
+    },
+  );
+
+  // ── signature pinned to the bottom of the page, not flowing right after the terms
+  //    (summary wraps it in a bottomAnchor at build) ──
+  builder.summary({
+    type: 'signature',
+    slots: [{ label: 'Signature over printed name' }, { label: 'Date signed' }],
+    signHeight: 12,
+  });
+
+  return builder.build();
 }
