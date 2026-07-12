@@ -689,7 +689,12 @@ export class TableBlock<T> implements MeasurableBlock {
           bottomRow.push({ content: normalizeText(leaf.header), styles: this.headCellStyles(leaf) });
         }
       } else if (isColumnVisible(col)) {
-        topRow.push({ content: normalizeText(col.header), rowSpan: 2, styles: this.headCellStyles(col) });
+        // rowSpan 2 = the cell is two header rows tall → center it vertically so it sits in the middle
+        topRow.push({
+          content: normalizeText(col.header),
+          rowSpan: 2,
+          styles: { ...this.headCellStyles(col), valign: 'middle' },
+        });
       }
     }
     return [topRow, bottomRow];

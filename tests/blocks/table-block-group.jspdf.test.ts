@@ -63,6 +63,21 @@ describe('TableBlock × column group (spanned header) × jsPDF จริง', ()
     expect((head[1] ?? []).map((c) => c.content)).toEqual(['B', 'C']);
   });
 
+  it('คอลัมน์เดี่ยว rowSpan 2 → valign middle (จัดกลางแนวตั้งในเซลล์ 2 แถว) + halign ตาม headerAlign', () => {
+    const options = render([
+      { type: 'data', key: 'a', header: 'A', headerAlign: 'center' },
+      { type: 'group', header: 'G', columns: [
+        { type: 'data', key: 'b', header: 'B' },
+        { type: 'data', key: 'c', header: 'C' },
+      ]},
+      { type: 'data', key: 'd', header: 'D' },
+    ]);
+
+    const head = options.head as CellDef[][];
+    expect(head[0]?.[0]?.styles?.valign).toBe('middle'); // A rowSpan cell
+    expect(head[0]?.[0]?.styles?.halign).toBe('center'); // headerAlign 'center'
+  });
+
   it('ไม่มี group → หัวแถวเดียว (backward compatible, string[])', () => {
     const options = render([
       { type: 'data', key: 'a', header: 'A' },

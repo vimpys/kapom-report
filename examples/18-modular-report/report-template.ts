@@ -84,8 +84,8 @@ export function buildSalesReport(sales: Sale[], options: SalesReportOptions): Ka
   const salesTable: TableNode<Sale> = {
     type: 'table',
     columns: [
-      { type: 'data', key: 'product', header: 'Product', width: 34 },
-      { type: 'data', key: 'customer', header: 'Customer', width: 24 },
+      { type: 'data', key: 'product', header: 'Product', width: 34, headerAlign: 'center' },
+      { type: 'data', key: 'customer', header: 'Customer', width: 24, headerAlign: 'center' },
       // a "Quarterly" super-header spanning the four quarter columns (a 2-row header)
       {
         type: 'group',
@@ -96,6 +96,7 @@ export function buildSalesReport(sales: Sale[], options: SalesReportOptions): Ka
         type: 'computed',
         header: 'Total',
         align: 'right',
+        headerAlign: 'center',
         width: 26,
         compute: (row) => row.q1 + row.q2 + row.q3 + row.q4,
         formatter: (value) => money(Number(value)),
