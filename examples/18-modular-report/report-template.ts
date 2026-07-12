@@ -16,7 +16,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { formatTimestamp, reportBuilder } from '../../src/index';
-import type { KapomReport, ReportColumn, ReportNodeInput, RGB, TableNode } from '../../src/index';
+import type { ColumnGroup, KapomReport, ReportColumn, ReportNodeInput, RGB, TableNode } from '../../src/index';
 import { fontConfig } from '../shared';
 import type { Sale } from './data';
 
@@ -32,18 +32,36 @@ const RULE: RGB = [205, 210, 218];
 const STANDING_NOTE =
   'Note: The figures shown in this report are sample data generated for demonstration purposes only. They do not represent the actual sales, customers, or financial performance of any real organization, and must not be used for accounting, forecasting, or decision-making.';
 
+type MonthKey =
+  | 'jan' | 'feb' | 'mar' | 'apr' | 'may' | 'jun'
+  | 'jul' | 'aug' | 'sep' | 'oct' | 'nov' | 'dec';
+
 /** "$1,170.00" for a positive amount, an accounting dash for zero */
 const money = (n: number): string =>
   n > 0 ? `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-';
 
-const quarter = (key: 'q1' | 'q2' | 'q3' | 'q4', header: string): ReportColumn<Sale> => ({
+/** compact integer for the narrow month columns (dash for zero) */
+const compact = (n: number): string => (n > 0 ? n.toLocaleString('en-US') : '-');
+
+// no explicit width — AutoTable auto-sizes the 12 month columns to fill the remaining page width
+const month = (key: MonthKey, header: string): ReportColumn<Sale> => ({
   type: 'data',
   key,
   header,
   align: 'right',
-  width: 24,
-  formatter: (value) => money(Number(value)),
+  formatter: (value) => compact(Number(value)),
 });
+
+/** a quarter = a column group over its three months */
+const quarter = (header: string, m1: MonthKey, m2: MonthKey, m3: MonthKey): ColumnGroup<Sale> => ({
+  type: 'group',
+  header,
+  columns: [month(m1, capitalize(m1)), month(m2, capitalize(m2)), month(m3, capitalize(m3))],
+});
+
+const capitalize = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
+
+const MONTH_KEYS: readonly MonthKey[] = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
 
 export interface SalesReportOptions {
   companyName: string;
@@ -84,21 +102,26 @@ export function buildSalesReport(sales: Sale[], options: SalesReportOptions): Ka
   const salesTable: TableNode<Sale> = {
     type: 'table',
     columns: [
-      { type: 'data', key: 'product', header: 'Product', width: 34, headerAlign: 'center' },
-      { type: 'data', key: 'customer', header: 'Customer', width: 24, headerAlign: 'center' },
-      // a "Quarterly" super-header spanning the four quarter columns (a 2-row header)
+      // header align is centered by default now — no need to set headerAlign per column
+      { type: 'data', key: 'product', header: 'Product', width: 30 },
+      { type: 'data', key: 'customer', header: 'Customer', width: 22 },
+      // 3-level header: Quarterly → Qtr 1-4 → the three months of each quarter
       {
         type: 'group',
         header: 'Quarterly',
-        columns: [quarter('q1', 'Qtr 1'), quarter('q2', 'Qtr 2'), quarter('q3', 'Qtr 3'), quarter('q4', 'Qtr 4')],
+        columns: [
+          quarter('Qtr 1', 'jan', 'feb', 'mar'),
+          quarter('Qtr 2', 'apr', 'may', 'jun'),
+          quarter('Qtr 3', 'jul', 'aug', 'sep'),
+          quarter('Qtr 4', 'oct', 'nov', 'dec'),
+        ],
       },
       {
         type: 'computed',
         header: 'Total',
         align: 'right',
-        headerAlign: 'center',
-        width: 26,
-        compute: (row) => row.q1 + row.q2 + row.q3 + row.q4,
+        width: 22,
+        compute: (row) => MONTH_KEYS.reduce((sum, key) => sum + row[key], 0),
         formatter: (value) => money(Number(value)),
         cellStyle: { fontStyle: 'bold' },
       },
@@ -107,7 +130,10 @@ export function buildSalesReport(sales: Sale[], options: SalesReportOptions): Ka
     style: { header: { fillColor: NAVY }, zebra: { even: ZEBRA } },
   };
 
-  const report = reportBuilder<Sale>().font(fontConfig);
+  // landscape + tighter margins — 12 month columns need the wider content area
+  const report = reportBuilder<Sale>()
+    .font(fontConfig)
+    .pageSetup({ orientation: 'landscape', margins: { top: 12, bottom: 12, left: 10, right: 10 } });
 
   // page header band, built block by block — its reserved height is auto-measured (no magic number)
   report.pageHeader

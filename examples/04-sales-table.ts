@@ -32,7 +32,6 @@ const salesTable: TableNode<Sale> = {
       key: 'price',
       header: 'Unit Price',
       align: 'right',
-      headerAlign: 'center',
       numberFormat: {},
       aggregate: 'avg',
     },

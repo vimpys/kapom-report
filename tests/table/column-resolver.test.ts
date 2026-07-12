@@ -32,21 +32,21 @@ const baseNode = (columns: TableNode<Sale>['columns']): TableNode<Sale> => ({
 });
 
 describe('resolveTableContent — head/aligns/widths', () => {
-  it('head จาก header, align resolve ตาม headerAlign fallback → align → left', () => {
+  it('head จาก header; header align default center, headerAlign override; data align แยกอิสระ', () => {
     const content = resolveTableContent(
       baseNode([
         { type: 'data', key: 'product', header: 'สินค้า' },
         { type: 'data', key: 'qty', header: 'จำนวน', align: 'right' },
-        { type: 'data', key: 'price', header: 'ราคา', align: 'right', headerAlign: 'center' },
+        { type: 'data', key: 'price', header: 'ราคา', align: 'right', headerAlign: 'left' },
       ]),
       nativeNumeric,
     );
 
     expect(content.head).toEqual(['สินค้า', 'จำนวน', 'ราคา']);
     expect(content.aligns).toEqual([
-      { header: 'left', data: 'left' },
-      { header: 'right', data: 'right' },
-      { header: 'center', data: 'right' },
+      { header: 'center', data: 'left' }, // no align → header default center, data left
+      { header: 'center', data: 'right' }, // header default center even when data is right
+      { header: 'left', data: 'right' }, // headerAlign 'left' overrides the default
     ]);
   });
 

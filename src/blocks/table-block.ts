@@ -725,7 +725,9 @@ export class TableBlock<T> implements MeasurableBlock {
    * through the same fontStyle-variant guard as the token
    */
   private resolveHeadStyles(ctx: RenderContext): Partial<Styles> {
-    const base = this.resolveTokenStyles(ctx, ctx.typography.columnHeader);
+    // header cells default to vertically centered (matters for a rowSpan cell in a grouped head;
+    // harmless for a single-row header) — applies to the whole head section, overridable per cell
+    const base: Partial<Styles> = { valign: 'middle', ...this.resolveTokenStyles(ctx, ctx.typography.columnHeader) };
     const override = this.node.style?.header;
     if (!override) return base;
 

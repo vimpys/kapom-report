@@ -63,19 +63,21 @@ describe('TableBlock × column group (spanned header) × jsPDF จริง', ()
     expect((head[1] ?? []).map((c) => c.content)).toEqual(['B', 'C']);
   });
 
-  it('คอลัมน์เดี่ยว rowSpan 2 → valign middle (จัดกลางแนวตั้งในเซลล์ 2 แถว) + halign ตาม headerAlign', () => {
+  it('คอลัมน์เดี่ยว rowSpan → valign middle; halign default center, headerAlign override ได้', () => {
     const options = render([
-      { type: 'data', key: 'a', header: 'A', headerAlign: 'center' },
+      { type: 'data', key: 'a', header: 'A', headerAlign: 'left' }, // override default center
       { type: 'group', header: 'G', columns: [
         { type: 'data', key: 'b', header: 'B' },
         { type: 'data', key: 'c', header: 'C' },
       ]},
-      { type: 'data', key: 'd', header: 'D' },
+      { type: 'data', key: 'd', header: 'D' }, // default → center
     ]);
 
     const head = options.head as CellDef[][];
-    expect(head[0]?.[0]?.styles?.valign).toBe('middle'); // A rowSpan cell
-    expect(head[0]?.[0]?.styles?.halign).toBe('center'); // headerAlign 'center'
+    expect(head[0]?.[0]?.styles?.valign).toBe('middle'); // A rowSpan cell centered vertically
+    expect(head[0]?.[0]?.styles?.halign).toBe('left'); // headerAlign override
+    const dCell = head[0]?.find((c) => c.content === 'D');
+    expect(dCell?.styles?.halign).toBe('center'); // default center
   });
 
   it('ไม่มี group → หัวแถวเดียว (backward compatible, string[])', () => {

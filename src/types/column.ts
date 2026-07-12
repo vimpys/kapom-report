@@ -100,7 +100,9 @@ export interface ResolvedAlign {
 
 export function resolveColumnAlign<T>(col: ReportColumn<T>): ResolvedAlign {
   const data = col.align ?? 'left';
-  return { data, header: col.headerAlign ?? data };
+  // header defaults to center (a common report convention — e.g. a centered 'Qty' over right-aligned
+  // numbers); set `headerAlign` to override per column
+  return { data, header: col.headerAlign ?? 'center' };
 }
 
 export function isColumnVisible<T>(col: ReportColumn<T>): boolean {
