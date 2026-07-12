@@ -36,11 +36,7 @@ type MonthKey =
   | 'jan' | 'feb' | 'mar' | 'apr' | 'may' | 'jun'
   | 'jul' | 'aug' | 'sep' | 'oct' | 'nov' | 'dec';
 
-/** "$1,170.00" for a positive amount, an accounting dash for zero */
-const money = (n: number): string =>
-  n > 0 ? `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-';
-
-/** compact integer for the narrow month columns (dash for zero) */
+/** plain integer with a thousands separator (dash for zero) — used for the month + total columns */
 const compact = (n: number): string => (n > 0 ? n.toLocaleString('en-US') : '-');
 
 // no explicit width — AutoTable auto-sizes the 12 month columns to fill the remaining page width
@@ -122,7 +118,7 @@ export function buildSalesReport(sales: Sale[], options: SalesReportOptions): Ka
         align: 'right',
         width: 22,
         compute: (row) => MONTH_KEYS.reduce((sum, key) => sum + row[key], 0),
-        formatter: (value) => money(Number(value)),
+        formatter: (value) => compact(Number(value)),
         cellStyle: { fontStyle: 'bold' },
       },
     ],
