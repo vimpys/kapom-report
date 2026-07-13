@@ -7,7 +7,7 @@
  */
 import { createKapomReport, drawText } from '../src/index';
 import type { ReportNodeInput } from '../src/index';
-import { fontConfig, saveReport } from './shared';
+import { fontConfig, outPath } from './shared';
 
 interface Bar {
   label: string;
@@ -56,4 +56,5 @@ const report = createKapomReport({
   ],
 });
 
-saveReport(report, '15-raw-escape-hatch');
+report.save(outPath('15-raw-escape-hatch'));
+console.log(`OK 15-raw-escape-hatch.pdf (${report.doc.getNumberOfPages()} pages)`);

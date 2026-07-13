@@ -7,10 +7,35 @@
  * its own labels/keepTogether.
  * Compare with 05-group-report, which groups only one level deep.
  */
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { nativeNumeric, reportBuilder } from '../../src/index';
-import type { KapomReport, TableNode } from '../../src/index';
+import type { KapomReport, ReportNodeInput, RGB, TableNode } from '../../src/index';
 import { fontConfig } from '../shared';
 import type { BranchSale } from './data';
+
+const here = dirname(fileURLToPath(import.meta.url));
+const logo = new Uint8Array(readFileSync(join(here, '../../src/assets/kapom-report.png')));
+
+const NAVY: RGB = [31, 63, 112];
+const GRAY: RGB = [110, 110, 110];
+const RULE: RGB = [205, 210, 218];
+
+/** the brand header repeated at the top of every page — logo + company name (same pattern as demo 18) */
+const brandHeader: ReportNodeInput = {
+  type: 'row',
+  columns: [
+    { width: 14, children: [{ type: 'image', data: logo, format: 'PNG', width: 14, height: 14 }] },
+    {
+      children: [
+        { type: 'spacer', height: 2 },
+        { content: 'Kapom Company', style: { fontSize: 13, fontStyle: 'bold', color: NAVY } },
+        { content: 'kapom-soft', style: { fontSize: 8, color: GRAY } },
+      ],
+    },
+  ],
+};
 
 export function buildBranchSales(branchSales: BranchSale[]): KapomReport {
   const nestedTable: TableNode<BranchSale> = {
@@ -44,9 +69,18 @@ export function buildBranchSales(branchSales: BranchSale[]): KapomReport {
     },
   };
 
-  return reportBuilder<BranchSale>()
+  const report = reportBuilder<BranchSale>()
     .font(fontConfig)
-    .title('Branch Sales — nested group, region → category')
-    .content(nestedTable)
-    .build();
+    .title('Branch Sales — nested group, region → category');
+
+  // brand page-header band — repeats on every page; reserved height is auto-measured from the blocks
+  report.pageHeader
+    .addBlock(brandHeader)
+    .addBlock({ type: 'spacer', height: 1.5 })
+    .addBlock({ type: 'divider', thickness: 0.2, color: RULE })
+    .addBlock({ type: 'spacer', height: 2 });
+
+  report.content(nestedTable);
+
+  return report.build();
 }

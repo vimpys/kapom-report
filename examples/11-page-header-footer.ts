@@ -8,7 +8,7 @@
  */
 import { createKapomReport } from '../src/index';
 import type { TableNode } from '../src/index';
-import { fontConfig, saveReport } from './shared';
+import { fontConfig, outPath } from './shared';
 
 interface Row {
   n: number;
@@ -73,4 +73,5 @@ const report = createKapomReport<Row>({
   ],
 });
 
-saveReport(report, '11-page-header-footer');
+report.save(outPath('11-page-header-footer'));
+console.log(`OK 11-page-header-footer.pdf (${report.doc.getNumberOfPages()} pages)`);

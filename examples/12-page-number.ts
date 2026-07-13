@@ -12,7 +12,7 @@
  * Uses createKapomReport({ blocks, pageNumber }) — no pageHeader/pageFooter needed for this alone
  */
 import { createKapomReport } from '../src/index';
-import { fontConfig, saveReport } from './shared';
+import { fontConfig, outPath } from './shared';
 
 const report = createKapomReport({
   font: fontConfig,
@@ -36,4 +36,5 @@ const report = createKapomReport({
   ],
 });
 
-saveReport(report, '12-page-number');
+report.save(outPath('12-page-number'));
+console.log(`OK 12-page-number.pdf (${report.doc.getNumberOfPages()} pages)`);

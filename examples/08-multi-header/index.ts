@@ -4,10 +4,11 @@
  *
  * Run with: `tsx examples/08-multi-header/index.ts`
  */
-import { saveReport } from '../shared';
+import { outPath } from '../shared';
 import { sales } from './data';
 import { buildQuarterlySales } from './report-template';
 
 const report = buildQuarterlySales(sales);
 
-saveReport(report, '08-multi-header');
+report.save(outPath('08-multi-header'));
+console.log(`OK 08-multi-header.pdf (${report.doc.getNumberOfPages()} pages)`);

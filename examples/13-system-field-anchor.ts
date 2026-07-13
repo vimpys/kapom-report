@@ -9,7 +9,7 @@
  */
 import { createKapomReport, createAnchoredBand } from '../src/index';
 import type { TableNode } from '../src/index';
-import { fontConfig, saveReport } from './shared';
+import { fontConfig, outPath } from './shared';
 
 interface Row {
   n: number;
@@ -61,4 +61,5 @@ const report = createKapomReport<Row>({
   ],
 });
 
-saveReport(report, '13-system-field-anchor');
+report.save(outPath('13-system-field-anchor'));
+console.log(`OK 13-system-field-anchor.pdf (${report.doc.getNumberOfPages()} pages)`);

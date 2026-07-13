@@ -4,10 +4,11 @@
  *
  * Run with: `tsx examples/03-styled-table/index.ts`
  */
-import { saveReport } from '../shared';
+import { outPath } from '../shared';
 import { ledgerEntries } from './data';
 import { buildStyledLedger } from './report-template';
 
 const report = buildStyledLedger(ledgerEntries);
 
-saveReport(report, '03-styled-table');
+report.save(outPath('03-styled-table'));
+console.log(`OK 03-styled-table.pdf (${report.doc.getNumberOfPages()} pages)`);

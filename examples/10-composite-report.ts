@@ -7,7 +7,7 @@
  */
 import { createKapomReport, ReportRegistry } from '../src/index';
 import type { TableNode } from '../src/index';
-import { fontConfig, saveReport } from './shared';
+import { fontConfig, outPath } from './shared';
 
 interface Sale {
   product: string;
@@ -109,4 +109,5 @@ const report = createKapomReport({
   ),
 });
 
-saveReport(report, '10-composite-report');
+report.save(outPath('10-composite-report'));
+console.log(`OK 10-composite-report.pdf (${report.doc.getNumberOfPages()} pages)`);

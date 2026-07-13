@@ -7,7 +7,7 @@
  */
 import { createKapomReport } from '../src/index';
 import type { TableNode } from '../src/index';
-import { fontConfig, saveReport } from './shared';
+import { fontConfig, outPath } from './shared';
 
 interface Sale {
   product: string;
@@ -54,4 +54,5 @@ const report = createKapomReport<Sale>({
   ],
 });
 
-saveReport(report, '09-report-header-section');
+report.save(outPath('09-report-header-section'));
+console.log(`OK 09-report-header-section.pdf (${report.doc.getNumberOfPages()} pages)`);

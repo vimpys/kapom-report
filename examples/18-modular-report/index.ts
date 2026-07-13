@@ -6,7 +6,7 @@
  *
  * Run with: `tsx examples/18-modular-report/index.ts`
  */
-import { saveReport } from '../shared';
+import { outPath } from '../shared';
 import { sales } from './data';
 import { buildSalesReport } from './report-template';
 
@@ -16,4 +16,5 @@ const report = buildSalesReport(sales, {
   reportDescription: 'Quarterly sales by product and customer — FY2026',
 });
 
-saveReport(report, '18-modular-report');
+report.save(outPath('18-modular-report'));
+console.log(`OK 18-modular-report.pdf (${report.doc.getNumberOfPages()} pages)`);

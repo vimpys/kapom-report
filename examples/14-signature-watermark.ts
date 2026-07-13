@@ -8,7 +8,7 @@
  */
 import { createKapomReport } from '../src/index';
 import type { TableNode } from '../src/index';
-import { fontConfig, saveReport } from './shared';
+import { fontConfig, outPath } from './shared';
 
 interface Sale {
   product: string;
@@ -45,4 +45,5 @@ const report = createKapomReport<Sale>({
   ],
 });
 
-saveReport(report, '14-signature-watermark');
+report.save(outPath('14-signature-watermark'));
+console.log(`OK 14-signature-watermark.pdf (${report.doc.getNumberOfPages()} pages)`);

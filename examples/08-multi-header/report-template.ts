@@ -8,10 +8,35 @@
  * Landscape + narrow margins because 14 leaf columns need the width; month columns have no fixed
  * width so AutoTable auto-fits them.
  */
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { reportBuilder } from '../../src/index';
-import type { ColumnGroup, DataColumn, KapomReport, TableNode } from '../../src/index';
+import type { ColumnGroup, DataColumn, KapomReport, ReportNodeInput, RGB, TableNode } from '../../src/index';
 import { fontConfig } from '../shared';
 import type { Sale } from './data';
+
+const here = dirname(fileURLToPath(import.meta.url));
+const logo = new Uint8Array(readFileSync(join(here, '../../src/assets/kapom-report.png')));
+
+const NAVY: RGB = [31, 63, 112];
+const GRAY: RGB = [110, 110, 110];
+const RULE: RGB = [205, 210, 218];
+
+/** the brand header repeated at the top of every page — logo + company name (same pattern as demo 18) */
+const brandHeader: ReportNodeInput = {
+  type: 'row',
+  columns: [
+    { width: 14, children: [{ type: 'image', data: logo, format: 'PNG', width: 14, height: 14 }] },
+    {
+      children: [
+        { type: 'spacer', height: 2 },
+        { content: 'Kapom Company', style: { fontSize: 13, fontStyle: 'bold', color: NAVY } },
+        { content: 'kapom-soft', style: { fontSize: 8, color: GRAY } },
+      ],
+    },
+  ],
+};
 
 type MonthKey =
   | 'jan' | 'feb' | 'mar' | 'apr' | 'may' | 'jun'
@@ -70,10 +95,19 @@ export function buildQuarterlySales(sales: Sale[]): KapomReport {
     data: sales,
   };
 
-  return reportBuilder<Sale>()
+  const report = reportBuilder<Sale>()
     .font(fontConfig)
     .pageSetup({ orientation: 'landscape', margins: { top: 12, bottom: 12, left: 10, right: 10 } })
-    .title('Quarterly Sales — 3-level column-group header')
-    .content(salesTable)
-    .build();
+    .title('Quarterly Sales — 3-level column-group header');
+
+  // brand page-header band — repeats on every page; reserved height is auto-measured from the blocks
+  report.pageHeader
+    .addBlock(brandHeader)
+    .addBlock({ type: 'spacer', height: 1.5 })
+    .addBlock({ type: 'divider', thickness: 0.2, color: RULE })
+    .addBlock({ type: 'spacer', height: 2 });
+
+  report.content(salesTable);
+
+  return report.build();
 }

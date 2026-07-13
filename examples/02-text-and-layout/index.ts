@@ -4,10 +4,11 @@
  *
  * Run with: `tsx examples/02-text-and-layout/index.ts`
  */
-import { saveReport } from '../shared';
+import { outPath } from '../shared';
 import { article } from './data';
 import { buildTextAndLayout } from './report-template';
 
 const report = buildTextAndLayout(article);
 
-saveReport(report, '02-text-and-layout');
+report.save(outPath('02-text-and-layout'));
+console.log(`OK 02-text-and-layout.pdf (${report.doc.getNumberOfPages()} pages)`);

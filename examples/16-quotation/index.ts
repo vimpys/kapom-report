@@ -4,10 +4,11 @@
  *
  * Run with: `tsx examples/16-quotation/index.ts`
  */
-import { saveReport } from '../shared';
+import { outPath } from '../shared';
 import { quotation } from './data';
 import { buildQuotation } from './report-template';
 
 const report = buildQuotation(quotation);
 
-saveReport(report, '16-quotation');
+report.save(outPath('16-quotation'));
+console.log(`OK 16-quotation.pdf (${report.doc.getNumberOfPages()} pages)`);

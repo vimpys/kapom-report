@@ -26,4 +26,8 @@ export function buildDailySales(sales: Sale[]): KapomReport {
       data: sales,
     })
     .build();
+  // `.build()` returns a KapomReport so the runner decides what to do with it. In real code you
+  // can also end the chain with an output call directly — build + write in one step:
+  //   .save('daily-sales.pdf')   // Node: writes the file / browser: triggers a download
+  //   .preview()                 // Node: opens the OS PDF viewer / browser: opens a new tab
 }

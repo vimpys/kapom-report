@@ -4,10 +4,11 @@
  *
  * Run with: `tsx examples/07-master-detail/index.ts`
  */
-import { saveReport } from '../shared';
+import { outPath } from '../shared';
 import { batches } from './data';
 import { buildBatchReport } from './report-template';
 
 const report = buildBatchReport(batches);
 
-saveReport(report, '07-master-detail');
+report.save(outPath('07-master-detail'));
+console.log(`OK 07-master-detail.pdf (${report.doc.getNumberOfPages()} pages)`);

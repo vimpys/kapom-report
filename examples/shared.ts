@@ -1,12 +1,16 @@
 /**
- * Helpers shared by every demo — Thai font loading + file output.
- * Each demo is a standalone file (`tsx examples/01-text-blocks.ts`),
- * or run them all with `npm run demo`.
+ * Helpers shared by every demo — Thai font loading + the demo suite's output path.
+ * Each demo is a standalone folder/file, or run them all with `npm run demo`.
+ *
+ * Demos call the real library API directly — `report.save(outPath('01-basic-report'))` — so the
+ * code you copy from a demo is exactly the code you would write yourself. The only shared pieces
+ * are things that are the *user's* concern anyway, never the library's: font registration (you
+ * supply your own font files) and where this demo suite keeps its PDFs.
  */
 import { mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { FontConfig, KapomReport } from '../src/index';
+import type { FontConfig } from '../src/index';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fontsDir = join(here, '../tests/fixtures/fonts');
@@ -20,9 +24,8 @@ export const fontConfig: FontConfig = {
   ],
 };
 
-/** Write the PDF to examples/output/<name>.pdf and log the page count — takes a KapomReport from createKapomReport() */
-export function saveReport(report: KapomReport, name: string): void {
+/** absolute path for a demo PDF — examples/output/<name>.pdf (the folder is created on first use) */
+export function outPath(name: string): string {
   mkdirSync(outDir, { recursive: true });
-  report.save(join(outDir, `${name}.pdf`));
-  console.log(`OK ${name}.pdf (${report.doc.getNumberOfPages()} pages)`);
+  return join(outDir, `${name}.pdf`);
 }
