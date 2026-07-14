@@ -38,6 +38,9 @@ const GROUP_BAND_HEIGHT_RATIO = 1.6;
 const GROUP_BAND_FILL: RGB = [236, 240, 241];
 const GRAND_TOTAL_FILL: RGB = [41, 128, 185];
 
+/** sum of a number array */
+const sum = (values: readonly number[]): number => values.reduce((total, v) => total + v, 0);
+
 /** CellStyle (zebra/conditional override) → AutoTable Partial<Styles> */
 function cellStyleToAutoTableStyles(style: Partial<CellStyle>): Partial<Styles> {
   const styles: Partial<Styles> = {};
@@ -220,6 +223,38 @@ export class TableBlock<T> implements MeasurableBlock {
     return columnStyles;
   }
 
+  /** columnStyles with a fixed cellWidth per column (from resolveColumnWidths), 'auto' where unset — used by the grouped + nested paths that fix one width set across every segment */
+  private buildFixedColumnStyles(
+    aligns: readonly ResolvedAlign[],
+    columns: readonly ReportColumn<T>[],
+    widths: readonly number[],
+  ): Record<string, Partial<Styles>> {
+    return this.buildColumnStyles(aligns, columns, (index) => ({ cellWidth: widths[index] ?? 'auto' }));
+  }
+
+  /**
+   * One fixed set of column widths measured from every row across the whole table (head + all
+   * body/segment rows + foot) — shared by the grouped and nested paths so their column lines stay
+   * aligned across the separate AutoTable segments they emit. Measured at detailRow's fontSize
+   * (the size the body actually uses).
+   */
+  private resolveColumnWidths(
+    ctx: RenderContext,
+    columns: readonly ReportColumn<T>[],
+    head: readonly string[],
+    middle: readonly (readonly string[])[],
+    foot: readonly string[] | undefined,
+  ): number[] {
+    const allRows: (readonly string[])[] = [head, ...middle, ...(foot ? [foot] : [])];
+    return computeColumnWidths(
+      ctx.doc,
+      allRows,
+      columns.map((col) => col.width),
+      ctx.contentWidth,
+      ctx.typography.detailRow.fontSize,
+    );
+  }
+
   // ── flat (ungrouped) ────────────────────────────────────────────────
 
   private renderFlat(ctx: RenderContext, perPage: PerPageRowNumberState): void {
@@ -280,23 +315,10 @@ export class TableBlock<T> implements MeasurableBlock {
     // a single, fixed set of column widths across every segment (same reasoning as renderGrouped)
     // — this is also what makes the nested child's indent line up exactly with the column grid,
     // like a colSpan across the remaining columns, without needing an actual colSpan cell
-    const allRows: (readonly string[])[] = [
-      content.head,
-      ...content.body,
-      ...(content.foot ? [content.foot] : []),
-    ];
-    const widths = computeColumnWidths(
-      ctx.doc,
-      allRows,
-      columns.map((col) => col.width),
-      ctx.contentWidth,
-      ctx.typography.detailRow.fontSize,
-    );
-    const columnStyles = this.buildColumnStyles(content.aligns, columns, (index) => ({
-      cellWidth: widths[index] ?? 'auto',
-    }));
-    const indentX = widths.slice(0, indentColumn).reduce((sum, w) => sum + w, 0);
-    const childWidth = widths.slice(indentColumn).reduce((sum, w) => sum + w, 0);
+    const widths = this.resolveColumnWidths(ctx, columns, content.head, content.body, content.foot);
+    const columnStyles = this.buildFixedColumnStyles(content.aligns, columns, widths);
+    const indentX = sum(widths.slice(0, indentColumn));
+    const childWidth = sum(widths.slice(indentColumn));
 
     const rows = this.node.data;
     let segmentStart = 0;
@@ -397,22 +419,8 @@ export class TableBlock<T> implements MeasurableBlock {
     );
 
     // fix a single set of column widths from every group's content at every level — keeps the column lines aligned across segments
-    const allRows: (readonly string[])[] = [
-      head,
-      ...flattenGroupTreeRows(tree),
-      ...(grandFoot ? [grandFoot] : []),
-    ];
-    const widths = computeColumnWidths(
-      ctx.doc,
-      allRows,
-      columns.map((col) => col.width),
-      ctx.contentWidth,
-      ctx.typography.detailRow.fontSize, // measured at the same fontSize the body actually uses (review fix #3)
-    );
-
-    const columnStyles = this.buildColumnStyles(aligns, columns, (index) => ({
-      cellWidth: widths[index] ?? 'auto',
-    }));
+    const widths = this.resolveColumnWidths(ctx, columns, head, flattenGroupTreeRows(tree), grandFoot);
+    const columnStyles = this.buildFixedColumnStyles(aligns, columns, widths);
 
     const lineHeight = lineHeightOf(ctx.doc, ctx.typography.detailRow.fontSize);
     const bandHeight = lineHeight * GROUP_BAND_HEIGHT_RATIO;
@@ -657,11 +665,15 @@ export class TableBlock<T> implements MeasurableBlock {
   /** Typography token → AutoTable styles with a fontStyle fallback if the font in use doesn't actually have that variant */
   private resolveTokenStyles(ctx: RenderContext, token: TextStyle): Partial<Styles> {
     const styles = partialTextStyleToAutoTableStyles(token);
-    if (styles.fontStyle) {
-      const fontName = styles.font ?? ctx.doc.getFont().fontName;
-      styles.fontStyle = this.resolveSupportedFontStyle(ctx.doc, fontName, styles.fontStyle);
-    }
+    this.guardFontStyle(ctx, styles);
     return styles;
+  }
+
+  /** replace styles.fontStyle with 'normal' if the font in use lacks that variant (mutates in place) — shared by token/head style resolution */
+  private guardFontStyle(ctx: RenderContext, styles: Partial<Styles>): void {
+    if (!styles.fontStyle) return;
+    const fontName = styles.font ?? ctx.doc.getFont().fontName;
+    styles.fontStyle = this.resolveSupportedFontStyle(ctx.doc, fontName, styles.fontStyle);
   }
 
   /**
@@ -733,10 +745,7 @@ export class TableBlock<T> implements MeasurableBlock {
     if (!override) return base;
 
     const merged = { ...base, ...cellStyleToAutoTableStyles(override) };
-    if (merged.fontStyle) {
-      const fontName = merged.font ?? ctx.doc.getFont().fontName;
-      merged.fontStyle = this.resolveSupportedFontStyle(ctx.doc, fontName, merged.fontStyle);
-    }
+    this.guardFontStyle(ctx, merged);
     return merged;
   }
 
