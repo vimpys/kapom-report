@@ -7,10 +7,35 @@
  * Assembled with the `reportBuilder()` chain: `.title()` once at the top, `.content()` for the
  * flow, `pageBreak()` between sections so each table starts on a fresh page.
  */
-import { formatDate, nativeNumeric, pageBreak, reportBuilder, spacer } from '../../src/index';
-import type { KapomReport, TableNode } from '../../src/index';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { divider, formatDate, nativeNumeric, pageBreak, reportBuilder, spacer } from '../../src/index';
+import type { KapomReport, ReportNodeInput, RGB, TableNode } from '../../src/index';
 import { fontConfig } from '../shared';
 import type { LedgerEntry, OrderLine, Sale } from './data';
+
+const here = dirname(fileURLToPath(import.meta.url));
+const logo = new Uint8Array(readFileSync(join(here, '../../src/assets/kapom-report.png')));
+
+const NAVY: RGB = [31, 63, 112];
+const GRAY: RGB = [110, 110, 110];
+const RULE: RGB = [205, 210, 218];
+
+/** the brand page header repeated at the top of every page — logo + company name */
+const brandHeader: ReportNodeInput = {
+  type: 'row',
+  columns: [
+    { width: 14, children: [{ type: 'image', data: logo, format: 'PNG', width: 14, height: 14 }] },
+    {
+      children: [
+        spacer(2),
+        { content: 'Kapom Company', style: { fontSize: 13, fontStyle: 'bold', color: NAVY } },
+        { content: 'kapom-soft', style: { fontSize: 8, color: GRAY } },
+      ],
+    },
+  ],
+};
 
 /**
  * `TableNode<T>` is invariant in T (its columns reference `keyof T`), so tables of different row
@@ -88,23 +113,32 @@ export function buildCombinedReport(sales: Sale[], ledger: LedgerEntry[], orders
     summaryLabel: 'Total',
   };
 
-  return reportBuilder()
+  const report = reportBuilder()
     .font(fontConfig)
-    .title('Combined Report — basic, styled, and aggregate tables')
-    .content(
-      heading('1. Daily Sales — the smallest table'),
-      spacer(3),
-      untyped(salesTable),
-      pageBreak(), // ← section 2 starts on a fresh page
+    .title('Combined Report — basic, styled, and aggregate tables');
 
-      heading('2. Ledger — zebra + conditional (negative = red)'),
-      spacer(3),
-      untyped(ledgerTable),
-      pageBreak(), // ← section 3 starts on a fresh page
+  // brand page-header band — repeats on every page; reserved height is auto-measured from the blocks
+  report.pageHeader
+    .addBlock(brandHeader)
+    .addBlock(spacer(1.5))
+    .addBlock(divider({ thickness: 0.2, color: RULE }))
+    .addBlock(spacer(2));
 
-      heading('3. Order summary — rowNumber / computed / runningTotal + aggregate'),
-      spacer(3),
-      untyped(orderTable),
-    )
-    .build();
+  report.content(
+    heading('1. Daily Sales — the smallest table'),
+    spacer(3),
+    untyped(salesTable),
+    pageBreak(), // ← section 2 starts on a fresh page
+
+    heading('2. Ledger — zebra + conditional (negative = red)'),
+    spacer(3),
+    untyped(ledgerTable),
+    pageBreak(), // ← section 3 starts on a fresh page
+
+    heading('3. Order summary — rowNumber / computed / runningTotal + aggregate'),
+    spacer(3),
+    untyped(orderTable),
+  );
+
+  return report.build();
 }
