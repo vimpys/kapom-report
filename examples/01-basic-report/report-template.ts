@@ -7,7 +7,7 @@
  * Assembled with the `reportBuilder()` chain: `.title()` once at the top, `.content()` for the
  * flow, `pageBreak()` between sections so each table starts on a fresh page.
  */
-import { formatDate, nativeNumeric, pageBreak, reportBuilder } from '../../src/index';
+import { formatDate, nativeNumeric, pageBreak, reportBuilder, spacer } from '../../src/index';
 import type { KapomReport, TableNode } from '../../src/index';
 import { fontConfig } from '../shared';
 import type { LedgerEntry, OrderLine, Sale } from './data';
@@ -93,14 +93,17 @@ export function buildCombinedReport(sales: Sale[], ledger: LedgerEntry[], orders
     .title('Combined Report — basic, styled, and aggregate tables')
     .content(
       heading('1. Daily Sales — the smallest table'),
+      spacer(3),
       untyped(salesTable),
       pageBreak(), // ← section 2 starts on a fresh page
 
       heading('2. Ledger — zebra + conditional (negative = red)'),
+      spacer(3),
       untyped(ledgerTable),
       pageBreak(), // ← section 3 starts on a fresh page
 
       heading('3. Order summary — rowNumber / computed / runningTotal + aggregate'),
+      spacer(3),
       untyped(orderTable),
     )
     .build();
