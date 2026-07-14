@@ -32,6 +32,11 @@ export interface DividerNode {
   color?: CellStyle['textColor'];
 }
 
+/** forces the flow onto a new page — a standalone counterpart to SectionNode.breakBefore; takes no space */
+export interface PageBreakNode {
+  type: 'pageBreak';
+}
+
 export interface ImageNode {
   type: 'image';
   /** base64 (no data URI prefix) or binary */
@@ -234,6 +239,7 @@ export type ReportNode<T = unknown> =
   | TextNode
   | SpacerNode
   | DividerNode
+  | PageBreakNode
   | ImageNode
   | SignatureNode
   | TableNode<T>
@@ -269,3 +275,6 @@ export const spacer = (height?: number): SpacerNode =>
 
 /** shorthand constructor for a horizontal rule — `divider()` (zero-config) or `divider({ thickness, color })` instead of the full node */
 export const divider = (options: Omit<DividerNode, 'type'> = {}): DividerNode => ({ type: 'divider', ...options });
+
+/** shorthand constructor for a forced page break — `pageBreak()` instead of `{ type: 'pageBreak' }` */
+export const pageBreak = (): PageBreakNode => ({ type: 'pageBreak' });

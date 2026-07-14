@@ -12,6 +12,7 @@ import { assertConfinedChildAllowed, assertRowNodeValid, DEFAULT_ROW_GAP, RowBlo
 import { KeyValueBlock } from './key-value-block';
 import { assertBoxNodeValid, BoxBlock, DEFAULT_BOX_BORDER_WIDTH, DEFAULT_BOX_PADDING } from './box-block';
 import { BottomAnchorBlock } from './bottom-anchor-block';
+import { PageBreakBlock } from './page-break-block';
 import type {
   BottomAnchorNode,
   BoxNode,
@@ -46,6 +47,7 @@ export function registerBuiltinBlocks(): void {
   registerBlockType('text', (node) => new TextBlock(node as TextNode));
   registerBlockType('spacer', (node) => new SpacerBlock(node as SpacerNode));
   registerBlockType('divider', (node) => new DividerBlock(node as DividerNode));
+  registerBlockType('pageBreak', () => new PageBreakBlock());
   registerBlockType('image', (node) => new ImageBlock(node as ImageNode));
   registerBlockType('signature', (node) => new SignatureBlock(node as SignatureNode));
   registerBlockType('raw', (node) => new RawBlock(node as RawNode));

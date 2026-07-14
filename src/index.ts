@@ -41,6 +41,7 @@ export type {
   TextNode,
   SpacerNode,
   DividerNode,
+  PageBreakNode,
   ImageNode,
   SignatureSlot,
   SignatureNode,
@@ -61,7 +62,7 @@ export type {
   TextNodeShorthand,
   ReportNodeInput,
 } from './types/node';
-export { resolveNodeInput, spacer, divider } from './types/node';
+export { resolveNodeInput, spacer, divider, pageBreak } from './types/node';
 export { DEFAULT_ROW_GAP } from './blocks/row-block';
 export { DEFAULT_BOX_PADDING, DEFAULT_BOX_BORDER_WIDTH } from './blocks/box-block';
 
@@ -120,6 +121,7 @@ export { registerFonts } from './font/register-fonts';
 
 export { DEFAULT_TEXT_STYLE, TextBlock } from './blocks/text-block';
 export { DEFAULT_SPACER_HEIGHT, SpacerBlock } from './blocks/spacer-block';
+export { PageBreakBlock } from './blocks/page-break-block';
 export {
   DEFAULT_DIVIDER_THICKNESS,
   DEFAULT_DIVIDER_COLOR,

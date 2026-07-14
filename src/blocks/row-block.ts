@@ -60,7 +60,7 @@ export function resolveRowColumnWidths(
  */
 export function assertConfinedChildAllowed(input: ReportNodeInput<unknown>, container: string): void {
   const node = resolveNodeInput(input);
-  if (node.type === 'table' || node.type === 'section') {
+  if (node.type === 'table' || node.type === 'section' || node.type === 'pageBreak') {
     throw new KapomError(
       `${container}: a '${node.type}' block is not supported inside a ${container} (v1) — it paginates or breaks pages itself, which conflicts with the reserved box it would render into`,
     );
