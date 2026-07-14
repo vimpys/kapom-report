@@ -1,33 +1,107 @@
 /**
  * File 2 of 3 — the report template.
- * Demo — the smallest possible report: a title and one table, assembled with the
- * `reportBuilder()` fluent chain. `.title()` = the once-at-top region, `.content()` = the
- * flowing body. Columns are just `{ key, header }` — `type: 'data'` is the default and may be
- * omitted. No new jsPDF()/RenderEngine/createBlock anywhere; page size defaults to a4/portrait.
- *
- * Data-agnostic: exposed as `buildDailySales(sales)` — swap in any `Sale[]` and the layout holds.
- * Every demo after this one grows from this exact shape.
+ * One report that joins three tables with `pageBreak()`, each showing a different feature set:
+ *   1. the smallest table (product + qty) — `{ key, header }`, `type: 'data'` omitted
+ *   2. zebra + conditional formatting + a formatter + column-level cellStyle
+ *   3. rowNumber / computed / runningTotal columns + aggregates (summary row)
+ * Assembled with the `reportBuilder()` chain: `.title()` once at the top, `.content()` for the
+ * flow, `pageBreak()` between sections so each table starts on a fresh page.
  */
-import { reportBuilder } from '../../src/index';
-import type { KapomReport } from '../../src/index';
+import { formatDate, nativeNumeric, pageBreak, reportBuilder } from '../../src/index';
+import type { KapomReport, TableNode } from '../../src/index';
 import { fontConfig } from '../shared';
-import type { Sale } from './data';
+import type { LedgerEntry, OrderLine, Sale } from './data';
 
-export function buildDailySales(sales: Sale[]): KapomReport {
-  return reportBuilder<Sale>()
+/**
+ * `TableNode<T>` is invariant in T (its columns reference `keyof T`), so tables of different row
+ * types can't sit in one `ReportNode<unknown>` flow directly — this one cast bridges them (the same
+ * thing `ReportRegistry` does internally). It's the price of mixing row types in a single report.
+ */
+const untyped = <T>(table: TableNode<T>): TableNode<unknown> => table as unknown as TableNode<unknown>;
+
+/** small section heading above each table */
+const heading = (text: string): { content: string; role: 'sectionHeading' } => ({ content: text, role: 'sectionHeading' });
+
+export function buildCombinedReport(sales: Sale[], ledger: LedgerEntry[], orders: OrderLine[]): KapomReport {
+  // ── 1. the smallest table — columns are just { key, header } ──
+  const salesTable: TableNode<Sale> = {
+    type: 'table',
+    columns: [
+      { key: 'product', header: 'Product' },
+      { key: 'qty', header: 'Qty', align: 'right' },
+    ],
+    data: sales,
+  };
+
+  // ── 2. zebra + conditional (negative = red) + formatter + column-level cellStyle ──
+  const ledgerTable: TableNode<LedgerEntry> = {
+    type: 'table',
+    columns: [
+      {
+        key: 'date',
+        header: 'Date',
+        width: 30,
+        formatter: (value) => formatDate(new Date(String(value)), { locale: 'en-GB', dateStyle: 'medium' }),
+      },
+      { key: 'description', header: 'Description' },
+      {
+        key: 'amount',
+        header: 'Amount',
+        align: 'right',
+        width: 35,
+        numberFormat: {}, // {} = DEFAULT_NUMBER_FORMAT (thousands separator + 2 decimals)
+        aggregate: 'sum',
+        cellStyle: { fontFamily: 'Sarabun' }, // ranks below zebra/conditional in precedence
+      },
+    ],
+    data: ledger,
+    summaryLabel: 'Net',
+    style: {
+      zebra: { even: [255, 255, 255], odd: [245, 247, 250] },
+      conditional: (row) => (row.amount < 0 ? { textColor: [220, 38, 38] } : undefined),
+    },
+  };
+
+  // ── 3. every column kind + aggregates; overflows onto more pages (AutoTable paginates itself) ──
+  const orderTable: TableNode<OrderLine> = {
+    type: 'table',
+    columns: [
+      { type: 'rowNumber', header: '#', align: 'right', width: 12 },
+      { key: 'product', header: 'Product' },
+      { key: 'qty', header: 'Qty', align: 'right', aggregate: 'sum' },
+      { key: 'price', header: 'Unit Price', align: 'right', numberFormat: {}, aggregate: 'avg' },
+      {
+        type: 'computed',
+        header: 'Amount',
+        align: 'right',
+        compute: (row) => nativeNumeric.multiply(row.qty, row.price),
+        aggregate: 'sum',
+      },
+      {
+        type: 'runningTotal',
+        header: 'Running',
+        align: 'right',
+        valueOf: (row) => nativeNumeric.multiply(row.qty, row.price),
+      },
+    ],
+    data: orders,
+    summaryLabel: 'Total',
+  };
+
+  return reportBuilder()
     .font(fontConfig)
-    .title('Daily Sales Report')
-    .content({
-      type: 'table',
-      columns: [
-        { key: 'product', header: 'Product' },
-        { key: 'qty', header: 'Qty', align: 'right' },
-      ],
-      data: sales,
-    })
+    .title('Combined Report — basic, styled, and aggregate tables')
+    .content(
+      heading('1. Daily Sales — the smallest table'),
+      untyped(salesTable),
+      pageBreak(), // ← section 2 starts on a fresh page
+
+      heading('2. Ledger — zebra + conditional (negative = red)'),
+      untyped(ledgerTable),
+      pageBreak(), // ← section 3 starts on a fresh page
+
+      heading('3. Order summary — rowNumber / computed / runningTotal + aggregate'),
+      untyped(orderTable),
+    )
     .build();
-  // `.build()` returns a KapomReport so the runner decides what to do with it. In real code you
-  // can also end the chain with an output call directly — build + write in one step:
-  //   .save('daily-sales.pdf')   // Node: writes the file / browser: triggers a download
-  //   .preview()                 // Node: opens the OS PDF viewer / browser: opens a new tab
 }
