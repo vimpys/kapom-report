@@ -17,7 +17,7 @@ import { PdfCursor } from './cursor';
 import { drawText } from './draw-text';
 import type { PageBandLike } from './page-band';
 import { isBlockBand } from './page-band';
-import { deriveMeasureContext } from './measure-context';
+import { deriveMeasureContext, measureBlocksHeight } from './measure-context';
 import { measureTextBlockHeight } from './text-metrics';
 import type { PageNumberInput } from './page-number';
 import { renderPageNumber, resolvePageNumber } from './page-number';
@@ -125,7 +125,7 @@ export class RenderEngine {
       typography: this.typography,
       measureText: (text, fontSize, maxWidth) => measureTextBlockHeight(this.doc, text, fontSize, maxWidth),
     };
-    return blocks.reduce((sum, block) => sum + block.measureHeight(measureCtx), 0);
+    return measureBlocksHeight(blocks, measureCtx);
   }
 
   /**

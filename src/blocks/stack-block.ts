@@ -1,5 +1,5 @@
 import type { MeasurableBlock, MeasureContext, RenderContext } from '../core/context';
-import { deriveMeasureContext } from '../core/measure-context';
+import { deriveMeasureContext, measureBlocksHeight } from '../core/measure-context';
 
 /**
  * composite: renders children in order — measureHeight sums recursively (in case a stack nests
@@ -12,7 +12,7 @@ export class StackBlock implements MeasurableBlock {
   constructor(private readonly children: readonly MeasurableBlock[]) {}
 
   measureHeight(ctx: MeasureContext): number {
-    return this.children.reduce((sum, child) => sum + child.measureHeight(ctx), 0);
+    return measureBlocksHeight(this.children, ctx);
   }
 
   render(ctx: RenderContext): void {

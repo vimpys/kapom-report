@@ -1,7 +1,8 @@
 import { buildConfinedContext } from '../core/confined-context';
 import type { MeasurableBlock, MeasureContext, RenderContext } from '../core/context';
 import { KapomError, KapomLayoutError } from '../core/errors';
-import { deriveMeasureContext } from '../core/measure-context';
+import { sum } from '../core/layout-math';
+import { deriveMeasureContext, measureBlocksHeight } from '../core/measure-context';
 import type { BoxNode } from '../types/node';
 import type { RGB } from '../types/primitives';
 
@@ -59,10 +60,7 @@ export class BoxBlock implements MeasurableBlock {
    */
   measureHeight(ctx: MeasureContext): number {
     const inner: MeasureContext = { ...ctx, contentWidth: this.innerWidth(ctx.contentWidth) };
-    return (
-      this.children.reduce((sum, child) => sum + child.measureHeight(inner), 0) +
-      2 * this.options.padding
-    );
+    return measureBlocksHeight(this.children, inner) + 2 * this.options.padding;
   }
 
   /**
@@ -112,7 +110,7 @@ export class BoxBlock implements MeasurableBlock {
     innerWidth: number,
     fullPageCapacity: number,
   ): void {
-    const contentHeight = heights.reduce((sum, h) => sum + h, 0);
+    const contentHeight = sum(heights);
     if (contentHeight > fullPageCapacity) {
       throw new KapomLayoutError(
         `box: content height ${contentHeight.toFixed(2)} is taller than one full page and keepTogether is set — split the content into multiple boxes or remove keepTogether`,

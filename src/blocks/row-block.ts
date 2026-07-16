@@ -1,7 +1,7 @@
 import { buildConfinedContext } from '../core/confined-context';
 import type { MeasurableBlock, MeasureContext, RenderContext } from '../core/context';
 import { KapomError, KapomLayoutError } from '../core/errors';
-import { deriveMeasureContext } from '../core/measure-context';
+import { deriveMeasureContext, measureBlocksHeight } from '../core/measure-context';
 import type { ReportNodeInput, RowNode } from '../types/node';
 import { resolveNodeInput } from '../types/node';
 
@@ -166,6 +166,6 @@ export class RowBlock implements MeasurableBlock {
 
   private columnHeight(ctx: MeasureContext, column: RowBlockColumn, width: number): number {
     const columnCtx: MeasureContext = { ...ctx, contentWidth: width };
-    return column.blocks.reduce((sum, block) => sum + block.measureHeight(columnCtx), 0);
+    return measureBlocksHeight(column.blocks, columnCtx);
   }
 }

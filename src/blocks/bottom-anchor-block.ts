@@ -1,5 +1,5 @@
 import type { MeasurableBlock, MeasureContext, RenderContext } from '../core/context';
-import { deriveMeasureContext } from '../core/measure-context';
+import { deriveMeasureContext, measureBlocksHeight } from '../core/measure-context';
 
 /**
  * Pins its children to the bottom of the current page. At render it measures the children, fills
@@ -16,12 +16,12 @@ export class BottomAnchorBlock implements MeasurableBlock {
   constructor(private readonly children: readonly MeasurableBlock[]) {}
 
   measureHeight(ctx: MeasureContext): number {
-    return this.children.reduce((sum, child) => sum + child.measureHeight(ctx), 0);
+    return measureBlocksHeight(this.children, ctx);
   }
 
   render(ctx: RenderContext): void {
     const measureCtx = deriveMeasureContext(ctx);
-    const childrenHeight = this.children.reduce((sum, child) => sum + child.measureHeight(measureCtx), 0);
+    const childrenHeight = measureBlocksHeight(this.children, measureCtx);
 
     const gap = ctx.contentBottom - ctx.cursor.y - childrenHeight;
     if (gap > 0) ctx.advanceY(gap);

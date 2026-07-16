@@ -4,6 +4,7 @@ import type { MeasurableBlock, MeasureContext, RenderContext } from '../core/con
 import { applyTextStyle, drawText } from '../core/draw-text';
 import { KapomError } from '../core/errors';
 import { containsThai, isBuiltinStandardFont, thaiGlyphError } from '../core/font-guard';
+import { sum } from '../core/layout-math';
 import { lineHeightOf } from '../core/text-metrics';
 import { normalizeText } from '../core/text-normalizer';
 import { resolveRowStyle } from '../style/resolve-cell-style';
@@ -37,9 +38,6 @@ const GROUP_BAND_HEIGHT_RATIO = 1.6;
 /** the band/grand-total background is this composite pattern's own convention — not yet open to theme override (see CLAUDE.md) */
 const GROUP_BAND_FILL: RGB = [236, 240, 241];
 const GRAND_TOTAL_FILL: RGB = [41, 128, 185];
-
-/** sum of a number array */
-const sum = (values: readonly number[]): number => values.reduce((total, v) => total + v, 0);
 
 /** CellStyle (zebra/conditional override) → AutoTable Partial<Styles> */
 function cellStyleToAutoTableStyles(style: Partial<CellStyle>): Partial<Styles> {
