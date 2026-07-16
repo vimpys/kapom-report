@@ -38,8 +38,35 @@ const GROUP_BAND_HEIGHT_RATIO = 1.6;
 const GROUP_BAND_FILL: RGB = [236, 240, 241];
 const GRAND_TOTAL_FILL: RGB = [41, 128, 185];
 
+/** nestedLayout 'stacked': the master identity band (row 2 of the stacked head) — tinted fill, dark bold text */
+const STACKED_IDENTITY_FILL: RGB = [233, 241, 249];
+const STACKED_IDENTITY_TEXT: RGB = [22, 50, 79];
+/** nestedLayout 'stacked': the child header row (row 3) — a lighter tint to sit below the identity band */
+const STACKED_CHILD_HEAD_FILL: RGB = [231, 237, 243];
+const STACKED_CHILD_HEAD_TEXT: RGB = [51, 69, 92];
+
 /** sum of a number array */
 const sum = (values: readonly number[]): number => values.reduce((total, v) => total + v, 0);
+
+/**
+ * Lay a row of `values` across `gridCols` columns — the last cell colSpans to fill any shortfall.
+ * Used by nestedLayout 'stacked' to stack a K-column master row and an M-column child row in one
+ * shared grid (gridCols = max(K, M)); the shorter side's last cell simply spans the extra columns.
+ */
+function fitRowToGrid(
+  values: readonly string[],
+  aligns: readonly ResolvedAlign[],
+  which: keyof ResolvedAlign, // 'header' for a label row, 'data' for a values row
+  gridCols: number,
+  extra?: Partial<Styles>,
+): CellDef[] {
+  return values.map((content, idx) => {
+    const isLast = idx === values.length - 1;
+    const colSpan = isLast ? gridCols - (values.length - 1) : 1;
+    const halign = aligns[idx]?.[which] ?? 'left';
+    return { content, colSpan, styles: { halign, ...(extra ?? {}) } };
+  });
+}
 
 /** CellStyle (zebra/conditional override) → AutoTable Partial<Styles> */
 function cellStyleToAutoTableStyles(style: Partial<CellStyle>): Partial<Styles> {
@@ -262,7 +289,11 @@ export class TableBlock<T> implements MeasurableBlock {
     const content = resolveTableContent(this.node, ctx.numeric);
 
     if (this.node.nested) {
-      this.renderFlatWithNested(ctx, columns, content, perPage);
+      if (this.node.nestedLayout === 'stacked') {
+        this.renderFlatWithNestedStacked(ctx, columns, content, perPage);
+      } else {
+        this.renderFlatWithNested(ctx, columns, content, perPage);
+      }
       return;
     }
 
@@ -399,6 +430,125 @@ export class TableBlock<T> implements MeasurableBlock {
       contentWidth: childWidth,
     };
     new TableBlock(child).render(childCtx);
+  }
+
+  // ── master-detail (nested, 'stacked' layout): each master row with a child becomes one
+  // self-contained table — master header + identity band + child header + child rows — so the
+  // whole stacked head repeats on a page break (see TableNode.nestedLayout) ──────
+
+  /**
+   * Flat master-detail in 'stacked' layout: rows without a child flush as ordinary master
+   * segments; each row *with* a child renders as its own block whose repeating head carries the
+   * master identity, so a reader landing mid-detail on a later page still sees which master row
+   * it belongs to. Only the trailing content carries the grand foot (a summary belongs at the end).
+   */
+  private renderFlatWithNestedStacked(
+    ctx: RenderContext,
+    columns: readonly ReportColumn<T>[],
+    content: ResolvedTableContent,
+    perPage: PerPageRowNumberState,
+  ): void {
+    const nested = this.node.nested;
+    if (!nested) return;
+
+    const labelIndex = firstAggregateLabelIndex(columns);
+    const widths = this.resolveColumnWidths(ctx, columns, content.head, content.body, content.foot);
+    const masterColumnStyles = this.buildFixedColumnStyles(content.aligns, columns, widths);
+
+    const rows = this.node.data;
+    let segmentStart = 0;
+
+    const flushPlain = (end: number, foot: readonly string[] | undefined): void => {
+      if (segmentStart >= end) return;
+      this.runSegmentTable(ctx, {
+        head: this.buildHeadRows(),
+        body: content.body.slice(segmentStart, end),
+        foot,
+        labelIndex,
+        columnStyles: masterColumnStyles,
+        aligns: content.aligns,
+        columns,
+        rows: rows.slice(segmentStart, end),
+        footToken: ctx.typography.summary,
+        perPage,
+      });
+    };
+
+    for (let i = 0; i < rows.length; i += 1) {
+      const row = rows[i];
+      if (row === undefined) continue;
+      const child = nested(row);
+      if (child === undefined) continue;
+
+      flushPlain(i, undefined); // plain rows before this detail row — no mid-table foot
+      const identity = content.body[i];
+      if (identity) this.renderStackedBlock(ctx, columns, content.head, content.aligns, identity, child);
+      segmentStart = i + 1;
+    }
+
+    if (segmentStart < rows.length) {
+      flushPlain(rows.length, content.foot); // trailing plain rows carry the grand foot
+    } else if (content.foot) {
+      // the last row had a child — no trailing plain rows for the foot to attach to (same edge
+      // case as renderFlatWithNested: reuse the single-total-row mechanism)
+      const rowEstimate = lineHeightOf(ctx.doc, ctx.typography.detailRow.fontSize) * ESTIMATED_ROW_HEIGHT_RATIO;
+      this.renderSingleTotalRow(
+        ctx,
+        content.foot,
+        labelIndex,
+        masterColumnStyles,
+        content.aligns,
+        ctx.typography.summary,
+        GRAND_TOTAL_FILL,
+        rowEstimate,
+      );
+    }
+  }
+
+  /**
+   * One detail block as a single AutoTable: [master header · identity band · child header] as a
+   * 3-row repeating head, then the child rows as the body. The master (K columns) and child
+   * (M columns) share one grid of max(K, M) columns — each row's last cell colSpans to fill (see
+   * fitRowToGrid). Because the identity is a head row, it reprints on every page the child spans.
+   */
+  private renderStackedBlock(
+    ctx: RenderContext,
+    masterColumns: readonly ReportColumn<T>[],
+    masterHead: readonly string[],
+    masterAligns: readonly ResolvedAlign[],
+    identity: readonly string[],
+    child: TableNode<unknown>,
+  ): void {
+    const childColumns = visibleColumns(child.columns);
+    const childContent = resolveTableContent(child, ctx.numeric);
+    const gridCols = Math.max(masterColumns.length, childColumns.length);
+    const fontName = ctx.doc.getFont().fontName;
+    const bold = this.resolveSupportedFontStyle(ctx.doc, fontName, 'bold');
+
+    const identityStyle: Partial<Styles> = {
+      fillColor: [...STACKED_IDENTITY_FILL],
+      textColor: [...STACKED_IDENTITY_TEXT],
+      fontStyle: bold,
+    };
+    const childHeadStyle: Partial<Styles> = {
+      fillColor: [...STACKED_CHILD_HEAD_FILL],
+      textColor: [...STACKED_CHILD_HEAD_TEXT],
+      fontStyle: bold,
+    };
+
+    const head: RowInput[] = [
+      fitRowToGrid(masterHead, masterAligns, 'header', gridCols), // row 1: master column labels (uses headStyles)
+      fitRowToGrid(identity, masterAligns, 'data', gridCols, identityStyle), // row 2: this master row's values
+      fitRowToGrid(childContent.head, childContent.aligns, 'header', gridCols, childHeadStyle), // row 3: child labels
+    ];
+    const body: RowInput[] = childContent.body.map((r) => fitRowToGrid(r, childContent.aligns, 'data', gridCols));
+
+    this.runAutoTable(ctx, {
+      head,
+      body,
+      headStyles: this.resolveHeadStyles(ctx),
+      bodyStyles: this.resolveTokenStyles(ctx, ctx.typography.detailRow),
+    });
   }
 
   // ── grouped (composite: a band + segment per group + grand total; recursive when there's a subGroup) ──────

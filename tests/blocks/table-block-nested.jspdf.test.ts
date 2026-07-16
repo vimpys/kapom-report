@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import type { UserOptions } from 'jspdf-autotable';
+import type { CellDef, UserOptions } from 'jspdf-autotable';
 import { describe, expect, it, vi } from 'vitest';
 import { createBlock } from '../../src/blocks/create-block';
 import { TableBlock } from '../../src/blocks/table-block';
@@ -166,5 +166,97 @@ describe('TableBlock × nested (master-detail) × jsPDF จริง', () => {
 
     expect(() => engine.render([createBlock(batchNode(data))])).not.toThrow();
     expect(doc.getNumberOfPages()).toBeGreaterThanOrEqual(1);
+  });
+});
+
+/** contents of a CellDef row as plain strings — the stacked head/body are CellDef[], not string[] */
+const contentsOf = (row: CellDef[] | undefined): unknown[] => (row ?? []).map((cell) => cell.content);
+const spansOf = (row: CellDef[] | undefined): (number | undefined)[] => (row ?? []).map((cell) => cell.colSpan);
+
+describe("TableBlock × nestedLayout 'stacked' × jsPDF จริง", () => {
+  const oneChild = [{ date: '1/1', amount: '10.00' }];
+
+  it('แถวที่มี child → ตารางเดียว head 3 แถว (master header + identity + child header) + body = child rows', () => {
+    autoTableCalls.length = 0;
+    const doc = new jsPDF();
+    const engine = new RenderEngine(doc);
+
+    const data = batches([{}, { payments: oneChild }, {}]);
+    engine.render([createBlock(batchNode(data, { nestedLayout: 'stacked' }))]);
+
+    // [A] plain segment → [B's stacked block] → [C + grand foot]; B ไม่อยู่ใน segment แรก (ต่างจาก 'below')
+    expect(autoTableCalls).toHaveLength(3);
+    expect(autoTableCalls[0]?.body).toEqual([['A', 'Ally', '1']]);
+
+    const head = autoTableCalls[1]?.head as CellDef[][] | undefined;
+    expect(head).toHaveLength(3);
+    expect(contentsOf(head?.[0])).toEqual(['Batch', 'Bank', 'Qty']); // master column labels
+    expect(contentsOf(head?.[1])).toEqual(['B', 'Ally', '2']); // identity = this master row's own values
+    expect(contentsOf(head?.[2])).toEqual(['Date', 'Amount']); // child column labels
+
+    const body = autoTableCalls[1]?.body as CellDef[][] | undefined;
+    expect(contentsOf(body?.[0])).toEqual(['1/1', '10.00']);
+
+    expect(autoTableCalls[2]?.body).toEqual([['C', 'Ally', '3']]);
+    expect(autoTableCalls[2]?.foot).toBeDefined();
+  });
+
+  it('master (3 คอลัมน์) กับ child (2 คอลัมน์) ใช้ grid เดียวกัน — cell สุดท้ายของฝั่งที่สั้นกว่า colSpan เติมเต็ม', () => {
+    autoTableCalls.length = 0;
+    const doc = new jsPDF();
+    const engine = new RenderEngine(doc);
+
+    engine.render([
+      createBlock(batchNode(batches([{ payments: oneChild }, {}, {}]), { nestedLayout: 'stacked' })),
+    ]);
+
+    const head = autoTableCalls[0]?.head as CellDef[][] | undefined;
+    expect(spansOf(head?.[0])).toEqual([1, 1, 1]); // master = 3 คอลัมน์พอดี grid
+    expect(spansOf(head?.[2])).toEqual([1, 2]); // child 2 คอลัมน์ → cell สุดท้าย span 2 เติมให้ครบ 3
+    const body = autoTableCalls[0]?.body as CellDef[][] | undefined;
+    expect(spansOf(body?.[0])).toEqual([1, 2]);
+  });
+
+  it('identity อยู่ใน head → AutoTable repeat ให้เองทุกหน้าที่ child ล้นไป (คนอ่านรู้เสมอว่า master ไหน)', () => {
+    autoTableCalls.length = 0;
+    const doc = new jsPDF();
+    const engine = new RenderEngine(doc);
+
+    // child ยาวพอให้ล้นข้ามหน้าแน่ๆ
+    const many = Array.from({ length: 80 }, (_, i) => ({ date: `${i + 1}/1`, amount: '10.00' }));
+    engine.render([
+      createBlock(batchNode(batches([{ payments: many }, {}, {}]), { nestedLayout: 'stacked' })),
+    ]);
+
+    const head = autoTableCalls[0]?.head as CellDef[][] | undefined;
+    // ทั้ง 3 แถวเป็น head section ของตารางเดียวกัน → AutoTable วาดซ้ำหัวทุกหน้าเอง
+    expect(head).toHaveLength(3);
+    expect(contentsOf(head?.[1])).toEqual(['A', 'Ally', '1']);
+    expect(doc.getNumberOfPages()).toBeGreaterThan(1);
+  });
+
+  it('แถวสุดท้ายมี child → grand total วาดเป็นแถวเดี่ยว theme plain (เหมือน layout below)', () => {
+    autoTableCalls.length = 0;
+    const doc = new jsPDF();
+    const engine = new RenderEngine(doc);
+
+    const data = batches([{}, {}, { payments: oneChild }]);
+    engine.render([createBlock(batchNode(data, { nestedLayout: 'stacked' }))]);
+
+    // [A,B] segment → [C's stacked block] → grand total เดี่ยว
+    expect(autoTableCalls).toHaveLength(3);
+    expect(autoTableCalls[2]?.theme).toBe('plain');
+  });
+
+  it("ไม่ตั้ง nestedLayout → default 'below' พฤติกรรมเดิมเป๊ะ (head แถวเดียว, ไม่ regress)", () => {
+    autoTableCalls.length = 0;
+    const doc = new jsPDF();
+    const engine = new RenderEngine(doc);
+
+    const data = batches([{}, { payments: oneChild }, {}]);
+    engine.render([createBlock(batchNode(data))]);
+
+    expect(autoTableCalls[0]?.head).toEqual([['Batch', 'Bank', 'Qty']]); // string[] เดิม ไม่ใช่ CellDef
+    expect(autoTableCalls[1]?.head).toEqual([['Date', 'Amount']]); // child เป็นตารางของตัวเอง
   });
 });
