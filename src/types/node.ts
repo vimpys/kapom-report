@@ -116,9 +116,21 @@ export interface TableNode<T> {
    */
   nested?: (row: T) => TableNode<unknown> | undefined;
   /**
+   * how a `nested` child is laid out (default `'below'`):
+   * - `'below'` — the child table renders indented right under its master row (see
+   *   `nestedIndentColumn`); on a page break only the *child's* own header repeats
+   * - `'stacked'` — each master row with a child becomes one self-contained block: the master
+   *   column header + that row's values (an identity band) + the child header + the child rows,
+   *   all in a single table so **all of it repeats on a page break** (the reader always knows
+   *   which master row the detail belongs to). The trade-off: the master identity sits *above*
+   *   the detail, not beside it. `nestedIndentColumn` is ignored in this mode.
+   */
+  nestedLayout?: 'below' | 'stacked';
+  /**
    * 0-based column index the nested child table's left edge aligns to (default 0 = full width,
    * no indent) — computed from this table's own resolved column widths, so the child's left edge
-   * always lines up exactly with that column's grid line, like a colSpan across the rest
+   * always lines up exactly with that column's grid line, like a colSpan across the rest.
+   * Only applies to `nestedLayout: 'below'`.
    */
   nestedIndentColumn?: number;
   summaryLabel?: string;
