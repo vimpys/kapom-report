@@ -19,7 +19,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { pageBreak, reportBuilder, spacer } from '../../src/index';
+import { col, pageBreak, reportBuilder, spacer } from '../../src/index';
 import type { KapomReport, ReportColumn, ReportNodeInput, RGB, TableNode } from '../../src/index';
 import { fontConfig } from '../shared';
 import type { Batch, Payment } from './data';
@@ -46,14 +46,18 @@ const brandHeader: ReportNodeInput = {
   ],
 };
 
+// column constructors bound to each row type (Zod-style c.data(...))
+const b = col<Batch>();
+const p = col<Payment>();
+
 /** the master columns — shared by both sections so only the layout differs between them */
 const masterColumns: ReportColumn<Batch>[] = [
-  { key: 'batchName', header: 'Batch Name' }, // `type: 'data'` is the default — omit it
-  { key: 'type', header: 'Type' },
-  { key: 'openDate', header: 'Open Date' },
-  { key: 'bank', header: 'Bank' },
-  { key: 'qty', header: 'Qty', align: 'right', aggregate: 'sum' },
-  { key: 'sumPayments', header: 'Sum Payments', align: 'right', numberFormat: {}, aggregate: 'sum' },
+  b.data('batchName', 'Batch Name'),
+  b.data('type', 'Type'),
+  b.data('openDate', 'Open Date'),
+  b.data('bank', 'Bank'),
+  b.data('qty', 'Qty', { align: 'right', aggregate: 'sum' }),
+  b.data('sumPayments', 'Sum Payments', { align: 'right', numberFormat: {}, aggregate: 'sum' }),
 ];
 
 /** the detail table for one batch — `undefined` would mean "this row has no detail to show" */
@@ -61,11 +65,11 @@ const paymentsOf = (row: Batch): TableNode<unknown> | undefined =>
   row.payments && ({
     type: 'table',
     columns: [
-      { key: 'date', header: 'Date' },
-      { key: 'card', header: 'Card#' },
-      { key: 'method', header: 'Method' },
-      { key: 'billingStatus', header: 'Billing Status' },
-      { key: 'amount', header: 'Amount', align: 'right', numberFormat: {} },
+      p.data('date', 'Date'),
+      p.data('card', 'Card#'),
+      p.data('method', 'Method'),
+      p.data('billingStatus', 'Billing Status'),
+      p.data('amount', 'Amount', { align: 'right', numberFormat: {} }),
     ],
     data: row.payments,
   } satisfies TableNode<Payment> as unknown as TableNode<unknown>);
