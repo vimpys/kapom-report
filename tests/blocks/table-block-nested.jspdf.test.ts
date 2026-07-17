@@ -72,7 +72,7 @@ describe('TableBlock × nested (master-detail) × jsPDF จริง', () => {
     const engine = new RenderEngine(doc);
 
     const data = batches([{}, { payments: [{ date: '1/1', amount: '10.00' }] }, {}]);
-    engine.render([createBlock(batchNode(data))]);
+    engine.render([createBlock(batchNode(data, { nestedLayout: 'below' }))]);
 
     // 3 autoTable calls: [rows A,B] segment (B itself has the child, so it's included here first),
     // [payments] child, [row C + grand total foot] segment
@@ -123,7 +123,7 @@ describe('TableBlock × nested (master-detail) × jsPDF จริง', () => {
     const engine = new RenderEngine(doc);
 
     const data = batches([{}, { payments: [{ date: '1/1', amount: '10.00' }] }, {}]);
-    engine.render([createBlock(batchNode(data, { nestedIndentColumn: 1 }))]);
+    engine.render([createBlock(batchNode(data, { nestedLayout: 'below', nestedIndentColumn: 1 }))]);
 
     const masterLeft = autoTableCalls[0]?.margin as { left?: number } | undefined;
     const childLeft = autoTableCalls[1]?.margin as { left?: number } | undefined;
@@ -136,7 +136,7 @@ describe('TableBlock × nested (master-detail) × jsPDF จริง', () => {
 
     const data = batches([{}, { payments: [{ date: '1/1', amount: '10.00' }] }, {}]);
     expect(() =>
-      engine.render([createBlock(batchNode(data, { nestedIndentColumn: 99 }))]),
+      engine.render([createBlock(batchNode(data, { nestedLayout: 'below', nestedIndentColumn: 99 }))]),
     ).toThrow(/nestedIndentColumn/);
   });
 
@@ -248,13 +248,26 @@ describe("TableBlock × nestedLayout 'stacked' × jsPDF จริง", () => {
     expect(autoTableCalls[2]?.theme).toBe('plain');
   });
 
-  it("ไม่ตั้ง nestedLayout → default 'below' พฤติกรรมเดิมเป๊ะ (head แถวเดียว, ไม่ regress)", () => {
+  it("ไม่ตั้ง nestedLayout → default = 'stacked' (head 3 แถว repeat ตอนข้ามหน้า)", () => {
     autoTableCalls.length = 0;
     const doc = new jsPDF();
     const engine = new RenderEngine(doc);
 
     const data = batches([{}, { payments: oneChild }, {}]);
     engine.render([createBlock(batchNode(data))]);
+
+    // stacked: แถวที่มี child ออกมาเป็นก้อนเดียว head 3 แถว (master header + identity + child header)
+    const stacked = autoTableCalls.find((c) => c.head?.length === 3);
+    expect(stacked).toBeDefined();
+  });
+
+  it("ตั้ง nestedLayout: 'below' → พฤติกรรมเดิม (master head แถวเดียว + child เป็นตารางแยก)", () => {
+    autoTableCalls.length = 0;
+    const doc = new jsPDF();
+    const engine = new RenderEngine(doc);
+
+    const data = batches([{}, { payments: oneChild }, {}]);
+    engine.render([createBlock(batchNode(data, { nestedLayout: 'below' }))]);
 
     expect(autoTableCalls[0]?.head).toEqual([['Batch', 'Bank', 'Qty']]); // string[] เดิม ไม่ใช่ CellDef
     expect(autoTableCalls[1]?.head).toEqual([['Date', 'Amount']]); // child เป็นตารางของตัวเอง

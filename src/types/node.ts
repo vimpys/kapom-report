@@ -37,6 +37,13 @@ export interface PageBreakNode {
   type: 'pageBreak';
 }
 
+/**
+ * default when a `nested` table doesn't set `nestedLayout` — 'stacked', because it's the only mode
+ * that keeps the master header + identity with the detail when a long child breaks across pages
+ * ('below' silently leaves the continuation with just the child's own header)
+ */
+export const DEFAULT_NESTED_LAYOUT = 'stacked' as const;
+
 export interface ImageNode {
   type: 'image';
   /** base64 (no data URI prefix) or binary */
@@ -116,14 +123,16 @@ export interface TableNode<T> {
    */
   nested?: (row: T) => TableNode<unknown> | undefined;
   /**
-   * how a `nested` child is laid out (default `'below'`):
-   * - `'below'` — the child table renders indented right under its master row (see
-   *   `nestedIndentColumn`); on a page break only the *child's* own header repeats
+   * how a `nested` child is laid out — default `DEFAULT_NESTED_LAYOUT` (`'stacked'`):
    * - `'stacked'` — each master row with a child becomes one self-contained block: the master
    *   column header + that row's values (an identity band) + the child header + the child rows,
    *   all in a single table so **all of it repeats on a page break** (the reader always knows
    *   which master row the detail belongs to). The trade-off: the master identity sits *above*
    *   the detail, not beside it. `nestedIndentColumn` is ignored in this mode.
+   * - `'below'` — the child table renders indented right under its master row (see
+   *   `nestedIndentColumn`); on a page break **only the child's own header repeats**, so detail
+   *   continuing on a later page loses the master header/identity above it — opt into this only
+   *   when the child is short enough not to break, or that context loss is acceptable
    */
   nestedLayout?: 'below' | 'stacked';
   /**

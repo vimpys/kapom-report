@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Computed columns, running totals
   - Aggregates (sum/avg/count/min/max/custom function)
   - Nested group (N-level recursive, band + subtotals + keep-together per level)
-  - Nested table (master-detail; row can expand to show child table with different columns)
+  - Nested table (master-detail; row can expand to show child table with different columns) — `nestedLayout: 'stacked'` (default) keeps the master header + that row's identity with the detail when a long child breaks across pages; `'below'` indents the child under its row instead (only the child's own header repeats on a break)
   - Zebra striping, conditional row styles, column-level style overrides, table-level header style override (brand fill/text color); header cells default to centered (horizontal + vertical)
   - Column groups (`type: 'group'`) — a spanning super-header over several columns; nests to any depth (groups within groups) for multi-level headers, spans (colSpan/rowSpan) derived automatically
   - No-data fallback message

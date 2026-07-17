@@ -28,6 +28,7 @@ import {
 import type { ReportColumn, ResolvedAlign, RowNumberColumn, TableColumn } from '../types/column';
 import { columnDepth, DEFAULT_ROW_NUMBER_MODE, flattenColumns, isAggregatableColumn, isColumnGroup, isColumnVisible, normalizeColumn, resolveColumnAlign } from '../types/column';
 import type { GroupResolver, TableNode, TableStyleOptions } from '../types/node';
+import { DEFAULT_NESTED_LAYOUT } from '../types/node';
 import type { CellStyle, RGB, TextStyle } from '../types/primitives';
 
 /** row height ≈ line-height + AutoTable's top/bottom cellPadding — an approximate ratio */
@@ -287,7 +288,7 @@ export class TableBlock<T> implements MeasurableBlock {
     const content = resolveTableContent(this.node, ctx.numeric);
 
     if (this.node.nested) {
-      if (this.node.nestedLayout === 'stacked') {
+      if ((this.node.nestedLayout ?? DEFAULT_NESTED_LAYOUT) === 'stacked') {
         this.renderFlatWithNestedStacked(ctx, columns, content, perPage);
       } else {
         this.renderFlatWithNested(ctx, columns, content, perPage);
