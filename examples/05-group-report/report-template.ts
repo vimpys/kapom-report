@@ -12,7 +12,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { nativeNumeric, reportBuilder } from '../../src/index';
+import { col, nativeNumeric, reportBuilder } from '../../src/index';
 import type { KapomReport, ReportNodeInput, RGB, TableNode } from '../../src/index';
 import { fontConfig } from '../shared';
 import type { RegionSale } from './data';
@@ -41,21 +41,19 @@ const brandHeader: ReportNodeInput = {
 
 /** compose a grouped, subtotaled sales table from raw rows */
 export function buildRegionalSales(regionSales: RegionSale[]): KapomReport {
+  const c = col<RegionSale>();
   const groupedTable: TableNode<RegionSale> = {
     type: 'table',
     columns: [
-      { type: 'rowNumber', header: '#', align: 'right', width: 12, mode: 'per-group' },
-      { key: 'product', header: 'Product' }, // `type: 'data'` is the default — omit it
-      { key: 'qty', header: 'Qty', align: 'right', aggregate: 'sum' },
-      { key: 'price', header: 'Price', align: 'right', numberFormat: {} },
-      {
-        type: 'computed',
-        header: 'Amount',
+      c.rowNumber({ align: 'right', width: 12, mode: 'per-group' }),
+      c.data('product', 'Product'),
+      c.data('qty', 'Qty', { align: 'right', aggregate: 'sum' }),
+      c.data('price', 'Price', { align: 'right', numberFormat: {} }),
+      c.computed('Amount', (row) => nativeNumeric.multiply(row.qty, row.price), {
         align: 'right',
-        compute: (row) => nativeNumeric.multiply(row.qty, row.price),
         aggregate: 'sum',
         numberFormat: { fractionDigits: 2 }, // shorthand — one value sets min and max fraction digits
-      },
+      }),
     ],
     data: regionSales,
     summaryLabel: 'Grand Total',
