@@ -10,7 +10,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { nativeNumeric, reportBuilder } from '../../src/index';
+import { col, nativeNumeric, reportBuilder } from '../../src/index';
 import type { KapomReport, ReportNodeInput, RGB, TableNode } from '../../src/index';
 import { fontConfig } from '../shared';
 import type { BranchSale } from './data';
@@ -38,21 +38,16 @@ const brandHeader: ReportNodeInput = {
 };
 
 export function buildBranchSales(branchSales: BranchSale[]): KapomReport {
+  const c = col<BranchSale>();
   const nestedTable: TableNode<BranchSale> = {
     type: 'table',
     columns: [
       // no leading rowNumber — the subtotal label lands on the first empty cell (the first
       // column); if that were a narrow rowNumber column, a long label would wrap awkwardly
-      { key: 'product', header: 'Item' },
-      { key: 'qty', header: 'Qty', align: 'right', aggregate: 'sum' },
-      { key: 'price', header: 'Price', align: 'right', numberFormat: {} },
-      {
-        type: 'computed',
-        header: 'Amount',
-        align: 'right',
-        compute: (row) => nativeNumeric.multiply(row.qty, row.price),
-        aggregate: 'sum',
-      },
+      c.data('product', 'Item'),
+      c.data('qty', 'Qty', { align: 'right', aggregate: 'sum' }),
+      c.data('price', 'Price', { align: 'right', numberFormat: {} }),
+      c.computed('Amount', (row) => nativeNumeric.multiply(row.qty, row.price), { align: 'right', aggregate: 'sum' }),
     ],
     data: branchSales,
     summaryLabel: 'Grand Total',
