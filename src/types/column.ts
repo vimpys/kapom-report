@@ -82,6 +82,33 @@ export type TableColumn<T> = ReportColumn<T> | ColumnGroup<T>;
 /** alias for a data column with `type` omitted — the default kind (kept for the facade's shorthand type) */
 export type DataColumnShorthand<T> = Omit<DataColumn<T>, 'type'>;
 
+/**
+ * Column-constructor namespace bound to the row type T (Zod-style `col.data()`/`col.group()`) — a
+ * lighter way to write columns than object literals, especially for a group tree (`col.group(...)`
+ * composes with `.map()`, no chain/callback nesting). T must be fixed up front because `key` is
+ * `keyof T` and computed/runningTotal callbacks receive a `T` — hence a `col<Row>()` factory rather
+ * than a bare namespace. Each method takes the kind's required fields positionally; everything else
+ * (align/width/aggregate/formatter/numberFormat/cellStyle/visible/…) goes in `extra`.
+ */
+export interface ColumnHelpers<T> {
+  data(key: keyof T, header: string, extra?: Partial<Omit<DataColumn<T>, 'type' | 'key' | 'header'>>): DataColumn<T>;
+  computed(header: string, compute: (row: T) => Decimalish, extra?: Partial<Omit<ComputedColumn<T>, 'type' | 'header' | 'compute'>>): ComputedColumn<T>;
+  runningTotal(header: string, valueOf: (row: T) => Decimalish, extra?: Partial<Omit<RunningTotalColumn<T>, 'type' | 'header' | 'valueOf'>>): RunningTotalColumn<T>;
+  rowNumber(extra?: Partial<Omit<RowNumberColumn, 'type'>>): RowNumberColumn;
+  group(header: string, columns: readonly TableColumn<T>[], extra?: Partial<Omit<ColumnGroup<T>, 'type' | 'header' | 'columns'>>): ColumnGroup<T>;
+}
+
+/** create the column-constructor namespace for row type T — `const c = col<Sale>(); c.data('qty','Qty')` */
+export function col<T>(): ColumnHelpers<T> {
+  return {
+    data: (key, header, extra) => ({ type: 'data', key, header, ...extra }),
+    computed: (header, compute, extra) => ({ type: 'computed', header, compute, ...extra }),
+    runningTotal: (header, valueOf, extra) => ({ type: 'runningTotal', header, valueOf, ...extra }),
+    rowNumber: (extra) => ({ type: 'rowNumber', header: '#', ...extra }),
+    group: (header, columns, extra) => ({ type: 'group', header, columns, ...extra }),
+  };
+}
+
 /** fill in the default `type: 'data'` when a leaf column omits it — everything downstream sees a resolved column */
 export function normalizeColumn<T>(col: ReportColumn<T>): ReportColumn<T> {
   return col.type === undefined ? { ...col, type: 'data' } : col;

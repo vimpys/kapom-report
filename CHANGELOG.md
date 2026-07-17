@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Text alignment**: `align: 'left' | 'center' | 'right'` on text blocks (per line, after wrapping)
 - **Node shorthand constructors**: `spacer(4)` / `spacer()` and `divider({ ... })` / `divider()` in place of the full node objects; both zero-config (a spacer omitting `height` uses a default gap, a divider a default line)
 - **`pageBreak()` block**: forces the flow onto a new page (a standalone counterpart to a section's `breakBefore`); no-op when already at the top of a page
+- **`col<T>()` column constructors** (Zod-style): `const c = col<Row>()` then `c.data(key, header, extra?)` / `c.computed(header, compute, extra?)` / `c.runningTotal(header, valueOf, extra?)` / `c.rowNumber(extra?)` / `c.group(header, columns, extra?)` — a shorter alternative to column object literals; composes with `.map()` for grouped headers. Object literals still work everywhere.
 - **Table features**: 
   - Data columns are the default kind — `type: 'data'` may be omitted (write `{ key, header }`); only non-data columns (`rowNumber`/`computed`/`runningTotal`/`group`) need an explicit `type`
   - Row numbers (continuous/per-group/per-page)

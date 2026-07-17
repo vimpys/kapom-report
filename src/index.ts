@@ -34,7 +34,8 @@ export type {
   DataColumnShorthand,
   ResolvedAlign,
 } from './types/column';
-export { normalizeColumn } from './types/column';
+export type { ColumnHelpers } from './types/column';
+export { normalizeColumn, col } from './types/column';
 export { resolveColumnAlign, isColumnVisible, isColumnGroup, flattenColumns, columnDepth } from './types/column';
 
 export type {

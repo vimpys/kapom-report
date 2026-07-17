@@ -11,8 +11,8 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { reportBuilder } from '../../src/index';
-import type { ColumnGroup, DataColumn, KapomReport, ReportNodeInput, RGB, TableNode } from '../../src/index';
+import { col, reportBuilder } from '../../src/index';
+import type { KapomReport, ReportNodeInput, RGB, TableNode } from '../../src/index';
 import { fontConfig } from '../shared';
 import type { Sale } from './data';
 
@@ -44,53 +44,43 @@ type MonthKey =
 
 const MONTH_KEYS: readonly MonthKey[] = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
 
+/** which months make up each quarter — lets `quarter(label)` build its group without repeating month keys */
+const QUARTERS: Record<string, MonthKey[]> = {
+  'Qtr 1': ['jan', 'feb', 'mar'],
+  'Qtr 2': ['apr', 'may', 'jun'],
+  'Qtr 3': ['jul', 'aug', 'sep'],
+  'Qtr 4': ['oct', 'nov', 'dec'],
+};
+
 /** plain integer with a thousands separator (dash for zero) */
 const compact = (n: number): string => (n > 0 ? n.toLocaleString('en-US') : '-');
 
 const capitalize = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
 
-// `type: 'data'` is the default — omit it; no explicit width lets AutoTable auto-fit the 12 months
-const month = (key: MonthKey): DataColumn<Sale> => ({
-  key,
-  header: capitalize(key),
-  align: 'right',
-  formatter: (value) => compact(Number(value)),
-});
+// column constructors bound to Sale — `c.data`/`c.group`/`c.computed` (Zod-style), composes with .map()
+const c = col<Sale>();
+
+// no explicit width lets AutoTable auto-fit the 12 months
+const month = (key: MonthKey) => c.data(key, capitalize(key), { align: 'right', formatter: (v) => compact(Number(v)) });
 
 /** a quarter = a column group over its three months — groups nest, so this sits inside 'Quarterly' */
-const quarter = (header: string, m1: MonthKey, m2: MonthKey, m3: MonthKey): ColumnGroup<Sale> => ({
-  type: 'group',
-  header,
-  columns: [month(m1), month(m2), month(m3)],
-});
+const quarter = (label: string) => c.group(label, QUARTERS[label]!.map(month));
 
 export function buildQuarterlySales(sales: Sale[]): KapomReport {
   const salesTable: TableNode<Sale> = {
     type: 'table',
     columns: [
       // plain leaf columns span all 3 header rows automatically (rowSpan, centered vertically)
-      { key: 'product', header: 'Product', width: 30 },
-      { key: 'customer', header: 'Customer', width: 22 },
+      c.data('product', 'Product', { width: 30 }),
+      c.data('customer', 'Customer', { width: 22 }),
       // 3-level header: Quarterly → Qtr 1-4 → the three months of each quarter
-      {
-        type: 'group',
-        header: 'Quarterly',
-        columns: [
-          quarter('Qtr 1', 'jan', 'feb', 'mar'),
-          quarter('Qtr 2', 'apr', 'may', 'jun'),
-          quarter('Qtr 3', 'jul', 'aug', 'sep'),
-          quarter('Qtr 4', 'oct', 'nov', 'dec'),
-        ],
-      },
-      {
-        type: 'computed',
-        header: 'Total',
+      c.group('Quarterly', Object.keys(QUARTERS).map(quarter)),
+      c.computed('Total', (row) => MONTH_KEYS.reduce((sum, key) => sum + row[key], 0), {
         align: 'right',
         width: 22,
-        compute: (row) => MONTH_KEYS.reduce((sum, key) => sum + row[key], 0),
         formatter: (value) => compact(Number(value)),
         cellStyle: { fontStyle: 'bold' },
-      },
+      }),
     ],
     data: sales,
   };
