@@ -7,6 +7,7 @@ import type { PageMargins } from '../core/context';
 import type { PageBand, PageBandLike } from '../core/page-band';
 import type { PageNumberInput } from '../core/page-number';
 import type { WatermarkInput } from '../core/watermark';
+import type { ThemeInput } from '../theme/theme';
 import type { RenderEngineOptions } from '../core/engine';
 import type { FontConfig } from '../font/font-config';
 import type { DeepPartial } from '../types/primitives';
@@ -44,6 +45,8 @@ export type KapomPageBandInput = KapomDeclarativeBand | PageBand;
 /** report-level options shared by both the single-table config and the blocks config */
 export interface KapomReportBaseOptions {
   typography?: DeepPartial<Typography>;
+  /** ready-made colour scheme (preset name or a `Theme` object) — drives every table fill; omit = the default blue/grey look */
+  theme?: ThemeInput;
   font?: FontConfig;
   margins?: Partial<PageMargins>;
   numeric?: NumericStrategy;
@@ -148,6 +151,7 @@ function resolveEngineOptions(config: KapomReportBaseOptions): RenderEngineOptio
     ...(config.numeric !== undefined ? { numeric: config.numeric } : {}),
     ...(config.font !== undefined ? { font: config.font } : {}),
     ...(config.typography !== undefined ? { typography: config.typography } : {}),
+    ...(config.theme !== undefined ? { theme: config.theme } : {}),
     ...(config.pageHeader !== undefined ? { pageHeader: resolveBand(config.pageHeader) } : {}),
     ...(config.pageFooter !== undefined ? { pageFooter: resolveBand(config.pageFooter) } : {}),
     ...(config.watermark !== undefined ? { watermark: config.watermark } : {}),

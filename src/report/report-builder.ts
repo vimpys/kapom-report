@@ -149,6 +149,12 @@ export class KapomReportBuilder<T = unknown> {
     return this;
   }
 
+  /** ready-made colour scheme (preset name or a `Theme` object) — drives every table fill */
+  theme(theme: Opt<'theme'>): this {
+    this.options.theme = theme;
+    return this;
+  }
+
   // ── output ────────────────────────────────────────────────────
   /** the assembled config — the same shape the object form takes (title first, body, summary pinned to the bottom last) */
   toConfig(): KapomBlocksConfig<T> {

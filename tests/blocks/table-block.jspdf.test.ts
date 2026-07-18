@@ -287,6 +287,42 @@ describe('TableBlock — Typography tokens × jsPDF จริง', () => {
     expect(footCell?.styles.fontSize).toBe(DEFAULT_TYPOGRAPHY.summary.fontSize);
   });
 
+  it('default theme: head fill = blue [41,128,185] (โทนเดิม)', () => {
+    const doc = new jsPDF();
+    const engine = new RenderEngine(doc);
+    engine.render([createBlock(ledgerNode([{ label: 'a', amount: 1 }]))]);
+    expect(doc.lastAutoTable?.head[0]?.cells['0']?.styles.fillColor).toEqual([41, 128, 185]);
+  });
+
+  it("theme 'green': head fill = theme.primary [47,93,63], text = white (auto-contrast)", () => {
+    const doc = new jsPDF();
+    const engine = new RenderEngine(doc, { theme: 'green' });
+    engine.render([
+      createBlock(
+        ledgerNode([{ label: 'a', amount: 1 }], {
+          columns: [
+            { type: 'data', key: 'label', header: 'Label' },
+            { type: 'data', key: 'amount', header: 'Amount', align: 'right', aggregate: 'sum' },
+          ],
+        }),
+      ),
+    ]);
+    const headCell = doc.lastAutoTable?.head[0]?.cells['0'];
+    expect(headCell?.styles.fillColor).toEqual([47, 93, 63]);
+    expect(headCell?.styles.textColor).toEqual([255, 255, 255]);
+    // grand total (last autoTable = the leaf foot here) also themed
+    expect(doc.lastAutoTable?.foot[0]?.cells['0']?.styles.fillColor).toEqual([47, 93, 63]);
+  });
+
+  it('per-node style.header ชนะ theme (override precedence)', () => {
+    const doc = new jsPDF();
+    const engine = new RenderEngine(doc, { theme: 'green' });
+    engine.render([
+      createBlock(ledgerNode([{ label: 'a', amount: 1 }], { style: { header: { fillColor: [1, 2, 3] } } })),
+    ]);
+    expect(doc.lastAutoTable?.head[0]?.cells['0']?.styles.fillColor).toEqual([1, 2, 3]);
+  });
+
   it('typography override เปลี่ยน fontSize ของ columnHeader จริง', () => {
     const doc = new jsPDF();
     const engine = new RenderEngine(doc, { typography: { columnHeader: { fontSize: 16 } } });

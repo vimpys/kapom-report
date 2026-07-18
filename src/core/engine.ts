@@ -3,6 +3,8 @@ import type { FontConfig } from '../font/font-config';
 import { registerFonts } from '../font/register-fonts';
 import { nativeNumeric } from '../numeric/numeric-strategy';
 import type { NumericStrategy } from '../numeric/numeric-strategy';
+import type { ResolvedTheme, ThemeInput } from '../theme/theme';
+import { resolveTheme } from '../theme/theme';
 import type { DeepPartial } from '../types/primitives';
 import type { Typography } from '../types/typography';
 import { resolveTypography } from '../types/typography';
@@ -31,6 +33,8 @@ export interface RenderEngineOptions {
   font?: FontConfig;
   /** font token per row-type (columnHeader/detailRow/groupHeader/...) — merges over DEFAULT_TYPOGRAPHY one token at a time */
   typography?: DeepPartial<Typography>;
+  /** ready-made colour scheme (preset name or a `Theme` object) — drives every table fill; omit = the default blue/grey look */
+  theme?: ThemeInput;
   /** page header repeated on every page — reserves space at the top (subtracted from the content area); drawn at finalize(). A raw render callback (PageBand) or a resolved block tree (BlockBand) */
   pageHeader?: PageBandLike;
   /** page footer repeated on every page — reserves space at the bottom; drawn at finalize() */
@@ -66,6 +70,7 @@ export class RenderEngine {
   private readonly margins: PageMargins;
   private readonly numeric: NumericStrategy;
   private readonly typography: Typography;
+  private readonly theme: ResolvedTheme;
   private readonly pageHeader: PageBandLike | undefined;
   private readonly pageFooter: PageBandLike | undefined;
   /** resolved reserved heights — a block band with no explicit height is auto-measured here */
@@ -81,6 +86,7 @@ export class RenderEngine {
     this.margins = { ...DEFAULT_PAGE_MARGINS, ...options.margins };
     this.numeric = options.numeric ?? nativeNumeric;
     this.typography = resolveTypography(options.typography);
+    this.theme = resolveTheme(options.theme);
     this.pageHeader = options.pageHeader;
     this.pageFooter = options.pageFooter;
     this.watermark = options.watermark !== undefined ? resolveWatermark(options.watermark) : undefined;
@@ -162,6 +168,7 @@ export class RenderEngine {
       contentBottom: this.cursor.contentBottom,
       numeric: this.numeric,
       typography: this.typography,
+      theme: this.theme,
       advanceY: (amount) => {
         this.cursor.advanceY(amount);
       },

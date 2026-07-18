@@ -1,5 +1,6 @@
 import type { jsPDF } from 'jspdf';
 import type { NumericStrategy } from '../numeric/numeric-strategy';
+import type { ResolvedTheme } from '../theme/theme';
 import type { Typography } from '../types/typography';
 
 export interface PageMargins {
@@ -38,6 +39,8 @@ export interface RenderContext {
   readonly contentBottom: number;
   readonly numeric: NumericStrategy;
   readonly typography: Typography;
+  /** resolved colour scheme — table blocks read fills/on-fill text from here */
+  readonly theme: ResolvedTheme;
   /** the engine handles page-breaks — a block calls this to advance y */
   readonly advanceY: (amount: number) => void;
   readonly ensureSpace: (requiredHeight: number) => void;

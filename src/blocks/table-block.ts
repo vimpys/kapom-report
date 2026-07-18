@@ -36,17 +36,6 @@ const ESTIMATED_ROW_HEIGHT_RATIO = 1.9;
 /** group header band height as a ratio of line-height */
 const GROUP_BAND_HEIGHT_RATIO = 1.6;
 
-/** the band/grand-total background is this composite pattern's own convention — not yet open to theme override (see CLAUDE.md) */
-const GROUP_BAND_FILL: RGB = [236, 240, 241];
-const GRAND_TOTAL_FILL: RGB = [41, 128, 185];
-
-/** nestedLayout 'stacked': the master identity band (row 2 of the stacked head) — tinted fill, dark bold text */
-const STACKED_IDENTITY_FILL: RGB = [233, 241, 249];
-const STACKED_IDENTITY_TEXT: RGB = [22, 50, 79];
-/** nestedLayout 'stacked': the child header row (row 3) — a lighter tint to sit below the identity band */
-const STACKED_CHILD_HEAD_FILL: RGB = [231, 237, 243];
-const STACKED_CHILD_HEAD_TEXT: RGB = [51, 69, 92];
-
 /**
  * Lay a row of `values` across `gridCols` columns — the last cell colSpans to fill any shortfall.
  * Used by nestedLayout 'stacked' to stack a K-column master row and an M-column child row in one
@@ -318,7 +307,8 @@ export class TableBlock<T> implements MeasurableBlock {
       columnStyles,
       aligns,
       ctx.typography.summary,
-      GRAND_TOTAL_FILL,
+      ctx.theme.primary,
+      ctx.theme.onPrimary,
       rowEstimate,
       this.node.style?.footer,
     );
@@ -541,13 +531,13 @@ export class TableBlock<T> implements MeasurableBlock {
     const bold = this.resolveSupportedFontStyle(ctx.doc, fontName, 'bold');
 
     const identityStyle: Partial<Styles> = {
-      fillColor: [...STACKED_IDENTITY_FILL],
-      textColor: [...STACKED_IDENTITY_TEXT],
+      fillColor: [...ctx.theme.nestedIdentityFill],
+      textColor: [...ctx.theme.nestedIdentityText],
       fontStyle: bold,
     };
     const childHeadStyle: Partial<Styles> = {
-      fillColor: [...STACKED_CHILD_HEAD_FILL],
-      textColor: [...STACKED_CHILD_HEAD_TEXT],
+      fillColor: [...ctx.theme.nestedChildFill],
+      textColor: [...ctx.theme.nestedChildText],
       fontStyle: bold,
     };
 
@@ -614,7 +604,8 @@ export class TableBlock<T> implements MeasurableBlock {
         columnStyles,
         aligns,
         ctx.typography.summary,
-        GRAND_TOTAL_FILL,
+        ctx.theme.primary,
+        ctx.theme.onPrimary,
         rowEstimate,
         this.node.style?.footer,
       );
@@ -652,7 +643,8 @@ export class TableBlock<T> implements MeasurableBlock {
             shared.columnStyles,
             shared.aligns,
             ctx.typography.groupFooter,
-            GROUP_BAND_FILL,
+            ctx.theme.bandFill,
+            ctx.theme.onBand,
             shared.rowEstimate,
           );
         }
@@ -704,7 +696,7 @@ export class TableBlock<T> implements MeasurableBlock {
       headStyles: this.resolveHeadStyles(ctx),
       bodyStyles: this.resolveTokenStyles(ctx, ctx.typography.detailRow),
       footStyles: this.resolveFootStyles(ctx, footToken),
-      didParseCell: this.cellHook(aligns, columns, rows, this.node.style),
+      didParseCell: this.cellHook(aligns, columns, rows, this.effectiveStyle(ctx)),
       ...(willDrawCell ? { willDrawCell } : {}),
     });
   }
@@ -785,13 +777,18 @@ export class TableBlock<T> implements MeasurableBlock {
     aligns: readonly ResolvedAlign[],
     token: TextStyle,
     fillColor: RGB,
+    textColor: RGB,
     rowEstimate: number,
     // grand-total callers pass `style.footer` here so the row can be themed like the leaf foot;
-    // the group-band subtotal caller passes nothing, keeping its fixed band identity
+    // the group-band subtotal caller passes nothing, keeping the theme's band identity
     override?: Partial<CellStyle>,
   ): void {
     ctx.ensureSpace(rowEstimate);
-    const base: Partial<Styles> = { ...this.resolveTokenStyles(ctx, token), fillColor: [...fillColor] };
+    const base: Partial<Styles> = {
+      ...this.resolveTokenStyles(ctx, token),
+      fillColor: [...fillColor],
+      textColor: [...textColor],
+    };
     this.runAutoTable(ctx, {
       theme: 'plain',
       body: [mergeFootLabel(foot, labelIndex)],
@@ -804,7 +801,7 @@ export class TableBlock<T> implements MeasurableBlock {
   private drawGroupBand(ctx: RenderContext, label: string, bandHeight: number, depth = 0): void {
     const { doc, cursor, contentWidth, margins } = ctx;
     const token = ctx.typography.groupHeader;
-    const [r, g, b] = GROUP_BAND_FILL;
+    const [r, g, b] = ctx.theme.bandFill;
     doc.setFillColor(r, g, b);
     // margins.left, not cursor.x — cursor.x always equals margins.left in every existing case
     // (both only ever reset together), but only margins.left correctly follows a nested-table
@@ -815,7 +812,8 @@ export class TableBlock<T> implements MeasurableBlock {
     applyTextStyle(doc, {
       ...token,
       fontStyle: this.resolveSupportedFontStyle(doc, fontName, token.fontStyle),
-      color: token.color ?? [0, 0, 0], // a band must always get the default black — never inherit color from the previous block
+      // the theme's on-band colour — a band must always set a colour explicitly, never inherit from the previous block
+      color: token.color ?? ctx.theme.onBand,
     });
 
     const inset = 5 / doc.internal.scaleFactor; // mirrors AutoTable's cellPadding
@@ -918,15 +916,33 @@ export class TableBlock<T> implements MeasurableBlock {
    */
   private resolveHeadStyles(ctx: RenderContext): Partial<Styles> {
     // header cells default to vertically centered (matters for a rowSpan cell in a grouped head;
-    // harmless for a single-row header) — applies to the whole head section, overridable per cell
-    const base: Partial<Styles> = { valign: 'middle', ...this.resolveTokenStyles(ctx, ctx.typography.columnHeader) };
+    // harmless for a single-row header) — applies to the whole head section, overridable per cell.
+    // the theme drives the fill + on-fill text (primary/onPrimary); style.header still overrides
+    const base: Partial<Styles> = {
+      valign: 'middle',
+      ...this.resolveTokenStyles(ctx, ctx.typography.columnHeader),
+      fillColor: [...ctx.theme.primary],
+      textColor: [...ctx.theme.onPrimary],
+    };
     return this.applyStyleOverride(ctx, base, this.node.style?.header);
   }
 
-  /** foot styles = the Typography foot token merged with an optional per-table `style.footer` override (symmetric with resolveHeadStyles) */
+  /** foot styles = the foot token + theme primary fill / on-primary text, then an optional per-table `style.footer` override (symmetric with resolveHeadStyles) */
   private resolveFootStyles(ctx: RenderContext, footToken: TextStyle): Partial<Styles> {
-    const base = this.resolveTokenStyles(ctx, footToken);
+    const base: Partial<Styles> = {
+      ...this.resolveTokenStyles(ctx, footToken),
+      fillColor: [...ctx.theme.primary],
+      textColor: [...ctx.theme.onPrimary],
+    };
     return this.applyStyleOverride(ctx, base, this.node.style?.footer);
+  }
+
+  /** the node's style with the theme's default zebra filled in — only when the node itself sets no zebra (a node's own `style.zebra` always wins) */
+  private effectiveStyle(ctx: RenderContext): TableStyleOptions<T> | undefined {
+    const style = this.node.style;
+    const zebraFill = ctx.theme.zebraFill;
+    if (!zebraFill || style?.zebra) return style;
+    return { ...style, zebra: { even: zebraFill } };
   }
 
   /**

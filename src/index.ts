@@ -109,6 +109,9 @@ export {
 
 export { containsThai, isBuiltinStandardFont } from './core/font-guard';
 
+export type { Theme, ResolvedTheme, ThemeName, ThemeInput } from './theme/theme';
+export { THEME_PRESETS, DEFAULT_RESOLVED_THEME, resolveTheme } from './theme/theme';
+
 export type { SystemFieldValues } from './core/system-field';
 export { resolveSystemFields } from './core/system-field';
 
