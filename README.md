@@ -87,7 +87,7 @@ Everything ultimately compiles to the same `ReportNode` tree, which is the singl
 - **Universal**: the core renders in Node and the browser (bundler-friendly, no static `node:` imports outside the Node I/O boundary)
 - **Strict TypeScript**: no `any`, `noUncheckedIndexedAccess` + `exactOptionalPropertyTypes` clean
 
-See [`examples/`](examples) for 12 runnable demos (numbered basic → advanced) covering every feature above — run any of them directly with `npx tsx examples/<name>/index.ts`, or `npm run demo` to generate all of them at once into `examples/output/`.
+See [`examples/`](examples) for 13 runnable demos (numbered basic → advanced) covering every feature above — run any of them directly with `npx tsx examples/<name>/index.ts`, or `npm run demo` to generate all of them at once into `examples/output/`.
 
 ## Scripts
 

@@ -175,6 +175,20 @@ describe('TableBlock (grouped) × jsPDF + AutoTable จริง', () => {
     expect(grandTotalTable?.body[0]?.cells['0']?.styles.fillColor).toEqual([41, 128, 185]);
   });
 
+  it('grand total: style.footer override เปลี่ยนสี fill ของแถว grand total ได้ (ยกเลิก fixed-identity เดิม)', () => {
+    const doc = new jsPDF();
+    const engine = new RenderEngine(doc);
+
+    const node: TableNode<CategorizedSale> = {
+      ...groupedNode(makeCategorized(2, ['Alpha', 'Beta'])),
+      style: { footer: { fillColor: [62, 112, 80] } },
+    };
+    engine.render([createBlock(node)]);
+
+    // the last autoTable call is the grand-total single row — now themed by style.footer
+    expect(doc.lastAutoTable?.body[0]?.cells['0']?.styles.fillColor).toEqual([62, 112, 80]);
+  });
+
   it('กลุ่มใหญ่ข้ามหลายหน้า → cursor ตามหน้าสุดท้าย', () => {
     const doc = new jsPDF();
     const engine = new RenderEngine(doc);

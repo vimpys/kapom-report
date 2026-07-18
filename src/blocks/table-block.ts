@@ -320,6 +320,7 @@ export class TableBlock<T> implements MeasurableBlock {
       ctx.typography.summary,
       GRAND_TOTAL_FILL,
       rowEstimate,
+      this.node.style?.footer,
     );
   }
 
@@ -615,6 +616,7 @@ export class TableBlock<T> implements MeasurableBlock {
         ctx.typography.summary,
         GRAND_TOTAL_FILL,
         rowEstimate,
+        this.node.style?.footer,
       );
     }
   }
@@ -784,16 +786,17 @@ export class TableBlock<T> implements MeasurableBlock {
     token: TextStyle,
     fillColor: RGB,
     rowEstimate: number,
+    // grand-total callers pass `style.footer` here so the row can be themed like the leaf foot;
+    // the group-band subtotal caller passes nothing, keeping its fixed band identity
+    override?: Partial<CellStyle>,
   ): void {
     ctx.ensureSpace(rowEstimate);
+    const base: Partial<Styles> = { ...this.resolveTokenStyles(ctx, token), fillColor: [...fillColor] };
     this.runAutoTable(ctx, {
       theme: 'plain',
       body: [mergeFootLabel(foot, labelIndex)],
       columnStyles,
-      bodyStyles: {
-        ...this.resolveTokenStyles(ctx, token),
-        fillColor: [...fillColor],
-      },
+      bodyStyles: this.applyStyleOverride(ctx, base, override),
       didParseCell: this.alignHook(aligns),
     });
   }
