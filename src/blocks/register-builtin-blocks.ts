@@ -91,6 +91,7 @@ export function registerBuiltinBlocks(): void {
         borderColor: boxNode.borderColor,
         borderWidth: boxNode.borderWidth ?? DEFAULT_BOX_BORDER_WIDTH,
         padding: boxNode.padding ?? DEFAULT_BOX_PADDING,
+        radius: boxNode.radius ?? 0,
         keepTogether: boxNode.keepTogether ?? false,
       },
     );

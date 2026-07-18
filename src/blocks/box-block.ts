@@ -23,6 +23,9 @@ export function assertBoxNodeValid(node: BoxNode<unknown>): void {
   ) {
     throw new KapomLayoutError(`box: borderWidth must be > 0 (got ${node.borderWidth})`);
   }
+  if (node.radius !== undefined && (!Number.isFinite(node.radius) || node.radius < 0)) {
+    throw new KapomLayoutError(`box: radius must be >= 0 (got ${node.radius})`);
+  }
 }
 
 /** the paint/behavior options the factory resolves out of a BoxNode */
@@ -31,6 +34,7 @@ export interface BoxBlockOptions {
   readonly borderColor: RGB | undefined;
   readonly borderWidth: number;
   readonly padding: number;
+  readonly radius: number;
   readonly keepTogether: boolean;
 }
 
@@ -162,19 +166,26 @@ export class BoxBlock implements MeasurableBlock {
     boxHeight: number,
     innerWidth: number,
   ): void {
-    const { background, borderColor, borderWidth, padding } = this.options;
+    const { background, borderColor, borderWidth, padding, radius } = this.options;
     const { doc } = ctx;
     const left = ctx.margins.left; // follows an indent override, same lesson as drawGroupBand
     const top = ctx.cursor.y;
+    const width = ctx.contentWidth;
+
+    // roundedRect for a positive radius, plain rect otherwise (keeps output identical when unset)
+    const paint = (style: 'F' | 'S'): void => {
+      if (radius > 0) doc.roundedRect(left, top, width, boxHeight, radius, radius, style);
+      else doc.rect(left, top, width, boxHeight, style);
+    };
 
     if (background) {
       doc.setFillColor(background[0], background[1], background[2]);
-      doc.rect(left, top, ctx.contentWidth, boxHeight, 'F');
+      paint('F');
     }
     if (borderColor) {
       doc.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
       doc.setLineWidth(borderWidth);
-      doc.rect(left, top, ctx.contentWidth, boxHeight, 'S');
+      paint('S');
     }
 
     const innerCtx = buildConfinedContext(ctx, left + padding, innerWidth, top + padding, 'box');

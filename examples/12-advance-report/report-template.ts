@@ -97,6 +97,7 @@ const summaryBox = (title: string, rows: readonly (readonly [string, string])[])
   type: 'box',
   borderColor: LINE,
   borderWidth: 0.4,
+  radius: 2, // rounded corners on the summary boxes
   padding: 3,
   children: [
     { content: title, style: { fontSize: 10, fontStyle: 'bold', color: DARK } },

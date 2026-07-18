@@ -23,6 +23,7 @@ function boxOptions(
     borderColor: readonly [number, number, number];
     borderWidth: number;
     padding: number;
+    radius: number;
     keepTogether: boolean;
   }> = {},
 ) {
@@ -31,6 +32,7 @@ function boxOptions(
     borderColor: overrides.borderColor,
     borderWidth: overrides.borderWidth ?? 0.2,
     padding: overrides.padding ?? PAD,
+    radius: overrides.radius ?? 0,
     keepTogether: overrides.keepTogether ?? false,
   };
 }
@@ -48,6 +50,12 @@ describe('BoxBlock — validation (ผ่าน registry factory)', () => {
 
   it('borderWidth <= 0 → throw KapomLayoutError', () => {
     expect(() => createBlock({ type: 'box', borderWidth: 0, children: ['x'] })).toThrow(
+      KapomLayoutError,
+    );
+  });
+
+  it('radius ติดลบ → throw KapomLayoutError', () => {
+    expect(() => createBlock({ type: 'box', radius: -1, children: ['x'] })).toThrow(
       KapomLayoutError,
     );
   });

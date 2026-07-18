@@ -226,6 +226,11 @@ export interface BoxNode<T> {
   /** uniform inner padding (mm) — default DEFAULT_BOX_PADDING */
   padding?: number;
   /**
+   * corner radius (mm) for the fill/border — default 0 (square corners). A box that splits across
+   * pages rounds every segment's own corners (so a mid-break segment is rounded on all sides).
+   */
+  radius?: number;
+  /**
    * never split: not enough room = the whole box moves to the next page, and content taller
    * than one full page throws KapomLayoutError — default false (split between children)
    */
