@@ -9,6 +9,8 @@ A report has **two layers stacked on top of each other**:
 
 The frame wraps the content. That's the whole mental model.
 
+> Run `tsx examples/00-report-anatomy/index.ts` to generate this as a PDF — a report that uses every region it describes and labels each one with the method that made it.
+
 ## The page
 
 ```
