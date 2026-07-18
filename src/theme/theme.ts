@@ -40,7 +40,16 @@ export interface ResolvedTheme {
   readonly nestedChildText: RGB;
 }
 
-export type ThemeName = 'blue' | 'green' | 'graphite' | 'wine' | 'amber';
+export type ThemeName =
+  | 'blue'
+  | 'green'
+  | 'graphite'
+  | 'wine'
+  | 'amber'
+  | 'rose'
+  | 'lavender'
+  | 'aqua'
+  | 'stone';
 export type ThemeInput = ThemeName | Theme;
 
 /**
@@ -62,11 +71,17 @@ export const DEFAULT_RESOLVED_THEME: ResolvedTheme = {
 
 /** built-in presets — each is a minimal `Theme`; `resolveTheme` fills in the derived slots */
 export const THEME_PRESETS: Record<ThemeName, Theme> = {
+  // strong presets — dark primary, white text
   blue: { primary: [41, 128, 185], bandFill: [236, 240, 241] },
   green: { primary: [47, 93, 63], bandFill: [214, 232, 218], zebraFill: [237, 246, 238] },
   graphite: { primary: [55, 58, 64], bandFill: [230, 231, 234] },
   wine: { primary: [120, 36, 62], bandFill: [240, 220, 227], zebraFill: [249, 240, 243] },
   amber: { primary: [140, 90, 20], bandFill: [250, 238, 214], zebraFill: [252, 247, 236] },
+  // pastel presets — light primary, so auto-contrast picks dark text (a softer look)
+  rose: { primary: [223, 150, 180], bandFill: [250, 230, 240], zebraFill: [252, 243, 247] },
+  lavender: { primary: [178, 160, 216], bandFill: [238, 232, 249], zebraFill: [245, 241, 251] },
+  aqua: { primary: [140, 200, 205], bandFill: [226, 243, 244], zebraFill: [239, 248, 248] },
+  stone: { primary: [150, 155, 165], bandFill: [234, 235, 238] },
 };
 
 /** relative luminance (0..1) of an sRGB colour — used to pick readable text on a fill */

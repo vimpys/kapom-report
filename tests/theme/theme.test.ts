@@ -42,6 +42,13 @@ describe('resolveTheme', () => {
   it('zebraFill: preset ที่ไม่ตั้ง → undefined (ไม่มี zebra)', () => {
     expect(resolveTheme('blue').zebraFill).toBeUndefined();
     expect(resolveTheme('graphite').zebraFill).toBeUndefined();
+    expect(resolveTheme('stone').zebraFill).toBeUndefined();
+  });
+
+  it('pastel preset (rose/lavender/aqua/stone): primary อ่อน → onPrimary auto = ดำ', () => {
+    for (const name of ['rose', 'lavender', 'aqua', 'stone'] as const) {
+      expect(resolveTheme(name).onPrimary).toEqual([0, 0, 0]);
+    }
   });
 
   it('ชื่อ preset ไม่รู้จัก → throw KapomError (fail-fast)', () => {
