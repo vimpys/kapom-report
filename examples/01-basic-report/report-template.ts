@@ -22,6 +22,11 @@ const NAVY: RGB = [31, 63, 112];
 const GRAY: RGB = [110, 110, 110];
 const RULE: RGB = [205, 210, 218];
 
+// pink-pastel palette for table 2 — header/body/footer each colorable (white token text reads on the mid-pink fills)
+const PINK_HEADER: RGB = [216, 133, 163];
+const PINK_BODY: RGB = [250, 235, 241];
+const PINK_FOOTER: RGB = [199, 108, 142];
+
 /** the brand page header repeated at the top of every page — logo + company name */
 const brandHeader: ReportNodeInput = {
   type: 'row',
@@ -81,8 +86,12 @@ export function buildCombinedReport(sales: Sale[], ledger: LedgerEntry[], orders
     ],
     data: ledger,
     summaryLabel: 'Net',
+    // a pink-pastel palette showing every part of the table is colorable:
+    //   header → style.header, body → style.zebra, footer → style.footer
     style: {
-      zebra: { even: [255, 255, 255], odd: [245, 247, 250] },
+      header: { fillColor: PINK_HEADER }, // column-header row
+      zebra: { even: [255, 255, 255], odd: PINK_BODY }, // body rows
+      footer: { fillColor: PINK_FOOTER }, // summary (Net) row
       conditional: (row) => (row.amount < 0 ? { textColor: [220, 38, 38] } : undefined),
     },
   };

@@ -105,6 +105,13 @@ export interface TableStyleOptions<T> {
    * (those are body-only by design); per-column headerAlign still wins over `halign` here
    */
   header?: Partial<CellStyle>;
+  /**
+   * foot-section (summary / subtotal row) style override merged over the Typography.summary /
+   * groupFooter token — the symmetric counterpart of `header` (e.g. a brand fillColor on the
+   * total row). Applies to each AutoTable segment's foot; the grouped grand-total / non-leaf
+   * subtotal rows keep their fixed identity fills.
+   */
+  footer?: Partial<CellStyle>;
 }
 
 export interface TableNode<T> {

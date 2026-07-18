@@ -315,6 +315,27 @@ describe('TableBlock — Typography tokens × jsPDF จริง', () => {
     expect(headCell?.styles.fontSize).toBe(DEFAULT_TYPOGRAPHY.columnHeader.fontSize);
     expect(headCell?.styles.textColor).toEqual([...(DEFAULT_TYPOGRAPHY.columnHeader.color ?? [])]);
   });
+
+  it('style.footer override fillColor ของ foot จริง (symmetric กับ header, ไม่กระทบ body)', () => {
+    const doc = new jsPDF();
+    const engine = new RenderEngine(doc);
+
+    engine.render([
+      createBlock(
+        ledgerNode([{ label: 'a', amount: 1 }], {
+          columns: [
+            { type: 'data', key: 'label', header: 'Label' },
+            { type: 'data', key: 'amount', header: 'Amount', align: 'right', aggregate: 'sum' },
+          ],
+          style: { footer: { fillColor: [199, 108, 142] } },
+        }),
+      ),
+    ]);
+
+    expect(doc.lastAutoTable?.foot[0]?.cells['1']?.styles.fillColor).toEqual([199, 108, 142]);
+    // body ไม่โดนกระทบ — footer เป็น foot-section เท่านั้น
+    expect(doc.lastAutoTable?.body[0]?.cells['1']?.styles.fillColor).not.toEqual([199, 108, 142]);
+  });
 });
 
 describe('TableBlock — zebra/conditional (Style resolver) × jsPDF จริง', () => {

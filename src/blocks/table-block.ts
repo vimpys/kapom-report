@@ -686,7 +686,7 @@ export class TableBlock<T> implements MeasurableBlock {
       columnStyles,
       headStyles: this.resolveHeadStyles(ctx),
       bodyStyles: this.resolveTokenStyles(ctx, ctx.typography.detailRow),
-      footStyles: this.resolveTokenStyles(ctx, footToken),
+      footStyles: this.resolveFootStyles(ctx, footToken),
       didParseCell: this.cellHook(aligns, columns, rows, this.node.style),
       ...(willDrawCell ? { willDrawCell } : {}),
     });
@@ -891,6 +891,17 @@ export class TableBlock<T> implements MeasurableBlock {
     // harmless for a single-row header) — applies to the whole head section, overridable per cell
     const base: Partial<Styles> = { valign: 'middle', ...this.resolveTokenStyles(ctx, ctx.typography.columnHeader) };
     const override = this.node.style?.header;
+    if (!override) return base;
+
+    const merged = { ...base, ...cellStyleToAutoTableStyles(override) };
+    this.guardFontStyle(ctx, merged);
+    return merged;
+  }
+
+  /** foot styles = the Typography foot token merged with an optional per-table `style.footer` override (symmetric with resolveHeadStyles) */
+  private resolveFootStyles(ctx: RenderContext, footToken: TextStyle): Partial<Styles> {
+    const base = this.resolveTokenStyles(ctx, footToken);
+    const override = this.node.style?.footer;
     if (!override) return base;
 
     const merged = { ...base, ...cellStyleToAutoTableStyles(override) };
