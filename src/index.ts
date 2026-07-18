@@ -88,13 +88,23 @@ export { RenderEngine, DEFAULT_PAGE_MARGINS } from './core/engine';
 
 export type { PageBand, PageBandContext, PageBandRenderer, BlockBand, PageBandLike } from './core/page-band';
 
-export type { Watermark, WatermarkContext, WatermarkRenderer, TextWatermark, WatermarkInput } from './core/watermark';
+export type {
+  Watermark,
+  WatermarkContext,
+  WatermarkRenderer,
+  TextWatermark,
+  WatermarkInput,
+  WatermarkLayout,
+  WatermarkTextOptions,
+} from './core/watermark';
 export {
   withOpacity,
   resolveWatermark,
   DEFAULT_WATERMARK_OPACITY,
   DEFAULT_WATERMARK_FONT_SIZE,
   DEFAULT_WATERMARK_COLOR,
+  DEFAULT_WATERMARK_ROTATE,
+  DEFAULT_WATERMARK_LAYOUT,
 } from './core/watermark';
 
 export { containsThai, isBuiltinStandardFont } from './core/font-guard';

@@ -73,6 +73,8 @@ export class RenderEngine {
   private readonly footerHeight: number;
   private readonly watermark: Watermark | undefined;
   private readonly pageNumber: ReturnType<typeof resolvePageNumber>;
+  /** the report's default font family — passed to the watermark so it never inherits ambient font state */
+  private defaultFontFamily = 'helvetica';
 
   constructor(doc: jsPDF, options: RenderEngineOptions = {}) {
     this.doc = doc;
@@ -88,6 +90,7 @@ export class RenderEngine {
       // must happen before the first block renders — the constructor always runs before .render() anyway
       const defaultFamily = registerFonts(doc, options.font);
       doc.setFont(defaultFamily, 'normal');
+      this.defaultFontFamily = defaultFamily;
     }
 
     // resolve band heights after fonts are registered (auto-measure needs the real font metrics)
@@ -197,14 +200,15 @@ export class RenderEngine {
       this.doc.setPage(page);
 
       // watermark always before header/footer — so the (opaque) header/footer stays crisp on top
-      if (this.watermark && (page > 1 || this.watermark.showOnFirstPage !== false)) {
+      if (this.watermark && (page > 1 || this.watermark.showOnFirstPage === true)) {
         this.watermark.render({
           doc: this.doc,
           pageIndex,
           pageCount,
           pageWidth,
           pageHeight,
-          drawText: (text, x, y) => drawText(this.doc, text, x, y),
+          defaultFontFamily: this.defaultFontFamily,
+          drawText: (text, x, y, opts) => drawText(this.doc, text, x, y, undefined, opts),
         });
       }
       if (this.pageHeader && (page > 1 || this.pageHeader.showOnFirstPage !== false)) {

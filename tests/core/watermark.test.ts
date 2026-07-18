@@ -41,6 +41,7 @@ describe('RenderEngine — finalize() วาด watermark ทุกหน้า'
     const calls: Array<{ pageIndex: number; pageCount: number }> = [];
     const engine = new RenderEngine(doc, {
       watermark: {
+        showOnFirstPage: true,
         render: (c: WatermarkContext) =>
           calls.push({ pageIndex: c.pageIndex, pageCount: c.pageCount }),
       },
@@ -76,7 +77,7 @@ describe('RenderEngine — finalize() วาด watermark ทุกหน้า'
     const { doc } = makeStubDoc();
     const order: string[] = [];
     const engine = new RenderEngine(doc, {
-      watermark: { render: () => order.push('watermark') },
+      watermark: { showOnFirstPage: true, render: () => order.push('watermark') },
       pageHeader: { height: 20, render: () => order.push('header') },
       pageFooter: { height: 10, render: () => order.push('footer') },
     });
@@ -91,7 +92,7 @@ describe('RenderEngine — finalize() วาด watermark ทุกหน้า'
     const { doc } = makeStubDoc();
     let captured: WatermarkContext | undefined;
     const engine = new RenderEngine(doc, {
-      watermark: { render: (c) => (captured = c) },
+      watermark: { showOnFirstPage: true, render: (c) => (captured = c) },
     });
 
     engine.render([fixedBlock(10)]);
@@ -105,6 +106,7 @@ describe('RenderEngine — finalize() วาด watermark ทุกหน้า'
     const { stub, doc } = makeStubDoc();
     const engine = new RenderEngine(doc, {
       watermark: {
+        showOnFirstPage: true,
         render: (c) => c.drawText(`a${String.fromCharCode(0x200b)}b`, 50, 150),
       },
     });

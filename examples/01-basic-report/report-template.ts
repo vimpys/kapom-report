@@ -30,7 +30,7 @@ const brandHeader: ReportNodeInput = {
     {
       children: [
         spacer(2),
-        { content: 'Kapom Company', style: { fontSize: 13, fontStyle: 'bold', color: NAVY } },
+        { content: 'Kapom Report', style: { fontSize: 13, fontStyle: 'bold', color: NAVY } },
         { content: 'kapom-soft', style: { fontSize: 8, color: GRAY } },
       ],
     },
@@ -115,7 +115,9 @@ export function buildCombinedReport(sales: Sale[], ledger: LedgerEntry[], orders
 
   const report = reportBuilder()
     .font(fontConfig)
-    .title('Combined Report — basic, styled, and aggregate tables');
+    // a plain string title auto-applies the reportTitle role; pass a node for the reportSubtitle role
+    .title('Combined Report — basic, styled, and aggregate tables')
+    .title({ content: 'January 2026 — all regions', role: 'reportSubtitle' });
 
   // brand page-header band — repeats on every page; reserved height is auto-measured from the blocks
   report.pageHeader

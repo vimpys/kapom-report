@@ -28,6 +28,7 @@ describe('watermark × jsPDF จริง', () => {
     let drawCount = 0;
     const engine = new RenderEngine(doc, {
       watermark: {
+        showOnFirstPage: true,
         render: (c) => {
           drawCount += 1;
           c.drawText('DRAFT', c.pageWidth / 2, c.pageHeight / 2);
@@ -89,7 +90,7 @@ describe('watermark × jsPDF จริง', () => {
   it('preset { text } (ค้างแก้ #2): วาดทุกหน้าด้วย opacity ที่คุมให้เอง — ไม่ต้องเขียน render callback', () => {
     const doc = new jsPDF();
     const setGState = vi.spyOn(doc, 'setGState');
-    const engine = new RenderEngine(doc, { watermark: { text: 'DRAFT' } });
+    const engine = new RenderEngine(doc, { watermark: { text: 'DRAFT', showOnFirstPage: true } });
 
     engine.render([createBlock(bigTable(200))]);
     const pageCount = doc.getNumberOfPages();
@@ -135,5 +136,68 @@ describe('watermark × jsPDF จริง', () => {
     }).render([createBlock(bigTable(60))]);
 
     expect(withWatermark.getNumberOfPages()).toBe(withoutWatermark.getNumberOfPages());
+  });
+
+  it('preset: showOnFirstPage default = false → หน้าแรกไม่วาด (default เปลี่ยน 2026-07-18)', () => {
+    const doc = new jsPDF();
+    const setGState = vi.spyOn(doc, 'setGState');
+    const engine = new RenderEngine(doc, { watermark: { text: 'DRAFT' } }); // ไม่ตั้ง showOnFirstPage
+
+    engine.render([createBlock(bigTable(200))]);
+    const pageCount = doc.getNumberOfPages();
+    engine.finalize();
+
+    expect(pageCount).toBeGreaterThan(1);
+    expect(setGState).toHaveBeenCalledTimes((pageCount - 1) * 2); // หน้าแรกถูกข้าม
+  });
+
+  it('preset: rotate → doc.text ได้ angle option ผ่าน facade', () => {
+    const doc = new jsPDF();
+    const textSpy = vi.spyOn(doc, 'text');
+    const engine = new RenderEngine(doc, { watermark: { text: 'DRAFT', rotate: 45, showOnFirstPage: true } });
+
+    engine.render([createBlock(bigTable(5))]);
+    engine.finalize();
+
+    const angled = textSpy.mock.calls.filter(
+      (c) => c[0] === 'DRAFT' && typeof c[3] === 'object' && (c[3] as { angle?: number }).angle === 45,
+    );
+    expect(angled.length).toBeGreaterThan(0);
+  });
+
+  it('preset: layout tile → วาดข้อความซ้ำหลายครั้งต่อหน้า (grid เต็มหน้า)', () => {
+    const doc = new jsPDF();
+    const textSpy = vi.spyOn(doc, 'text');
+    const engine = new RenderEngine(doc, {
+      watermark: { text: 'DRAFT', layout: 'tile', fontSize: 30, showOnFirstPage: true },
+    });
+
+    engine.render([createBlock(bigTable(5))]);
+    engine.finalize();
+
+    const tiles = textSpy.mock.calls.filter((c) => c[0] === 'DRAFT');
+    expect(tiles.length).toBeGreaterThan(5); // หลายอัน ไม่ใช่อันเดียวกลางหน้า
+  });
+
+  it('preset: layout stretch → render ไม่ throw (auto-size)', () => {
+    const doc = new jsPDF();
+    const engine = new RenderEngine(doc, { watermark: { text: 'DRAFT', layout: 'stretch', showOnFirstPage: true } });
+
+    engine.render([createBlock(bigTable(5))]);
+    expect(() => engine.finalize()).not.toThrow();
+  });
+
+  it('preset: fontFamily ที่ไม่ได้ลงทะเบียน → throw KapomError (fail-fast ตอน render)', () => {
+    const doc = new jsPDF();
+    const engine = new RenderEngine(doc, {
+      watermark: { text: 'DRAFT', fontFamily: 'NotRegistered', showOnFirstPage: true },
+    });
+
+    engine.render([createBlock(bigTable(5))]);
+    expect(() => engine.finalize()).toThrow(KapomError);
+  });
+
+  it('preset: rotate ที่ไม่ finite → throw KapomError', () => {
+    expect(() => resolveWatermark({ text: 'DRAFT', rotate: Number.POSITIVE_INFINITY })).toThrow(KapomError);
   });
 });

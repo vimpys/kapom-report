@@ -39,7 +39,7 @@ const brandHeader: ReportNodeInput = {
     {
       children: [
         { type: 'spacer', height: 2 },
-        { content: 'Kapom Company', style: { fontSize: 13, fontStyle: 'bold', color: NAVY } },
+        { content: 'Kapom Report', style: { fontSize: 13, fontStyle: 'bold', color: NAVY } },
         { content: 'kapom-soft', style: { fontSize: 8, color: GRAY } },
       ],
     },

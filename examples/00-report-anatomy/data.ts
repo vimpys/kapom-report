@@ -24,7 +24,7 @@ export const anatomy: AnatomyRow[] = [
 
 /** short paragraphs, one per region — printed as the "in detail" section (also fills a second page) */
 export const detail: ReadonlyArray<readonly [string, string]> = [
-  ['Page header', 'The band at the very top of this page — logo and company name. It is part of the page frame: it reprints on every page and reserves height, so content never overlaps it.'],
+  ['Page header', 'The band at the very top of this page — logo and report name. It is part of the page frame: it reprints on every page and reserves height, so content never overlaps it.'],
   ['Title', 'The large "Report Anatomy" heading. It is the first block of content, printed once on the first page. Note where it sits: directly under the page header, not at the very top of the sheet — the frame always sits above the content.'],
   ['Content', 'This body — the map table, these paragraphs — is content. It flows top to bottom and breaks across pages on its own when a report runs long.'],
   ['Summary', 'The line pinned at the bottom of the last page. Use it for a signature or a grand total: it is pushed to the page bottom rather than flowing right after the content above it.'],

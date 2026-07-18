@@ -23,7 +23,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "dup": "jscpd src --min-tokens 30 --reporters consoleFull",
-    "demo": "tsx examples/00-report-anatomy/index.ts && tsx examples/01-basic-report/index.ts && tsx examples/02-text-and-layout/index.ts && tsx examples/05-group-report/index.ts && tsx examples/06-nested-group/index.ts && tsx examples/07-master-detail/index.ts && tsx examples/08-multi-header/index.ts && tsx examples/09-report-header-section.ts && tsx examples/10-composite-report.ts && tsx examples/11-page-frame/index.ts &&tsx examples/14-signature-watermark/index.ts && tsx examples/15-raw-escape-hatch.ts && tsx examples/16-quotation/index.ts && tsx examples/17-field-service/index.ts && tsx examples/18-modular-report/index.ts",
+    "demo": "tsx examples/00-report-anatomy/index.ts && tsx examples/01-basic-report/index.ts && tsx examples/02-text-and-layout/index.ts && tsx examples/05-group-report/index.ts && tsx examples/06-nested-group/index.ts && tsx examples/07-master-detail/index.ts && tsx examples/08-multi-header/index.ts && tsx examples/11-page-frame/index.ts && tsx examples/13-composite-report/index.ts && tsx examples/14-signature-watermark/index.ts && tsx examples/16-quotation/index.ts && tsx examples/17-field-service/index.ts",
     "prepublishOnly": "npm run typecheck && npm run lint && npm test && npm run build"
   },
   "keywords": [

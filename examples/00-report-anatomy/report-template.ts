@@ -24,7 +24,7 @@ const RULE: RGB = [205, 210, 218];
 /** TableNode is invariant in T — this one cast lets the AnatomyRow table sit in an unknown flow (see demo 01) */
 const untyped = <T>(t: TableNode<T>): TableNode<unknown> => t as unknown as TableNode<unknown>;
 
-/** page header band — logo + company; its own label marks it as the frame layer */
+/** page header band — logo + report name; its own label marks it as the frame layer */
 const brandHeader: ReportNodeInput = {
   type: 'row',
   columns: [
@@ -32,7 +32,7 @@ const brandHeader: ReportNodeInput = {
     {
       children: [
         { type: 'spacer', height: 2 },
-        { content: 'Kapom Company', style: { fontSize: 13, fontStyle: 'bold', color: NAVY } },
+        { content: 'Kapom Report', style: { fontSize: 13, fontStyle: 'bold', color: NAVY } },
         { content: 'page header — .pageHeader.addBlock() — frame, repeats every page', style: { fontSize: 7.5, color: GRAY } },
       ],
     },
