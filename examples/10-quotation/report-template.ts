@@ -67,6 +67,54 @@ const letterhead: Node = {
   ],
 };
 
+/** a labeled section: a fixed-width heading column on the left + the body blocks on the right */
+const labeledSection = (label: string, ...body: Node[]): Node => ({
+  type: 'row',
+  columns: [
+    { width: 52, children: [{ content: label, style: headingStyle }] },
+    { children: body },
+  ],
+});
+
+/** the highlighted grand-total amount inside a brand-fill box (the deepest-nested bit, named) */
+const boxedAmount = (value: number): Node => ({
+  type: 'box',
+  background: BRAND_FILL,
+  padding: 1.5,
+  children: [
+    { content: money(value), align: 'right', style: { fontSize: 10.5, fontStyle: 'bold', color: BRAND_DARK } },
+  ],
+});
+
+/** right-aligned totals block: Subtotal + VAT rows, then a Total label beside the boxed grand total */
+const totals = (subtotal: number, vat: number, grandTotal: number): Node => ({
+  type: 'row',
+  columns: [
+    { children: [] }, // empty left column pushes the totals to the right
+    {
+      width: 78,
+      children: [
+        {
+          type: 'keyValue',
+          valueAlign: 'right',
+          rows: [
+            ['Subtotal', money(subtotal)],
+            ['VAT (7%)', money(vat)],
+          ],
+        },
+        spacer(2),
+        {
+          type: 'row',
+          columns: [
+            { children: [{ content: 'Total', style: headingStyle }] },
+            { width: 40, children: [boxedAmount(grandTotal)] },
+          ],
+        },
+      ],
+    },
+  ],
+});
+
 export function buildQuotation(quotation: Quotation): KapomReport {
   const subtotal = quotation.items.reduce((sum, item) => sum + item.qty * item.unitPrice, 0);
   const vat = subtotal * quotation.vatRate;
@@ -116,13 +164,7 @@ export function buildQuotation(quotation: Quotation): KapomReport {
     )
     // PROJECT DESCRIPTION — label column + auto-wrapping paragraph
     .content(
-      {
-        type: 'row',
-        columns: [
-          { width: 52, children: [{ content: 'PROJECT DESCRIPTION', style: headingStyle }] },
-          { children: [{ content: quotation.projectDescription, style: { fontSize: 10, color: MUTED } }] },
-        ],
-      },
+      labeledSection('PROJECT DESCRIPTION', { content: quotation.projectDescription, style: { fontSize: 10, color: MUTED } }),
       spacer(4),
     )
     // line items — Total is a computed column, zebra tints the body
@@ -148,68 +190,19 @@ export function buildQuotation(quotation: Quotation): KapomReport {
     )
     // totals — right column only; keyValue right-aligns the numbers, box highlights the total
     .content(
-      {
-        type: 'row',
-        columns: [
-          { children: [] },
-          {
-            width: 78,
-            children: [
-              {
-                type: 'keyValue',
-                valueAlign: 'right',
-                rows: [
-                  ['Subtotal', money(subtotal)],
-                  ['VAT (7%)', money(vat)],
-                ],
-              },
-              spacer(2),
-              {
-                type: 'row',
-                columns: [
-                  { children: [{ content: 'Total', style: headingStyle }] },
-                  {
-                    width: 40,
-                    children: [
-                      {
-                        type: 'box',
-                        background: BRAND_FILL,
-                        padding: 1.5,
-                        children: [
-                          {
-                            content: money(grandTotal),
-                            align: 'right',
-                            style: { fontSize: 10.5, fontStyle: 'bold', color: BRAND_DARK },
-                          },
-                        ],
-                      },
-                    ],
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      },
+      totals(subtotal, vat, grandTotal),
       spacer(4),
       rule,
       spacer(6),
     )
-    // terms — same two-column shape as the description section
+    // terms — same labeledSection shape as the description section
     .content(
-      {
-        type: 'row',
-        columns: [
-          { width: 52, children: [{ content: 'TERMS & CONDITIONS', style: headingStyle }] },
-          {
-            children: [
-              { content: quotation.terms, style: { fontSize: 10, color: MUTED } },
-              spacer(5),
-              { content: 'PLEASE CONFIRM YOUR ACCEPTANCE OF THIS QUOTE', style: headingStyle },
-            ],
-          },
-        ],
-      },
+      labeledSection(
+        'TERMS & CONDITIONS',
+        { content: quotation.terms, style: { fontSize: 10, color: MUTED } },
+        spacer(5),
+        { content: 'PLEASE CONFIRM YOUR ACCEPTANCE OF THIS QUOTE', style: headingStyle },
+      ),
     );
 
   // ── signature pinned to the bottom of the page, not flowing right after the terms
