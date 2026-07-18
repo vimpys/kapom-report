@@ -281,6 +281,48 @@ export class TableBlock<T> implements MeasurableBlock {
     );
   }
 
+  /**
+   * Shared preamble for both nested (master-detail) layouts: the aggregate-label slot plus one
+   * fixed column-width set (and its columnStyles) measured across the whole table, so every
+   * segment/stacked block emits identical column lines. `widths` is returned for the 'below' layout
+   * to derive the child indent; 'stacked' uses only labelIndex + columnStyles.
+   */
+  private resolveNestedLayout(
+    ctx: RenderContext,
+    columns: readonly ReportColumn<T>[],
+    content: ResolvedTableContent,
+  ): { labelIndex: number; widths: number[]; columnStyles: Record<string, Partial<Styles>> } {
+    const labelIndex = firstAggregateLabelIndex(columns);
+    const widths = this.resolveColumnWidths(ctx, columns, content.head, content.body, content.foot);
+    const columnStyles = this.buildFixedColumnStyles(content.aligns, columns, widths);
+    return { labelIndex, widths, columnStyles };
+  }
+
+  /**
+   * Grand foot for a nested table whose last row carried a child — no trailing body rows for the
+   * foot to attach to, so reuse the single-total-row mechanism the grand total already relies on
+   * (a foot-only AutoTable call is an edge case the library doesn't guarantee).
+   */
+  private renderTrailingGrandFoot(
+    ctx: RenderContext,
+    foot: readonly string[],
+    labelIndex: number,
+    columnStyles: Record<string, Partial<Styles>>,
+    aligns: readonly ResolvedAlign[],
+  ): void {
+    const rowEstimate = lineHeightOf(ctx.doc, ctx.typography.detailRow.fontSize) * ESTIMATED_ROW_HEIGHT_RATIO;
+    this.renderSingleTotalRow(
+      ctx,
+      foot,
+      labelIndex,
+      columnStyles,
+      aligns,
+      ctx.typography.summary,
+      GRAND_TOTAL_FILL,
+      rowEstimate,
+    );
+  }
+
   // ── flat (ungrouped) ────────────────────────────────────────────────
 
   private renderFlat(ctx: RenderContext, perPage: PerPageRowNumberState): void {
@@ -341,12 +383,10 @@ export class TableBlock<T> implements MeasurableBlock {
       );
     }
 
-    const labelIndex = firstAggregateLabelIndex(columns);
     // a single, fixed set of column widths across every segment (same reasoning as renderGrouped)
     // — this is also what makes the nested child's indent line up exactly with the column grid,
     // like a colSpan across the remaining columns, without needing an actual colSpan cell
-    const widths = this.resolveColumnWidths(ctx, columns, content.head, content.body, content.foot);
-    const columnStyles = this.buildFixedColumnStyles(content.aligns, columns, widths);
+    const { labelIndex, widths, columnStyles } = this.resolveNestedLayout(ctx, columns, content);
     const indentX = sum(widths.slice(0, indentColumn));
     const childWidth = sum(widths.slice(indentColumn));
 
@@ -390,20 +430,8 @@ export class TableBlock<T> implements MeasurableBlock {
         perPage,
       });
     } else if (content.foot) {
-      // the last row itself had a nested child — no trailing body rows left for the foot to
-      // attach to; reuse the same "single total row" mechanism the grand total already relies on
-      // (a foot-only AutoTable call is an edge case the library doesn't guarantee, same as elsewhere)
-      const rowEstimate = lineHeightOf(ctx.doc, ctx.typography.detailRow.fontSize) * ESTIMATED_ROW_HEIGHT_RATIO;
-      this.renderSingleTotalRow(
-        ctx,
-        content.foot,
-        labelIndex,
-        columnStyles,
-        content.aligns,
-        ctx.typography.summary,
-        GRAND_TOTAL_FILL,
-        rowEstimate,
-      );
+      // the last row itself had a nested child — no trailing body rows left for the foot to attach to
+      this.renderTrailingGrandFoot(ctx, content.foot, labelIndex, columnStyles, content.aligns);
     }
   }
 
@@ -450,9 +478,7 @@ export class TableBlock<T> implements MeasurableBlock {
     const nested = this.node.nested;
     if (!nested) return;
 
-    const labelIndex = firstAggregateLabelIndex(columns);
-    const widths = this.resolveColumnWidths(ctx, columns, content.head, content.body, content.foot);
-    const masterColumnStyles = this.buildFixedColumnStyles(content.aligns, columns, widths);
+    const { labelIndex, columnStyles: masterColumnStyles } = this.resolveNestedLayout(ctx, columns, content);
 
     const rows = this.node.data;
     let segmentStart = 0;
@@ -488,19 +514,8 @@ export class TableBlock<T> implements MeasurableBlock {
     if (segmentStart < rows.length) {
       flushPlain(rows.length, content.foot); // trailing plain rows carry the grand foot
     } else if (content.foot) {
-      // the last row had a child — no trailing plain rows for the foot to attach to (same edge
-      // case as renderFlatWithNested: reuse the single-total-row mechanism)
-      const rowEstimate = lineHeightOf(ctx.doc, ctx.typography.detailRow.fontSize) * ESTIMATED_ROW_HEIGHT_RATIO;
-      this.renderSingleTotalRow(
-        ctx,
-        content.foot,
-        labelIndex,
-        masterColumnStyles,
-        content.aligns,
-        ctx.typography.summary,
-        GRAND_TOTAL_FILL,
-        rowEstimate,
-      );
+      // the last row had a child — no trailing plain rows for the foot to attach to
+      this.renderTrailingGrandFoot(ctx, content.foot, labelIndex, masterColumnStyles, content.aligns);
     }
   }
 
@@ -881,6 +896,18 @@ export class TableBlock<T> implements MeasurableBlock {
     };
   }
 
+  /** merge an optional CellStyle override over a base style through the fontStyle-variant guard — shared by the symmetric head/foot resolvers */
+  private applyStyleOverride(
+    ctx: RenderContext,
+    base: Partial<Styles>,
+    override: Partial<CellStyle> | undefined,
+  ): Partial<Styles> {
+    if (!override) return base;
+    const merged = { ...base, ...cellStyleToAutoTableStyles(override) };
+    this.guardFontStyle(ctx, merged);
+    return merged;
+  }
+
   /**
    * head section = Typography.columnHeader token + TableStyleOptions.header override (e.g. a
    * brand fillColor — without it the head keeps AutoTable's theme default); the override goes
@@ -890,23 +917,13 @@ export class TableBlock<T> implements MeasurableBlock {
     // header cells default to vertically centered (matters for a rowSpan cell in a grouped head;
     // harmless for a single-row header) — applies to the whole head section, overridable per cell
     const base: Partial<Styles> = { valign: 'middle', ...this.resolveTokenStyles(ctx, ctx.typography.columnHeader) };
-    const override = this.node.style?.header;
-    if (!override) return base;
-
-    const merged = { ...base, ...cellStyleToAutoTableStyles(override) };
-    this.guardFontStyle(ctx, merged);
-    return merged;
+    return this.applyStyleOverride(ctx, base, this.node.style?.header);
   }
 
   /** foot styles = the Typography foot token merged with an optional per-table `style.footer` override (symmetric with resolveHeadStyles) */
   private resolveFootStyles(ctx: RenderContext, footToken: TextStyle): Partial<Styles> {
     const base = this.resolveTokenStyles(ctx, footToken);
-    const override = this.node.style?.footer;
-    if (!override) return base;
-
-    const merged = { ...base, ...cellStyleToAutoTableStyles(override) };
-    this.guardFontStyle(ctx, merged);
-    return merged;
+    return this.applyStyleOverride(ctx, base, this.node.style?.footer);
   }
 
   /**
