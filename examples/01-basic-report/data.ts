@@ -44,8 +44,8 @@ export const ledgerEntries: LedgerEntry[] = [
 
 // ── 3. order lines — 15 rows from a literal catalog (one restock batch) ──
 // Kept to one page so its section heading stays with the table (a heading right before an
-// *overflowing* table would be orphaned by the table's measureHeight estimate — demo 04 keeps the
-// full 45-row overflow version). `price` stays a string on purpose — matching a DECIMAL column
+// *overflowing* table would be orphaned by the table's measureHeight estimate — pagination itself
+// is covered by the grouped/master-detail demos). `price` stays a string on purpose — matching a DECIMAL column
 // from a DB (the lib accepts Decimalish = number | string as-is, no conversion needed).
 export interface OrderLine {
   product: string;

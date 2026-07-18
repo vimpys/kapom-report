@@ -7,7 +7,7 @@
  *   rowNumber    — `mode: 'per-group'` resets the counter at every group (vs 'continuous')
  *   keepTogether — a band never gets stranded alone at the bottom of a page
  *                  (minRowsWithHeader: the band only starts if ≥ N data rows fit under it)
- * Compare with 06-nested-group, which nests a second group level inside this shape.
+ * Compare with 04-nested-group, which nests a second group level inside this shape.
  */
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -24,7 +24,7 @@ const NAVY: RGB = [31, 63, 112];
 const GRAY: RGB = [110, 110, 110];
 const RULE: RGB = [205, 210, 218];
 
-/** the brand header repeated at the top of every page — logo + company name (same pattern as demo 18) */
+/** the brand header repeated at the top of every page — logo + company name (same brand-header pattern across the table demos) */
 const brandHeader: ReportNodeInput = {
   type: 'row',
   columns: [

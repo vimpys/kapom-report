@@ -13,7 +13,7 @@
  *                   roughly 80% width, flush with the master's right edge. On a page break only
  *                   the *child's* header repeats — the master row stays behind on the earlier page.
  *
- * A different concept from 06-nested-group: nested *groups* subdivide the same rows; a nested
+ * A different concept from 04-nested-group: nested *groups* subdivide the same rows; a nested
  * *table* attaches a whole child table to one master row.
  */
 import { readFileSync } from 'node:fs';
@@ -31,7 +31,7 @@ const NAVY: RGB = [31, 63, 112];
 const GRAY: RGB = [110, 110, 110];
 const RULE: RGB = [205, 210, 218];
 
-/** the brand header repeated at the top of every page — logo + company name (same pattern as demo 18) */
+/** the brand header repeated at the top of every page — logo + company name (same brand-header pattern across the table demos) */
 const brandHeader: ReportNodeInput = {
   type: 'row',
   columns: [

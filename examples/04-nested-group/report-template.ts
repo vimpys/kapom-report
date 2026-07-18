@@ -5,7 +5,7 @@
  * per sub-group (the segment's foot), a subtotal per region (a single row on a gray
  * band-matching background), and a grand total at the end. Nests to N levels — each level has
  * its own labels/keepTogether.
- * Compare with 05-group-report, which groups only one level deep.
+ * Compare with 03-group-report, which groups only one level deep.
  */
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -22,7 +22,7 @@ const NAVY: RGB = [31, 63, 112];
 const GRAY: RGB = [110, 110, 110];
 const RULE: RGB = [205, 210, 218];
 
-/** the brand header repeated at the top of every page — logo + company name (same pattern as demo 18) */
+/** the brand header repeated at the top of every page — logo + company name (same brand-header pattern across the table demos) */
 const brandHeader: ReportNodeInput = {
   type: 'row',
   columns: [

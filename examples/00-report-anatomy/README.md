@@ -81,4 +81,4 @@ Notice the two layers in the code, mirroring the diagram: the **content flow** i
 
 - **[01 · basic report](../01-basic-report/)** — the smallest table, then zebra styling, then aggregates
 - **[02 · text & layout](../02-text-and-layout/)** — text, spacer, divider, image
-- Tables in depth: **[05 grouped](../05-group-report/)** · **[06 nested groups](../06-nested-group/)** · **[07 master-detail](../07-master-detail/)** · **[08 multi-level headers](../08-multi-header/)**
+- Tables in depth: **[03 grouped](../03-group-report/)** · **[04 nested groups](../04-nested-group/)** · **[05 master-detail](../05-master-detail/)** · **[06 multi-level headers](../06-multi-header/)**

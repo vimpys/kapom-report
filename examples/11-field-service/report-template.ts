@@ -4,7 +4,7 @@
  * a blank form, but the empty cells and writing areas carry the actual values. Exposed as
  * `buildFieldServiceReport(report)`. Checkboxes render `[x]` for the service type performed.
  *
- * Assembled with the `reportBuilder()` fluent chain (same as demo 18): `title` is the once-per-
+ * Assembled with the `reportBuilder()` fluent chain (same as the other reportBuilder demos): `title` is the once-per-
  * report heading, `content` is the flowing body. Either style — chain or `createKapomReport({...})`
  * object — produces an identical report.
  */
