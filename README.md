@@ -34,6 +34,8 @@ report.save('report.pdf');
 
 No font setup, no jsPDF/AutoTable knowledge required — this renders a titled table with a summed "Total" row out of the box.
 
+New to the layout? **[Report anatomy](examples/00-report-anatomy/)** maps every region of a report to the `reportBuilder()` method that produces it.
+
 ### Grouping and subtotals
 
 ```ts
