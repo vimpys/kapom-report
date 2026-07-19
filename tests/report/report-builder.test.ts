@@ -145,24 +145,9 @@ describe('reportBuilder — table() single-table shorthand', () => {
     ]);
   });
 
-  it('group string shorthand → { by }', () => {
-    const config = reportBuilder<Sale>()
-      .table({ columns: [{ key: 'product', header: 'Product' }], data: [], group: 'product' })
-      .toConfig();
-
-    expect(config.blocks[0]).toMatchObject({ type: 'table', group: { by: 'product' } });
-  });
-
-  it('group array shorthand → subGroup chain เรียงนอก→ใน', () => {
-    const config = reportBuilder<Sale>()
-      .table({ columns: [{ key: 'product', header: 'Product' }], data: [], group: ['product', 'qty'] })
-      .toConfig();
-
-    expect(config.blocks[0]).toMatchObject({
-      type: 'table',
-      group: { by: 'product', subGroup: { by: 'qty' } },
-    });
-  });
+  // group/column shorthand normalization is owned by resolve-report-config.test.ts (both paths reuse
+  // resolveTableNode); the builder tests below only cover builder-specific wiring: order, interleave,
+  // repeatability, and the group/nested features that have no coverage on the config path.
 
   it('table() แทรกใน body ตามลำดับ call — title → content → table → content', () => {
     const config = reportBuilder<Sale>()
