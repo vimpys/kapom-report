@@ -87,5 +87,9 @@ export function openWithDefaultViewer(file: string): void {
       : process.platform === 'darwin'
         ? { cmd: 'open', args: [file] }
         : { cmd: 'xdg-open', args: [file] };
-  spawn(command.cmd, command.args, { detached: true, stdio: 'ignore' }).unref();
+  const child = spawn(command.cmd, command.args, { detached: true, stdio: 'ignore' });
+  // best effort: a missing/failed launcher (e.g. no xdg-open on a headless server) emits an async
+  // 'error' — swallow it so it never becomes an uncaught exception that crashes the caller
+  child.on('error', () => {});
+  child.unref();
 }

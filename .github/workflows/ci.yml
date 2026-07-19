@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # Full pipeline on the Node versions the dev toolchain supports (vitest/eslint need >= 20.19).
+  # Node 20.19.0 is the floor: it's the lowest that runs the tools AND already carries the
+  # back-ported process.getBuiltinModule (Node 20.16+), so it exercises the LTS I/O path too.
+  verify:
+    name: verify (node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['20.19.0', '22', '24']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - run: npm run demo
+
+  # Minimum supported runtime. eslint/vitest can't run here (they require Node >= 20.19), but
+  # tsup (build) and tsx (demos) do — and the demos exercise the real library end to end,
+  # including process.getBuiltinModule + save() writing a PDF, which is exactly what we need to
+  # prove works on the engines floor.
+  node18:
+    name: node 18.20.4 (min supported — build + demo)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18.20.4'
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npm run demo
