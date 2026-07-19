@@ -18,10 +18,10 @@ The **core** (building a PDF and reading its bytes with `doc.output(...)`) runs 
 
 The `save()` / `preview()` **convenience** methods do file I/O, so they need one of:
 
-- **Node.js ≥ 18.20.4 / 20.16.0 / 22.3** — they rely on `process.getBuiltinModule`, added in those releases. On an older Node they throw a clear error instead of crashing.
+- **Node.js ≥ 20.16 or ≥ 22.3** — they rely on `process.getBuiltinModule`, added in those releases (Node 18 does **not** have it). On an older Node they throw a clear, actionable error instead of crashing.
 - **A browser** — `save()` triggers a download, `preview()` opens a new tab.
 
-On any other runtime (an older Node, Deno, Bun, React Native, an edge runtime), skip `save()`/`preview()` and write the bytes yourself — it's one line and works everywhere:
+On any other runtime (Node 18 or older, Deno, Bun, React Native, an edge runtime), skip `save()`/`preview()` and write the bytes yourself — it's one line and works everywhere:
 
 ```ts
 import { writeFileSync } from 'node:fs';

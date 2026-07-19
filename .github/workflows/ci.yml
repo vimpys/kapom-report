@@ -33,20 +33,23 @@ jobs:
       - run: npm run build
       - run: npm run demo
 
-  # Minimum supported runtime. eslint/vitest can't run here (they require Node >= 20.19), but
-  # tsup (build) and tsx (demos) do — and the demos exercise the real library end to end,
-  # including process.getBuiltinModule + save() writing a PDF, which is exactly what we need to
-  # prove works on the engines floor.
-  node18:
-    name: node 18.20.4 (min supported — build + demo)
+  # The engines floor: Node 20.16.0 is where process.getBuiltinModule was back-ported (also 22.3),
+  # so it's the lowest Node where save()/preview() work. eslint needs >= 20.19 so lint runs in the
+  # verify job above, but vitest/tsup/tsx run here — and the demos exercise the real library end to
+  # end (process.getBuiltinModule + save() writing a PDF), proving the floor actually works.
+  # (Node 18 is intentionally not covered: getBuiltinModule isn't available there, so save()/preview()
+  # can't run — Node 18 users use report.doc.output('arraybuffer') instead.)
+  floor:
+    name: node 20.16.0 (engines floor — no lint)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '18.20.4'
+          node-version: '20.16.0'
           cache: npm
       - run: npm ci
       - run: npm run typecheck
+      - run: npm test
       - run: npm run build
       - run: npm run demo

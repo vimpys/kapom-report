@@ -18,16 +18,18 @@ export function isNodeRuntime(): boolean {
 }
 
 /**
- * Guards save()/preview() against a too-old Node: on Node < 22.3 (Node but no getBuiltinModule),
- * isNodeRuntime() is false, so the caller would otherwise fall through to jsPDF's browser-only path
- * and crash with a confusing "document is not defined". Throw a clear, actionable error instead.
- * No-op in the browser (not a Node process) — the browser path is legitimate there.
+ * Guards save()/preview() against a too-old Node: `process.getBuiltinModule` landed in Node 20.16
+ * and 22.3, so on an older Node (a Node process without it) isNodeRuntime() is false and the caller
+ * would otherwise fall through to jsPDF's browser-only path and crash with a confusing
+ * "document is not defined". Throw a clear, actionable error instead. No-op in the browser (not a
+ * Node process) — the browser path is legitimate there.
  */
 export function assertNodeIoSupported(op: 'save' | 'preview'): void {
   if (isNodeProcess() && typeof process.getBuiltinModule !== 'function') {
     throw new KapomError(
-      `${op}() needs Node >= 22.3 (running Node ${process.versions.node}). On older Node, ` +
-        `get the bytes with report.doc.output('arraybuffer') and write the file yourself.`,
+      `${op}() needs process.getBuiltinModule (Node >= 20.16 or >= 22.3; running Node ` +
+        `${process.versions.node}). On older Node, get the bytes with ` +
+        `report.doc.output('arraybuffer') and write the file yourself.`,
     );
   }
 }
