@@ -11,7 +11,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { col, nativeNumeric, reportBuilder } from '../../src/index';
-import type { KapomReport, ReportNodeInput, RGB, TableNode } from '../../src/index';
+import type { KapomReport, ReportNodeInput, RGB } from '../../src/index';
 import { fontConfig } from '../shared';
 import type { BranchSale } from './data';
 
@@ -39,34 +39,33 @@ const brandHeader: ReportNodeInput = {
 
 export function buildBranchSales(branchSales: BranchSale[]): KapomReport {
   const c = col<BranchSale>();
-  const nestedTable: TableNode<BranchSale> = {
-    type: 'table',
-    columns: [
-      // no leading rowNumber — the subtotal label lands on the first empty cell (the first
-      // column); if that were a narrow rowNumber column, a long label would wrap awkwardly
-      c.data('product', 'Item'),
-      c.data('qty', 'Qty', { align: 'right', aggregate: 'sum' }),
-      c.data('price', 'Price', { align: 'right', numberFormat: {} }),
-      c.computed('Amount', (row) => nativeNumeric.multiply(row.qty, row.price), { align: 'right', aggregate: 'sum' }),
-    ],
-    data: branchSales,
-    summaryLabel: 'Grand Total',
-    group: {
-      by: 'region',
-      headerLabel: (key) => `Region: ${key}`,
-      footerLabel: (key) => `Subtotal — ${key}`,
-      keepTogether: { minRowsWithHeader: 2 },
-      // one more level inside every region — recursive: a subGroup can have its own subGroup
-      subGroup: {
-        by: 'category',
-        footerLabel: (key) => `Subtotal ${key}`,
-      },
-    },
-  };
 
   const report = reportBuilder<BranchSale>()
     .font(fontConfig)
-    .title('Branch Sales — nested group, region → category');
+    .title('Branch Sales — nested group, region → category')
+    .table({
+      columns: [
+        // no leading rowNumber — the subtotal label lands on the first empty cell (the first
+        // column); if that were a narrow rowNumber column, a long label would wrap awkwardly
+        c.data('product', 'Item'),
+        c.data('qty', 'Qty', { align: 'right', aggregate: 'sum' }),
+        c.data('price', 'Price', { align: 'right', numberFormat: {} }),
+        c.computed('Amount', (row) => nativeNumeric.multiply(row.qty, row.price), { align: 'right', aggregate: 'sum' }),
+      ],
+      data: branchSales,
+      summaryLabel: 'Grand Total',
+      group: {
+        by: 'region',
+        headerLabel: (key) => `Region: ${key}`,
+        footerLabel: (key) => `Subtotal — ${key}`,
+        keepTogether: { minRowsWithHeader: 2 },
+        // one more level inside every region — recursive: a subGroup can have its own subGroup
+        subGroup: {
+          by: 'category',
+          footerLabel: (key) => `Subtotal ${key}`,
+        },
+      },
+    });
 
   // brand page-header band — repeats on every page; reserved height is auto-measured from the blocks
   report.pageHeader
@@ -74,8 +73,6 @@ export function buildBranchSales(branchSales: BranchSale[]): KapomReport {
     .addBlock({ type: 'spacer', height: 1.5 })
     .addBlock({ type: 'divider', thickness: 0.2, color: RULE })
     .addBlock({ type: 'spacer', height: 2 });
-
-  report.content(nestedTable);
 
   return report.build();
 }

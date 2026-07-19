@@ -13,7 +13,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { col, nativeNumeric, reportBuilder } from '../../src/index';
-import type { KapomReport, ReportNodeInput, RGB, TableNode } from '../../src/index';
+import type { KapomReport, ReportNodeInput, RGB } from '../../src/index';
 import { fontConfig } from '../shared';
 import type { RegionSale } from './data';
 
@@ -42,32 +42,33 @@ const brandHeader: ReportNodeInput = {
 /** compose a grouped, subtotaled sales table from raw rows */
 export function buildRegionalSales(regionSales: RegionSale[]): KapomReport {
   const c = col<RegionSale>();
-  const groupedTable: TableNode<RegionSale> = {
-    type: 'table',
-    columns: [
-      c.rowNumber({ align: 'right', width: 12, mode: 'per-group' }),
-      c.data('product', 'Product'),
-      c.data('qty', 'Qty', { align: 'right', aggregate: 'sum' }),
-      c.data('price', 'Price', { align: 'right', numberFormat: {} }),
-      c.computed('Amount', (row) => nativeNumeric.multiply(row.qty, row.price), {
-        align: 'right',
-        aggregate: 'sum',
-        numberFormat: { fractionDigits: 2 }, // shorthand — one value sets min and max fraction digits
-      }),
-    ],
-    data: regionSales,
-    summaryLabel: 'Grand Total',
-    group: {
-      by: 'region',
-      headerLabel: (key, rows) => `Region: ${key} (${rows.length} items)`,
-      footerLabel: (key) => `Subtotal ${key}`,
-      keepTogether: { minRowsWithHeader: 2 },
-    },
-  };
 
+  // `.table()` takes the single-table config directly — column/group shorthands and all — so the
+  // whole table lives in the chain, no separate `TableNode` object literal or `.content()` needed
   const report = reportBuilder<RegionSale>()
     .font(fontConfig)
-    .title('Regional Sales — grouped, subtotaled, grand total');
+    .title('Regional Sales — grouped, subtotaled, grand total')
+    .table({
+      columns: [
+        c.rowNumber({ align: 'right', width: 12, mode: 'per-group' }),
+        c.data('product', 'Product'),
+        c.data('qty', 'Qty', { align: 'right', aggregate: 'sum' }),
+        c.data('price', 'Price', { align: 'right', numberFormat: {} }),
+        c.computed('Amount', (row) => nativeNumeric.multiply(row.qty, row.price), {
+          align: 'right',
+          aggregate: 'sum',
+          numberFormat: { fractionDigits: 2 }, // shorthand — one value sets min and max fraction digits
+        }),
+      ],
+      data: regionSales,
+      summaryLabel: 'Grand Total',
+      group: {
+        by: 'region',
+        headerLabel: (key, rows) => `Region: ${key} (${rows.length} items)`,
+        footerLabel: (key) => `Subtotal ${key}`,
+        keepTogether: { minRowsWithHeader: 2 },
+      },
+    });
 
   // brand page-header band — repeats on every page; reserved height is auto-measured from the blocks
   report.pageHeader
@@ -75,8 +76,6 @@ export function buildRegionalSales(regionSales: RegionSale[]): KapomReport {
     .addBlock({ type: 'spacer', height: 1.5 })
     .addBlock({ type: 'divider', thickness: 0.2, color: RULE })
     .addBlock({ type: 'spacer', height: 2 });
-
-  report.content(groupedTable);
 
   return report.build();
 }

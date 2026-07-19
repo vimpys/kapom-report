@@ -23,7 +23,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { col, nativeNumeric, reportBuilder } from '../../src/index';
-import type { KapomReport, ReportNodeInput, RGB, TableNode, ThemeInput } from '../../src/index';
+import type { KapomReport, KapomTableInput, ReportNodeInput, RGB, ThemeInput } from '../../src/index';
 import { fontConfig } from '../shared';
 import type { CatalogSale } from './data';
 
@@ -50,10 +50,9 @@ const brandHeader: ReportNodeInput = {
 };
 
 /** one grouped, subtotaled catalog table — identical for every theme; only the theme differs */
-function catalogTable(sales: CatalogSale[]): TableNode<CatalogSale> {
+function catalogTable(sales: CatalogSale[]): KapomTableInput<CatalogSale> {
   const c = col<CatalogSale>();
   return {
-    type: 'table',
     columns: [
       c.rowNumber({ align: 'right', width: 12, mode: 'per-group' }),
       c.data('product', 'Product'),
@@ -84,7 +83,7 @@ export function buildThemedCatalog(sales: CatalogSale[], label: string, theme: T
     .addBlock({ type: 'divider', thickness: 0.2, color: RULE })
     .addBlock({ type: 'spacer', height: 2 });
 
-  report.content(catalogTable(sales));
+  report.table(catalogTable(sales));
 
   return report.build();
 }
