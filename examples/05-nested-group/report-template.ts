@@ -1,13 +1,11 @@
 /**
  * File 2 of 3 — the report template.
- * Demo — grouped table (composite): a gray band per group + per-group rowNumber + a subtotal
- * per group + a grand total at the end.
- * Focus:
- *   group        — full GroupResolver: custom headerLabel / footerLabel per group
- *   rowNumber    — `mode: 'per-group'` resets the counter at every group (vs 'continuous')
- *   keepTogether — a band never gets stranded alone at the bottom of a page
- *                  (minRowsWithHeader: the band only starts if ≥ N data rows fit under it)
- * Compare with 04-nested-group, which nests a second group level inside this shape.
+ * Demo — nested group: a group nested 2 levels deep (region → category) via
+ * GroupResolver.subGroup — a band at every level (inner level labels are indented), a subtotal
+ * per sub-group (the segment's foot), a subtotal per region (a single row on a gray
+ * band-matching background), and a grand total at the end. Nests to N levels — each level has
+ * its own labels/keepTogether.
+ * Compare with 04-group-report, which groups only one level deep.
  */
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -15,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { col, nativeNumeric, reportBuilder } from '../../src/index';
 import type { KapomReport, ReportNodeInput, RGB, TableNode } from '../../src/index';
 import { fontConfig } from '../shared';
-import type { RegionSale } from './data';
+import type { BranchSale } from './data';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const logo = new Uint8Array(readFileSync(join(here, '../../src/assets/kapom-report.png')));
@@ -39,35 +37,36 @@ const brandHeader: ReportNodeInput = {
   ],
 };
 
-/** compose a grouped, subtotaled sales table from raw rows */
-export function buildRegionalSales(regionSales: RegionSale[]): KapomReport {
-  const c = col<RegionSale>();
-  const groupedTable: TableNode<RegionSale> = {
+export function buildBranchSales(branchSales: BranchSale[]): KapomReport {
+  const c = col<BranchSale>();
+  const nestedTable: TableNode<BranchSale> = {
     type: 'table',
     columns: [
-      c.rowNumber({ align: 'right', width: 12, mode: 'per-group' }),
-      c.data('product', 'Product'),
+      // no leading rowNumber — the subtotal label lands on the first empty cell (the first
+      // column); if that were a narrow rowNumber column, a long label would wrap awkwardly
+      c.data('product', 'Item'),
       c.data('qty', 'Qty', { align: 'right', aggregate: 'sum' }),
       c.data('price', 'Price', { align: 'right', numberFormat: {} }),
-      c.computed('Amount', (row) => nativeNumeric.multiply(row.qty, row.price), {
-        align: 'right',
-        aggregate: 'sum',
-        numberFormat: { fractionDigits: 2 }, // shorthand — one value sets min and max fraction digits
-      }),
+      c.computed('Amount', (row) => nativeNumeric.multiply(row.qty, row.price), { align: 'right', aggregate: 'sum' }),
     ],
-    data: regionSales,
+    data: branchSales,
     summaryLabel: 'Grand Total',
     group: {
       by: 'region',
-      headerLabel: (key, rows) => `Region: ${key} (${rows.length} items)`,
-      footerLabel: (key) => `Subtotal ${key}`,
+      headerLabel: (key) => `Region: ${key}`,
+      footerLabel: (key) => `Subtotal — ${key}`,
       keepTogether: { minRowsWithHeader: 2 },
+      // one more level inside every region — recursive: a subGroup can have its own subGroup
+      subGroup: {
+        by: 'category',
+        footerLabel: (key) => `Subtotal ${key}`,
+      },
     },
   };
 
-  const report = reportBuilder<RegionSale>()
+  const report = reportBuilder<BranchSale>()
     .font(fontConfig)
-    .title('Regional Sales — grouped, subtotaled, grand total');
+    .title('Branch Sales — nested group, region → category');
 
   // brand page-header band — repeats on every page; reserved height is auto-measured from the blocks
   report.pageHeader
@@ -76,7 +75,7 @@ export function buildRegionalSales(regionSales: RegionSale[]): KapomReport {
     .addBlock({ type: 'divider', thickness: 0.2, color: RULE })
     .addBlock({ type: 'spacer', height: 2 });
 
-  report.content(groupedTable);
+  report.content(nestedTable);
 
   return report.build();
 }

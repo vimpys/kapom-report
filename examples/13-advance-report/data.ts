@@ -33,7 +33,8 @@ export const orders: readonly Order[] = [
     vendor: 'Globex Inc.',
     items: [
       { item: 'Gadget X', unitPrice: 150, qty: 10 },
-      { item: 'Gadget Y', unitPrice: 300, qty: 15 },
+      // a returned/credited line — negative qty makes its line total negative (highlighted red)
+      { item: 'Gadget Y (return)', unitPrice: 300, qty: -15 },
     ],
   },
   {

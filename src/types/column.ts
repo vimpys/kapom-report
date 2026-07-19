@@ -1,5 +1,5 @@
 import type { Decimalish } from '../numeric/numeric-strategy';
-import type { HAlign, NumberFormat, TextStyle } from './primitives';
+import type { CellStyle, HAlign, NumberFormat } from './primitives';
 
 export type AggregateFn = 'sum' | 'avg' | 'count' | 'min' | 'max';
 export type RowNumberMode = 'continuous' | 'per-group' | 'per-page';
@@ -14,13 +14,29 @@ interface ColumnBase {
   /** header cell alignment; default = the `align` value */
   headerAlign?: HAlign;
   width?: number;
-  headerStyle?: Partial<TextStyle>;
-  cellStyle?: Partial<TextStyle>;
+  /** static style for this column's head cell (all table/column style is `CellStyle`) */
+  headerStyle?: Partial<CellStyle>;
+  /** static style for this column's body cells — incl. `fillColor` for a column background */
+  cellStyle?: Partial<CellStyle>;
   /** conditionally show/hide; default true */
   visible?: boolean | (() => boolean);
 }
 
-export interface DataColumn<T> extends ColumnBase {
+/**
+ * column base for the row-typed column kinds (data/computed/runningTotal) — adds `conditionalStyle`,
+ * which rowNumber (not row-typed) doesn't carry.
+ */
+interface TypedColumnBase<T> extends ColumnBase {
+  /**
+   * value-driven counterpart of `cellStyle` — returns a `Partial<CellStyle>` for THIS column's body
+   * cell based on the row (e.g. a red `fillColor` when the value is negative), or `undefined` to
+   * leave it to `cellStyle`. Mirrors the table-level `style.conditional` (row) at the column scope,
+   * and is applied as the most specific layer (on top of `style.conditional`/`style.zebra`).
+   */
+  conditionalStyle?: (row: T) => Partial<CellStyle> | undefined;
+}
+
+export interface DataColumn<T> extends TypedColumnBase<T> {
   /** the default column kind — may be omitted; normalized to 'data' at build time */
   type?: 'data';
   key: keyof T;
@@ -41,7 +57,7 @@ export interface RowNumberColumn extends ColumnBase {
   formatter?: (n: number) => string;
 }
 
-export interface ComputedColumn<T> extends ColumnBase {
+export interface ComputedColumn<T> extends TypedColumnBase<T> {
   type: 'computed';
   compute: (row: T) => Decimalish;
   numberFormat?: NumberFormat;
@@ -49,7 +65,7 @@ export interface ComputedColumn<T> extends ColumnBase {
   formatter?: (value: Decimalish, row: T) => string;
 }
 
-export interface RunningTotalColumn<T> extends ColumnBase {
+export interface RunningTotalColumn<T> extends TypedColumnBase<T> {
   type: 'runningTotal';
   valueOf: (row: T) => Decimalish;
   mode?: 'continuous' | 'per-group';

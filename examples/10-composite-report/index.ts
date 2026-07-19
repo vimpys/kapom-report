@@ -3,7 +3,7 @@
  * Wires the two datasets (data.ts) into the composite template (report-template.ts) and saves.
  * This is the only file that knows about both the data and the presentation options.
  *
- * Run with: `tsx examples/09-composite-report/index.ts`
+ * Run with: `tsx examples/10-composite-report/index.ts`
  */
 import { outPath } from '../shared';
 import { expenses, sales } from './data';
@@ -16,5 +16,5 @@ const report = buildCompanyReport(sales, expenses, {
   reportDescription: 'Monthly sales & expenses — FY2026',
 });
 
-report.save(outPath('09-composite-report'));
-console.log(`OK 09-composite-report.pdf (${report.doc.getNumberOfPages()} pages)`);
+report.save(outPath('10-composite-report'));
+console.log(`OK 10-composite-report.pdf (${report.doc.getNumberOfPages()} pages)`);

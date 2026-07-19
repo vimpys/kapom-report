@@ -81,7 +81,7 @@ export function buildCombinedReport(sales: Sale[], ledger: LedgerEntry[], orders
         width: 35,
         numberFormat: {}, // {} = DEFAULT_NUMBER_FORMAT (thousands separator + 2 decimals)
         aggregate: 'sum',
-        cellStyle: { fontFamily: 'Sarabun' }, // ranks below zebra/conditional in precedence
+        cellStyle: { textColor: [90, 90, 90] }, // static column colour — zebra/conditional still rank above it (negatives turn red)
       },
     ],
     data: ledger,

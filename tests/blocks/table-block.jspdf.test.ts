@@ -499,7 +499,7 @@ describe('TableBlock — column-level headerStyle/cellStyle × jsPDF จริ�
       createBlock(
         ledgerNode([{ label: 'a', amount: 1 }], {
           columns: [
-            { type: 'data', key: 'label', header: 'Label', headerStyle: { fontSize: 16, color: [255, 0, 0] } },
+            { type: 'data', key: 'label', header: 'Label', headerStyle: { fontSize: 16, textColor: [255, 0, 0] } },
             { type: 'data', key: 'amount', header: 'Amount', align: 'right' },
           ],
         }),
@@ -532,7 +532,7 @@ describe('TableBlock — column-level headerStyle/cellStyle × jsPDF จริ�
                 key: 'amount',
                 header: 'Amount',
                 align: 'right',
-                cellStyle: { fontStyle: 'italic', color: [0, 100, 0] },
+                cellStyle: { fontStyle: 'italic', textColor: [0, 100, 0] },
               },
             ],
           },
@@ -569,7 +569,7 @@ describe('TableBlock — column-level headerStyle/cellStyle × jsPDF จริ�
                 key: 'amount',
                 header: 'Amount',
                 align: 'right',
-                cellStyle: { color: [0, 0, 0] },
+                cellStyle: { textColor: [0, 0, 0] },
               },
             ],
             style: {
@@ -585,6 +585,95 @@ describe('TableBlock — column-level headerStyle/cellStyle × jsPDF จริ�
     expect(body[0]?.cells['1']?.styles.textColor).toEqual([0, 0, 0]);
     // แถว 1: conditional ตรง → ทับ cellStyle เป็นแดง
     expect(body[1]?.cells['1']?.styles.textColor).toEqual([220, 38, 38]);
+  });
+
+  it('cellStyle ตั้ง fillColor (พื้นหลังคอลัมน์) แบบ static ได้แล้ว (CellStyle ไม่ใช่ TextStyle)', () => {
+    const doc = new jsPDF();
+    const engine = new RenderEngine(doc);
+
+    engine.render([
+      createBlock(
+        ledgerNode([{ label: 'a', amount: 1 }], {
+          columns: [
+            { type: 'data', key: 'label', header: 'Label' },
+            { type: 'data', key: 'amount', header: 'Amount', align: 'right', cellStyle: { fillColor: [230, 240, 255] } },
+          ],
+        }),
+      ),
+    ]);
+
+    const body = doc.lastAutoTable?.body ?? [];
+    expect(body[0]?.cells['1']?.styles.fillColor).toEqual([230, 240, 255]);
+    // คอลัมน์อื่นไม่โดนพื้นหลังนี้
+    expect(body[0]?.cells['0']?.styles.fillColor).not.toEqual([230, 240, 255]);
+  });
+});
+
+describe('TableBlock — column-level conditionalStyle × jsPDF จริง', () => {
+  it('conditionalStyle ทาสีเฉพาะ cell ของคอลัมน์นั้น เมื่อเงื่อนไขตรง (ไม่ลามทั้งแถว/คอลัมน์อื่น)', () => {
+    const doc = new jsPDF();
+    const engine = new RenderEngine(doc);
+
+    engine.render([
+      createBlock(
+        ledgerNode(
+          [
+            { label: 'a', amount: 5 },
+            { label: 'b', amount: -5 },
+          ],
+          {
+            columns: [
+              { type: 'data', key: 'label', header: 'Label' },
+              {
+                type: 'data',
+                key: 'amount',
+                header: 'Amount',
+                align: 'right',
+                conditionalStyle: (row) => (row.amount < 0 ? { fillColor: [198, 40, 40], textColor: [255, 255, 255] } : undefined),
+              },
+            ],
+          },
+        ),
+      ),
+    ]);
+
+    const body = doc.lastAutoTable?.body ?? [];
+    // แถว 0 (5): เงื่อนไขไม่ตรง → ไม่ทาสี
+    expect(body[0]?.cells['1']?.styles.fillColor).not.toEqual([198, 40, 40]);
+    // แถว 1 (-5): เงื่อนไขตรง → cell Amount แดง
+    expect(body[1]?.cells['1']?.styles.fillColor).toEqual([198, 40, 40]);
+    expect(body[1]?.cells['1']?.styles.textColor).toEqual([255, 255, 255]);
+    // ไม่ลามไปคอลัมน์ Label ของแถวเดียวกัน
+    expect(body[1]?.cells['0']?.styles.fillColor).not.toEqual([198, 40, 40]);
+  });
+
+  it('conditionalStyle (column) ทับ conditional (row-level) ได้ เพราะเจาะจงกว่า (apply ทีหลัง)', () => {
+    const doc = new jsPDF();
+    const engine = new RenderEngine(doc);
+
+    engine.render([
+      createBlock(
+        ledgerNode([{ label: 'a', amount: -5 }], {
+          columns: [
+            { type: 'data', key: 'label', header: 'Label' },
+            {
+              type: 'data',
+              key: 'amount',
+              header: 'Amount',
+              align: 'right',
+              conditionalStyle: () => ({ textColor: [10, 20, 30] }),
+            },
+          ],
+          style: { conditional: () => ({ textColor: [200, 0, 0] }) },
+        }),
+      ),
+    ]);
+
+    const body = doc.lastAutoTable?.body ?? [];
+    // คอลัมน์ Amount: column conditionalStyle ชนะ row conditional
+    expect(body[0]?.cells['1']?.styles.textColor).toEqual([10, 20, 30]);
+    // คอลัมน์ Label: ไม่มี column conditionalStyle → ได้ row conditional
+    expect(body[0]?.cells['0']?.styles.textColor).toEqual([200, 0, 0]);
   });
 });
 

@@ -56,8 +56,9 @@ function fitRowToGrid(
   });
 }
 
-/** CellStyle (zebra/conditional override) → AutoTable Partial<Styles> */
-function cellStyleToAutoTableStyles(style: Partial<CellStyle>): Partial<Styles> {
+/** CellStyle (zebra/conditional override, column headerStyle/cellStyle) → AutoTable Partial<Styles> */
+function cellStyleToAutoTableStyles(style: Partial<CellStyle> | undefined): Partial<Styles> {
+  if (!style) return {};
   const styles: Partial<Styles> = {};
   if (style.fillColor) styles.fillColor = [...style.fillColor];
   if (style.textColor) styles.textColor = [...style.textColor];
@@ -98,7 +99,7 @@ function mergeFootLabel(foot: readonly string[], labelIndex: number): (string | 
   ];
 }
 
-/** TextStyle (a Typography token / column-level headerStyle/cellStyle) → AutoTable Partial<Styles> — font family isn't set unless specified (inherits from the base styles.font instead) */
+/** TextStyle (a Typography token) → AutoTable Partial<Styles> — font family isn't set unless specified (inherits from the base styles.font instead) */
 function partialTextStyleToAutoTableStyles(style: Partial<TextStyle> | undefined): Partial<Styles> {
   if (!style) return {};
   const styles: Partial<Styles> = {};
@@ -232,7 +233,7 @@ export class TableBlock<T> implements MeasurableBlock {
       columnStyles[String(index)] = {
         halign: align.data,
         ...widthOf(index),
-        ...partialTextStyleToAutoTableStyles(columns[index]?.cellStyle),
+        ...cellStyleToAutoTableStyles(columns[index]?.cellStyle),
       };
     });
     return columnStyles;
@@ -893,7 +894,7 @@ export class TableBlock<T> implements MeasurableBlock {
   private headCellStyles(col: ReportColumn<T>): Partial<Styles> {
     return {
       halign: resolveColumnAlign(col).header,
-      ...partialTextStyleToAutoTableStyles(col.headerStyle),
+      ...cellStyleToAutoTableStyles(col.headerStyle),
     };
   }
 
@@ -963,10 +964,11 @@ export class TableBlock<T> implements MeasurableBlock {
 
   /**
    * columnStyles.halign only affects the body — head/foot need each column's alignment set per cell
-   * full precedence: conditional > zebra > column-level (headerStyle/cellStyle) > row-type (Typography)
+   * full precedence: column conditionalStyle > table conditional > zebra > column-level (headerStyle/cellStyle) > row-type (Typography)
    * cellStyle is already merged into columnStyles before this point (see renderFlat/renderGrouped) —
    * this handles headerStyle (head section only, since columnStyles has no effect on head)
-   * and zebra/conditional (body section only), which must run last so they can override cellStyle
+   * and zebra/conditional + the per-column conditionalStyle (body section only), which run last so
+   * they override cellStyle; the per-column one is applied last as the most specific layer
    */
   private cellHook(
     aligns: readonly ResolvedAlign[],
@@ -983,7 +985,7 @@ export class TableBlock<T> implements MeasurableBlock {
         if (typeof data.cell.raw === 'object') return;
         if (align) data.cell.styles.halign = align.header;
         const column = columns[data.column.index];
-        Object.assign(data.cell.styles, partialTextStyleToAutoTableStyles(column?.headerStyle));
+        Object.assign(data.cell.styles, cellStyleToAutoTableStyles(column?.headerStyle));
         return;
       }
 
@@ -997,6 +999,13 @@ export class TableBlock<T> implements MeasurableBlock {
       if (row === undefined) return;
       const override = resolveRowStyle(styleOptions, row, data.row.index);
       Object.assign(data.cell.styles, cellStyleToAutoTableStyles(override));
+
+      // per-column conditionalStyle — the most specific layer, applied on top of the table-level style
+      const column = columns[data.column.index];
+      if (column && 'conditionalStyle' in column && column.conditionalStyle) {
+        const cellOverride = column.conditionalStyle(row);
+        if (cellOverride) Object.assign(data.cell.styles, cellStyleToAutoTableStyles(cellOverride));
+      }
     };
   }
 

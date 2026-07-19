@@ -82,12 +82,12 @@ Everything ultimately compiles to the same `ReportNode` tree, which is the singl
 ## What's included
 
 - **Blocks**: text, spacer, divider, image, table (flat + grouped + nested groups), signature, stack/section (composite layout), a raw escape hatch for custom drawing
-- **Table features**: row numbers, computed columns, running totals, aggregates (sum/avg/count/min/max/custom), per-group or grand-total subtotals, zebra striping, conditional row styles, column-level style overrides
+- **Table features**: row numbers, computed columns, running totals, aggregates (sum/avg/count/min/max/custom), per-group or grand-total subtotals, ready-made colour themes (9 presets + custom palette), zebra striping, conditional row styles, column-level style overrides
 - **Page composition**: repeating page header/footer bands, anchored system fields (`{pageNumber}`, `{totalPages}`, `{date}`, ...), watermarks, a `ReportRegistry` for composing multi-section reports
 - **Universal**: the core renders in Node and the browser (bundler-friendly, no static `node:` imports outside the Node I/O boundary)
 - **Strict TypeScript**: no `any`, `noUncheckedIndexedAccess` + `exactOptionalPropertyTypes` clean
 
-See [`examples/`](examples) for 13 runnable demos (numbered basic → advanced) covering every feature above — run any of them directly with `npx tsx examples/<name>/index.ts`, or `npm run demo` to generate all of them at once into `examples/output/`.
+See [`examples/`](examples) for 14 runnable demos (numbered basic → advanced) covering every feature above — run any of them directly with `npx tsx examples/<name>/index.ts`, or `npm run demo` to generate all of them at once into `examples/output/`.
 
 ## Scripts
 

@@ -6,10 +6,11 @@
  *   - a declarative page-header band (logo + "Kapom Report" + printed timestamp) and a page footer
  *   - a master-detail table with a multi-row (column-group) header
  *   - two levels of summary: a subtotal on each nested child table, plus a master grand total
+ *   - a value-driven per-column cell highlight (a negative/returned line total turns red)
  *   - a "Summary section" content block: two equal, bordered boxes side by side
  *   - a margin-only page number
  *
- * Palette: the same pastel-green family as demo 10 (Kapom Report's main colour), applied via the
+ * Palette: the same pastel-green family as demo 11-quotation (Kapom Report's main colour), applied via the
  * per-table `style.header` override and the box/divider colours.
  */
 import { readFileSync } from 'node:fs';
@@ -34,6 +35,8 @@ const TOTAL: RGB = [62, 112, 80]; // master grand-total fill (deep green)
 const WHITE: RGB = [255, 255, 255];
 const INK: RGB = [40, 40, 40];
 const MUTED: RGB = [95, 95, 95];
+const RED: RGB = [198, 40, 40]; // negative-amount highlight
+const RED_TINT: RGB = [250, 226, 226]; // softer red for the wider master Amount cell
 
 const money = (n: number): string =>
   n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -55,6 +58,8 @@ function childTable(items: readonly LineItem[]): TableNode<unknown> {
         align: 'right',
         aggregate: 'sum',
         numberFormat: { fractionDigits: 2 },
+        // per-column conditional cell style: only this cell turns red when the line total is negative
+        conditionalStyle: (li) => (li.unitPrice * li.qty < 0 ? { fillColor: RED, textColor: WHITE } : undefined),
       }),
     ],
     data: items,
@@ -77,7 +82,13 @@ function masterTable(orders: readonly Order[]): TableNode<Order> {
       c.group('Order info', [c.data('poNumber', 'PO no.'), c.data('vendor', 'Vendor')]),
       c.group('Financials', [
         c.computed('Qty', orderQty, { align: 'right', aggregate: 'sum', numberFormat: { fractionDigits: 0 } }),
-        c.computed('Amount', orderAmount, { align: 'right', aggregate: 'sum', numberFormat: { fractionDigits: 2 } }),
+        c.computed('Amount', orderAmount, {
+          align: 'right',
+          aggregate: 'sum',
+          numberFormat: { fractionDigits: 2 },
+          // the master Amount cell for an order that nets negative gets a soft red highlight too
+          conditionalStyle: (o) => (orderAmount(o) < 0 ? { fillColor: RED_TINT, textColor: RED } : undefined),
+        }),
       ]),
     ],
     data: orders,
