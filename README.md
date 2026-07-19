@@ -90,11 +90,12 @@ import { reportBuilder } from 'kapom-report';
 
 reportBuilder<{ name: string }>()
   .font({
+    // register any TTF — Sarabun here covers Thai; use a CJK / Arabic / etc. font for those scripts
     fonts: [{ family: 'Sarabun', data: new Uint8Array(readFileSync('Sarabun-Regular.ttf')), style: 'normal' }],
   })
   .table({
-    columns: [{ key: 'name', header: 'ชื่อ' }],
-    data: [{ name: 'ทดสอบ' }],
+    columns: [{ key: 'name', header: 'Name' }],
+    data: [{ name: 'Preecha' }], // renders any Unicode the registered font supports
   })
   .save('report.pdf');
 ```
