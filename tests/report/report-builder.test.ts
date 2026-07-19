@@ -216,6 +216,28 @@ describe('reportBuilder — table() single-table shorthand', () => {
     });
   });
 
+  it('master-detail: nested / nestedLayout / nestedIndentColumn ผ่านเข้า TableNode', () => {
+    const child = { type: 'table', columns: [{ type: 'data', key: 'x', header: 'X' }], data: [] } as never;
+    const nested = (): typeof child => child;
+
+    const config = reportBuilder<Sale>()
+      .table({
+        columns: [{ key: 'product', header: 'Product' }],
+        data: [],
+        nested,
+        nestedLayout: 'below',
+        nestedIndentColumn: 1,
+      })
+      .toConfig();
+
+    expect(config.blocks[0]).toMatchObject({
+      type: 'table',
+      nested,
+      nestedLayout: 'below',
+      nestedIndentColumn: 1,
+    });
+  });
+
   it('เรียก table() ครั้งที่ 2 → throw', () => {
     const builder = reportBuilder<Sale>().table({ columns: [{ key: 'product', header: 'Product' }], data: [] });
 

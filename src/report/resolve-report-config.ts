@@ -83,6 +83,12 @@ export interface KapomReportConfig<T> extends KapomReportBaseOptions {
   summaryLabel?: string;
   /** message shown when `data` is empty — default 'No data' (DEFAULT_NO_DATA_TEXT) */
   noDataText?: string;
+  /** master-detail: a sub-table per row (see TableNode.nested) — mutually exclusive with `group` (throws if both set) */
+  nested?: NonNullable<TableNode<T>['nested']>;
+  /** how a nested child lays out — 'stacked' (default) or 'below' (see TableNode.nestedLayout) */
+  nestedLayout?: NonNullable<TableNode<T>['nestedLayout']>;
+  /** 0-based master column the 'below' child's left edge aligns to (see TableNode.nestedIndentColumn) */
+  nestedIndentColumn?: NonNullable<TableNode<T>['nestedIndentColumn']>;
 }
 
 /**
@@ -156,6 +162,9 @@ export function resolveTableNode<T>(config: KapomTableInput<T>): TableNode<T> {
     columns: config.columns.map(resolveColumn),
     data: config.data,
     ...(group !== undefined ? { group } : {}),
+    ...(config.nested !== undefined ? { nested: config.nested } : {}),
+    ...(config.nestedLayout !== undefined ? { nestedLayout: config.nestedLayout } : {}),
+    ...(config.nestedIndentColumn !== undefined ? { nestedIndentColumn: config.nestedIndentColumn } : {}),
     ...(config.style !== undefined ? { style: config.style } : {}),
     ...(config.summaryLabel !== undefined ? { summaryLabel: config.summaryLabel } : {}),
     ...(config.noDataText !== undefined ? { noDataText: config.noDataText } : {}),
