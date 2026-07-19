@@ -9,3 +9,6 @@ types-stub/
 examples/output/
 docs/
 bug-repros/
+
+# Claude context — internal planning, not for the public repo
+CLAUDE.md
