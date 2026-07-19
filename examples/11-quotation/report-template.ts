@@ -167,27 +167,19 @@ export function buildQuotation(quotation: Quotation): KapomReport {
       labeledSection('PROJECT DESCRIPTION', { content: quotation.projectDescription, style: { fontSize: 10, color: MUTED } }),
       spacer(4),
     )
-    // line items — Total is a computed column, zebra tints the body
-    .content(
-      {
-        type: 'table',
-        columns: [
-          { type: 'data', key: 'description', header: 'Description' },
-          { type: 'data', key: 'qty', header: 'Quantity', align: 'center' },
-          { type: 'data', key: 'unitPrice', header: 'Price', align: 'right', numberFormat: {} },
-          {
-            type: 'computed',
-            header: 'Total',
-            align: 'right',
-            compute: (row) => row.qty * row.unitPrice,
-            numberFormat: {},
-          },
-        ],
-        data: quotation.items,
-        style: { header: { fillColor: BRAND_HEAD }, zebra: { even: ZEBRA_FILL } },
-      },
-      spacer(6),
-    )
+    // line items — Total is a computed column, zebra tints the body ('.table()' takes the
+    // single-table config inline; { key, header } shorthand, no 'type: table' wrapper)
+    .table({
+      columns: [
+        { key: 'description', header: 'Description' },
+        { key: 'qty', header: 'Quantity', align: 'center' },
+        { key: 'unitPrice', header: 'Price', align: 'right', numberFormat: {} },
+        { type: 'computed', header: 'Total', align: 'right', compute: (row) => row.qty * row.unitPrice, numberFormat: {} },
+      ],
+      data: quotation.items,
+      style: { header: { fillColor: BRAND_HEAD }, zebra: { even: ZEBRA_FILL } },
+    })
+    .content(spacer(6))
     // totals — right column only; keyValue right-aligns the numbers, box highlights the total
     .content(
       totals(subtotal, vat, grandTotal),

@@ -11,7 +11,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { col, reportBuilder, spacer } from '../../src/index';
-import type { KapomReport, ReportNodeInput, RGB, TableNode } from '../../src/index';
+import type { KapomReport, ReportNodeInput, RGB } from '../../src/index';
 import { fontConfig } from '../shared';
 import type { Sale } from './data';
 
@@ -39,15 +39,6 @@ const brandHeader: ReportNodeInput = {
 
 export function buildSignatureReport(sales: Sale[]): KapomReport {
   const c = col<Sale>();
-  const salesTable: TableNode<Sale> = {
-    type: 'table',
-    columns: [
-      c.data('product', 'Product'),
-      c.data('qty', 'Qty', { align: 'right', aggregate: 'sum' }),
-    ],
-    data: sales,
-    summaryLabel: 'Total',
-  };
 
   const report = reportBuilder<Sale>()
     .font(fontConfig)
@@ -56,8 +47,12 @@ export function buildSignatureReport(sales: Sale[]): KapomReport {
     // opacity/color/fontFamily fall back to defaults; for full control write a render callback instead.
     .watermark({ text: 'DRAFT', layout: 'tile', rotate: 45, fontSize: 30, showOnFirstPage: true })
     .title('Monthly Sales Report')
+    .table({
+      columns: [c.data('product', 'Product'), c.data('qty', 'Qty', { align: 'right', aggregate: 'sum' })],
+      data: sales,
+      summaryLabel: 'Total',
+    })
     .content(
-      salesTable,
       spacer(16),
       // an ordinary block — flows right after the table. To pin it to the page bottom instead,
       // pass it to .summary() rather than .content().

@@ -238,12 +238,18 @@ describe('reportBuilder — table() single-table shorthand', () => {
     });
   });
 
-  it('เรียก table() ครั้งที่ 2 → throw', () => {
-    const builder = reportBuilder<Sale>().table({ columns: [{ key: 'product', header: 'Product' }], data: [] });
+  it('table() หลายครั้ง → หลายตารางเรียงตามลำดับ call (interleave กับ content ได้)', () => {
+    const config = reportBuilder<Sale>()
+      .table({ columns: [{ key: 'product', header: 'Product' }], data: [] })
+      .content('note')
+      .table({ columns: [{ key: 'qty', header: 'Qty' }], data: [] })
+      .toConfig();
 
-    expect(() => builder.table({ columns: [{ key: 'qty', header: 'Qty' }], data: [] })).toThrow(
-      /can only be called once/,
-    );
+    expect(config.blocks).toEqual([
+      { type: 'table', columns: [{ type: 'data', key: 'product', header: 'Product' }], data: [] },
+      'note',
+      { type: 'table', columns: [{ type: 'data', key: 'qty', header: 'Qty' }], data: [] },
+    ]);
   });
 });
 

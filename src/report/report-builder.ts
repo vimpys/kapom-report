@@ -1,4 +1,3 @@
-import { KapomError } from '../core/errors';
 import type { PageBandRenderer } from '../core/page-band';
 import type { ReportNodeInput } from '../types/node';
 import { createKapomReport } from './create-kapom-report';
@@ -88,7 +87,6 @@ export class KapomReportBuilder<T = unknown> {
   private readonly bodyBlocks: ReportNodeInput<T>[] = [];
   private readonly summaryBlocks: ReportNodeInput<T>[] = [];
   private readonly options: Partial<KapomReportBaseOptions> = {};
-  private tableSet = false;
 
   // ── flow + once sections (methods, chainable) ─────────────────
   /** report title (once, first page) — a plain string becomes a `reportTitle` text + spacer; a node is prepended as-is */
@@ -108,22 +106,17 @@ export class KapomReportBuilder<T = unknown> {
   }
 
   /**
-   * The report's single table — takes the same single-table config the object form does, so the
-   * builder gets its Progressive-Disclosure shorthands: column `{ key, header }`, group string /
-   * `['region','category']` array, plus style / summaryLabel / noDataText. Appended to the content
-   * flow at the call site (interleaves with `.content(...)`), so it renders below `.title()`.
+   * Add a table from the single-table config — the same Progressive-Disclosure shorthands the
+   * object form takes: column `{ key, header }`, group string / `['region','category']` array,
+   * column groups (children may use shorthand too), master-detail (`nested`), plus style /
+   * summaryLabel / noDataText. Appended to the content flow at the call site (interleaves with
+   * `.content(...)`), so it renders below `.title()`.
    *
-   * Callable once — for multiple tables pass full `TableNode` objects to `.content(...)` separated
-   * by `pageBreak()` (each table can carry its own row type, which a single generic `T` can't).
+   * Repeatable — each call adds one table, in call order (drop a `.content(pageBreak())` between
+   * them to start a new page). All tables share the builder's single `T`; mixing different row
+   * types still needs `.content(TableNode)` + a cast, since one generic can't cover several types.
    */
   table(config: KapomTableInput<T>): this {
-    if (this.tableSet) {
-      throw new KapomError(
-        '.table() can only be called once. For multiple tables, pass TableNode objects to ' +
-          '.content(...) separated by pageBreak() (each can have its own row type).',
-      );
-    }
-    this.tableSet = true;
     // cast: TableNode<T> is invariant in T (DataColumn.key: keyof T), so it isn't directly
     // assignable to ReportNodeInput<T> — narrowed at this one contained site, same as untyped()
     this.bodyBlocks.push(resolveTableNode(config) as ReportNodeInput<T>);

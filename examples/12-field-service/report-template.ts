@@ -9,7 +9,7 @@
  * object — produces an identical report.
  */
 import { reportBuilder } from '../../src/index';
-import type { KapomReport, ReportNodeInput, RGB, TableNode } from '../../src/index';
+import type { KapomReport, KapomTableInput, ReportNodeInput, RGB } from '../../src/index';
 import { fontConfig } from '../shared';
 import type { FieldServiceReport, PartUsed } from './data';
 
@@ -86,13 +86,13 @@ function listArea(items: readonly string[]): Node {
   return { type: 'box', borderColor: BORDER, padding: 2.5, children };
 }
 
-function partsTable(parts: readonly PartUsed[]): TableNode<PartUsed> {
+/** the parts table config, fed to `.table()` — `{ key, header }` shorthand, no 'type: table' wrapper */
+function partsTable(parts: readonly PartUsed[]): KapomTableInput<PartUsed> {
   return {
-    type: 'table',
     columns: [
-      { type: 'data', key: 'name', header: 'Item' },
-      { type: 'data', key: 'qty', header: 'Qty', align: 'center', width: 20 },
-      { type: 'data', key: 'unitPrice', header: 'Unit Price', align: 'right', width: 30, numberFormat: {}, aggregate: 'sum' },
+      { key: 'name', header: 'Item' },
+      { key: 'qty', header: 'Qty', align: 'center', width: 20 },
+      { key: 'unitPrice', header: 'Unit Price', align: 'right', width: 30, numberFormat: {}, aggregate: 'sum' },
       {
         type: 'computed',
         header: 'Total',
@@ -178,8 +178,9 @@ export function buildFieldServiceReport(report: FieldServiceReport): KapomReport
 
     sectionBar('PARTS & MATERIALS USED'),
     { type: 'spacer', height: 2 },
-    partsTable(report.parts),
   );
+  // the parts table via `.table()` — flows right after the section bar above (call order = document order)
+  builder.table(partsTable(report.parts));
 
   return builder.build();
 }

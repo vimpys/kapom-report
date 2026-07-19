@@ -17,7 +17,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { col, formatTimestamp, reportBuilder } from '../../src/index';
-import type { KapomReport, ReportNodeInput, RGB, TableNode } from '../../src/index';
+import type { KapomReport, ReportNodeInput, RGB } from '../../src/index';
 import { fontConfig } from '../shared';
 import type { StockRow } from './data';
 
@@ -53,19 +53,6 @@ function headerRow(printedAt: string): ReportNodeInput {
 
 export function buildInventoryReport(stock: StockRow[]): KapomReport {
   const c = col<StockRow>();
-  const stockTable: TableNode<StockRow> = {
-    type: 'table',
-    columns: [
-      c.rowNumber({ align: 'right', width: 12 }),
-      c.data('sku', 'SKU', { width: 34 }),
-      c.data('item', 'Item'),
-      c.data('qty', 'Qty', { align: 'right', aggregate: 'sum' }),
-    ],
-    data: stock,
-    summaryLabel: 'Total',
-    style: { header: { fillColor: NAVY }, zebra: { even: [240, 244, 249] } },
-  };
-
   const report = reportBuilder<StockRow>().font(fontConfig);
 
   // ── the page frame ──
@@ -91,7 +78,17 @@ export function buildInventoryReport(stock: StockRow[]): KapomReport {
   // (right below the header) and paginates cleanly. A block before a page-spanning table would
   // leave the cursor mid-page, and the engine's measureHeight estimate would break before the
   // table even starts — see CLAUDE.md notes on table pagination.
-  report.content(stockTable);
+  report.table({
+    columns: [
+      c.rowNumber({ align: 'right', width: 12 }),
+      c.data('sku', 'SKU', { width: 34 }),
+      c.data('item', 'Item'),
+      c.data('qty', 'Qty', { align: 'right', aggregate: 'sum' }),
+    ],
+    data: stock,
+    summaryLabel: 'Total',
+    style: { header: { fillColor: NAVY }, zebra: { even: [240, 244, 249] } },
+  });
 
   return report.build();
 }
