@@ -193,6 +193,7 @@ export { ReportRegistry } from './report/report-registry';
 export type {
   KapomColumnInput,
   KapomGroupInput,
+  KapomTableInput,
   KapomDeclarativeBand,
   KapomPageBandInput,
   KapomReportBaseOptions,
@@ -201,7 +202,7 @@ export type {
   KapomReportInput,
   ResolvedReportConfig,
 } from './report/resolve-report-config';
-export { resolveReportConfig } from './report/resolve-report-config';
+export { resolveReportConfig, resolveTableNode } from './report/resolve-report-config';
 
 export type { KapomReport } from './report/create-kapom-report';
 

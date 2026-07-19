@@ -73,6 +73,13 @@ export interface KapomReportConfig<T> extends KapomReportBaseOptions {
 }
 
 /**
+ * The table-specific fields of a single-table config — report-level options (theme/font/…) are
+ * builder methods and `title` is `.title()`, so both are omitted. Used by `reportBuilder().table()`
+ * so the builder gets the same Progressive-Disclosure shorthands the single-table config has.
+ */
+export type KapomTableInput<T> = Omit<KapomReportConfig<T>, keyof KapomReportBaseOptions | 'title'>;
+
+/**
  * Full layer 3: pass a ReportNode tree directly (text/stack/section/signature/table freely
  * mixed, including a SectionNode[] from ReportRegistry.build) — the facade still wires up
  * jsPDF/RenderEngine/finalize exactly like the single-table config, just without composing the tree for you.
@@ -120,7 +127,7 @@ function resolveGroup<T>(input: KapomGroupInput<T> | undefined): GroupResolver<T
   return typeof input === 'object' ? input : { by: input };
 }
 
-function resolveTableNode<T>(config: KapomReportConfig<T>): TableNode<T> {
+export function resolveTableNode<T>(config: KapomTableInput<T>): TableNode<T> {
   const group = resolveGroup(config.group);
 
   return {

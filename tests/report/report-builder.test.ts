@@ -117,6 +117,80 @@ describe('reportBuilder — toConfig (pure assembly)', () => {
   });
 });
 
+describe('reportBuilder — table() single-table shorthand', () => {
+  interface Sale {
+    product: string;
+    qty: number;
+  }
+
+  it('column shorthand {key,header} → normalize เป็น DataColumn type:data', () => {
+    const config = reportBuilder<Sale>()
+      .table({
+        columns: [
+          { key: 'product', header: 'Product' },
+          { key: 'qty', header: 'Qty', align: 'right', aggregate: 'sum' },
+        ],
+        data: [{ product: 'A', qty: 2 }],
+      })
+      .toConfig();
+
+    expect(config.blocks).toEqual([
+      {
+        type: 'table',
+        columns: [
+          { type: 'data', key: 'product', header: 'Product' },
+          { type: 'data', key: 'qty', header: 'Qty', align: 'right', aggregate: 'sum' },
+        ],
+        data: [{ product: 'A', qty: 2 }],
+      },
+    ]);
+  });
+
+  it('group string shorthand → { by }', () => {
+    const config = reportBuilder<Sale>()
+      .table({ columns: [{ key: 'product', header: 'Product' }], data: [], group: 'product' })
+      .toConfig();
+
+    expect(config.blocks[0]).toMatchObject({ type: 'table', group: { by: 'product' } });
+  });
+
+  it('group array shorthand → subGroup chain เรียงนอก→ใน', () => {
+    const config = reportBuilder<Sale>()
+      .table({ columns: [{ key: 'product', header: 'Product' }], data: [], group: ['product', 'qty'] })
+      .toConfig();
+
+    expect(config.blocks[0]).toMatchObject({
+      type: 'table',
+      group: { by: 'product', subGroup: { by: 'qty' } },
+    });
+  });
+
+  it('table() แทรกใน body ตามลำดับ call — title → content → table → content', () => {
+    const config = reportBuilder<Sale>()
+      .title('T')
+      .content('intro')
+      .table({ columns: [{ key: 'product', header: 'Product' }], data: [] })
+      .content('note')
+      .toConfig();
+
+    expect(config.blocks).toEqual([
+      { type: 'text', content: 'T', role: 'reportTitle' },
+      { type: 'spacer', height: 6 },
+      'intro',
+      { type: 'table', columns: [{ type: 'data', key: 'product', header: 'Product' }], data: [] },
+      'note',
+    ]);
+  });
+
+  it('เรียก table() ครั้งที่ 2 → throw', () => {
+    const builder = reportBuilder<Sale>().table({ columns: [{ key: 'product', header: 'Product' }], data: [] });
+
+    expect(() => builder.table({ columns: [{ key: 'qty', header: 'Qty' }], data: [] })).toThrow(
+      /can only be called once/,
+    );
+  });
+});
+
 describe('reportBuilder — build (เท่ากับ object form)', () => {
   it('build() คืน KapomReport ที่มี doc/save/preview', () => {
     const report = reportBuilder()
