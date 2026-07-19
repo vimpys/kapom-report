@@ -10,7 +10,7 @@ const NO_RAW_DOC_TEXT = {
 
 export default tseslint.config(
   {
-    ignores: ['dist/**', 'coverage/**', 'examples/output/**'],
+    ignores: ['dist/**', 'coverage/**', 'examples/output/**', 'docs/**'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
