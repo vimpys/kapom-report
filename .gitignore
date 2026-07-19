@@ -8,3 +8,4 @@ coverage/
 types-stub/
 examples/output/
 docs/
+bug-repros/

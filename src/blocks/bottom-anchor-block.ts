@@ -23,14 +23,18 @@ export class BottomAnchorBlock implements MeasurableBlock {
     const measureCtx = deriveMeasureContext(ctx);
     const childrenHeight = measureBlocksHeight(this.children, measureCtx);
 
+    // Break once, as a group, if the children don't fit in the space left on this page — so they get
+    // pinned to the bottom of a fresh page rather than stranded mid-page. (Redundant with the engine's
+    // break-before check in the normal flow, but keeps the block correct when rendered directly.)
+    ctx.ensureSpace(childrenHeight);
+
     const gap = ctx.contentBottom - ctx.cursor.y - childrenHeight;
     if (gap > 0) ctx.advanceY(gap);
 
-    // render children like a stack (per-child ensureSpace) so a child that still overflows breaks
-    for (const child of this.children) {
-      const height = child.measureHeight(measureCtx);
-      ctx.ensureSpace(height);
-      child.render(ctx);
-    }
+    // Render the children directly — NO per-child ensureSpace. The group already fits (checked above)
+    // and advanceY pinned it to the bottom. A per-child ensureSpace would re-measure the space we
+    // deliberately filled and, on a floating-point rounding at the exact bottom edge, spuriously break
+    // the last child to the next page — leaving the summary stranded at the top of a new page (B2).
+    for (const child of this.children) child.render(ctx);
   }
 }
