@@ -1,5 +1,10 @@
 # kapom-report
 
+[![npm version](https://img.shields.io/npm/v/kapom-report.svg)](https://www.npmjs.com/package/kapom-report)
+[![minzipped size](https://img.shields.io/bundlephobia/minzip/kapom-report)](https://bundlephobia.com/package/kapom-report)
+[![types](https://img.shields.io/npm/types/kapom-report.svg)](https://www.npmjs.com/package/kapom-report)
+[![license](https://img.shields.io/npm/l/kapom-report.svg)](./LICENSE)
+
 Declarative PDF report library wrapping [jsPDF](https://github.com/parallax/jsPDF) 4.x + [jspdf-autotable](https://github.com/simonbengtsson/jsPDF-AutoTable) 5.x — auto grouping, subtotals, composite reports, strict TypeScript.
 
 Solves the usual pain points of hand-rolled jsPDF reports: manual x/y cursor tracking, page-break bookkeeping, and re-deriving the same table/group/subtotal logic on every report. Multi-page (100+ pages) reports are a first-class case, not an afterthought.

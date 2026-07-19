@@ -1,7 +1,7 @@
 {
   "name": "kapom-report",
   "version": "0.1.0",
-  "description": "Declarative PDF report library wrapping jsPDF + AutoTable — auto grouping, subtotals, composite reports, strict TypeScript",
+  "description": "Declarative, strictly-typed PDF reports on jsPDF + AutoTable — automatic grouping, subtotals, and multi-page composition without manual cursor math. Thai-ready.",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -29,12 +29,20 @@
   },
   "keywords": [
     "pdf",
+    "pdf-generation",
     "report",
+    "invoice",
+    "table",
+    "grouped-table",
+    "subtotal",
     "jspdf",
+    "jspdf-autotable",
     "autotable",
     "typescript",
     "declarative",
-    "thai"
+    "thai",
+    "node",
+    "browser"
   ],
   "license": "MIT",
   "publishConfig": {
