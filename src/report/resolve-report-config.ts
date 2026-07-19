@@ -13,7 +13,18 @@ import type { FontConfig } from '../font/font-config';
 import type { DeepPartial, HAlign } from '../types/primitives';
 import type { Typography } from '../types/typography';
 import type { DataColumnShorthand, ReportColumn, TableColumn } from '../types/column';
-import type { GroupResolver, ReportNode, ReportNodeInput, TableNode, TableStyleOptions } from '../types/node';
+import type { GroupResolver, ReportNode, ReportNodeInput, SpacerNode, TableNode, TableStyleOptions, TextNode } from '../types/node';
+
+/** the spacer height under a report title (the once-at-top region) */
+const DEFAULT_TITLE_SPACER_HEIGHT = 6;
+
+/** the report title as blocks — a `reportTitle` text + a spacer; shared by this facade and the fluent builder so `title` behaves identically in both */
+export function reportTitleBlocks(title: string): [TextNode, SpacerNode] {
+  return [
+    { type: 'text', content: title, role: 'reportTitle' },
+    { type: 'spacer', height: DEFAULT_TITLE_SPACER_HEIGHT },
+  ];
+}
 
 /**
  * A column group whose children may themselves use the `{ key, header }` shorthand (recursively) —
@@ -216,9 +227,7 @@ export function resolveReportConfig<T>(config: KapomReportInput<T>): ResolvedRep
 
   const tableNode = resolveTableNode(config);
   const blocks: ReportNode<T>[] =
-    config.title !== undefined
-      ? [{ type: 'text', content: config.title, role: 'reportTitle' }, { type: 'spacer', height: 6 }, tableNode]
-      : [tableNode];
+    config.title !== undefined ? [...reportTitleBlocks(config.title), tableNode] : [tableNode];
 
   return { blocks, engineOptions, documentOptions };
 }

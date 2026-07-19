@@ -86,8 +86,7 @@ describe('reportBuilder — toConfig (pure assembly)', () => {
     const builder = reportBuilder()
       .content('body')
       .pageNumber('bottom-center')
-      .margins({ top: 20, bottom: 20, left: 20, right: 20 })
-      .document({ orientation: 'landscape' });
+      .pageSetup({ orientation: 'landscape', margins: { top: 20, bottom: 20, left: 20, right: 20 } });
     builder.pageHeader.addBlock('H').height(10);
     const config = builder.toConfig();
 

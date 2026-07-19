@@ -2,7 +2,7 @@ import type { PageBandRenderer } from '../core/page-band';
 import type { ReportNodeInput } from '../types/node';
 import { createKapomReport } from './create-kapom-report';
 import type { KapomReport } from './create-kapom-report';
-import { resolveTableNode } from './resolve-report-config';
+import { reportTitleBlocks, resolveTableNode } from './resolve-report-config';
 import type {
   KapomBlocksConfig,
   KapomPageBandInput,
@@ -92,7 +92,7 @@ export class KapomReportBuilder<T = unknown> {
   /** report title (once, first page) — a plain string becomes a `reportTitle` text + spacer; a node is prepended as-is */
   title(block: string | ReportNodeInput<T>): this {
     if (typeof block === 'string') {
-      this.titleBlocks.push({ type: 'text', content: block, role: 'reportTitle' }, { type: 'spacer', height: 6 });
+      this.titleBlocks.push(...reportTitleBlocks(block));
     } else {
       this.titleBlocks.push(block);
     }
@@ -140,7 +140,11 @@ export class KapomReportBuilder<T = unknown> {
     return this;
   }
 
-  /** paper size / orientation / unit + margins in one place; splits internally (format/orientation/unit → jsPDF, margins → layout) */
+  /**
+   * Paper size / orientation / unit + page margins in one place — the single page-setup entry.
+   * Splits internally: format/orientation/unit/… → jsPDF document options, margins → layout.
+   * Margins only: `pageSetup({ margins })`; orientation only: `pageSetup({ orientation })`.
+   */
   pageSetup(setup: Opt<'document'> & { margins?: Opt<'margins'> }): this {
     const { margins, ...document } = setup;
     if (margins !== undefined) this.options.margins = margins;
@@ -150,16 +154,6 @@ export class KapomReportBuilder<T = unknown> {
 
   font(config: Opt<'font'>): this {
     this.options.font = config;
-    return this;
-  }
-
-  margins(margins: Opt<'margins'>): this {
-    this.options.margins = margins;
-    return this;
-  }
-
-  document(document: Opt<'document'>): this {
-    this.options.document = document;
     return this;
   }
 
