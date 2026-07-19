@@ -1,6 +1,8 @@
 # kapom-report
 
 [![npm version](https://img.shields.io/npm/v/kapom-report.svg)](https://www.npmjs.com/package/kapom-report)
+[![CI](https://github.com/vimpys/kapom-report/actions/workflows/ci.yml/badge.svg)](https://github.com/vimpys/kapom-report/actions/workflows/ci.yml)
+[![docs](https://img.shields.io/badge/docs-online-4c9bd6)](https://vimpys.github.io/kapom-report/)
 [![minzipped size](https://img.shields.io/bundlephobia/minzip/kapom-report)](https://bundlephobia.com/package/kapom-report)
 [![types](https://img.shields.io/npm/types/kapom-report.svg)](https://www.npmjs.com/package/kapom-report)
 [![license](https://img.shields.io/npm/l/kapom-report.svg)](./LICENSE)
@@ -8,6 +10,8 @@
 **Kapom Report** is the easy way to build [jsPDF](https://github.com/parallax/jsPDF) 4.x + [jspdf-autotable](https://github.com/simonbengtsson/jsPDF-AutoTable) 5.x reports — grouped tables, subtotals, and multi-page layouts in a few declarative lines, in Node or the browser. No manual x/y cursor math, strict TypeScript, Thai-ready.
 
 It solves the usual pain points of hand-rolled jsPDF reports: manual x/y cursor tracking, page-break bookkeeping, and re-deriving the same table/group/subtotal logic on every report. Multi-page (100+ pages) reports are a first-class case, not an afterthought.
+
+**[API reference →](https://vimpys.github.io/kapom-report/)**
 
 ## Install
 
