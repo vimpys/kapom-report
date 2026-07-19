@@ -10,7 +10,24 @@ Solves the usual pain points of hand-rolled jsPDF reports: manual x/y cursor tra
 npm install kapom-report jspdf jspdf-autotable
 ```
 
-`jspdf`/`jspdf-autotable` are peer dependencies — kapom-report doesn't bundle them. Node.js >=22.3 (for the Node-side file I/O in `save()`/`preview()`); the core library also runs in the browser via a bundler.
+`jspdf`/`jspdf-autotable` are peer dependencies — kapom-report doesn't bundle them.
+
+### Runtime support
+
+The **core** (building a PDF and reading its bytes with `doc.output(...)`) runs anywhere — Node, the browser via a bundler, and edge/worker runtimes.
+
+The `save()` / `preview()` **convenience** methods do file I/O, so they need one of:
+
+- **Node.js ≥ 18.20.4 / 20.16.0 / 22.3** — they rely on `process.getBuiltinModule`, added in those releases. On an older Node they throw a clear error instead of crashing.
+- **A browser** — `save()` triggers a download, `preview()` opens a new tab.
+
+On any other runtime (an older Node, Deno, Bun, React Native, an edge runtime), skip `save()`/`preview()` and write the bytes yourself — it's one line and works everywhere:
+
+```ts
+import { writeFileSync } from 'node:fs';
+const report = createKapomReport({ columns, data });
+writeFileSync('report.pdf', Buffer.from(report.doc.output('arraybuffer')));
+```
 
 ## Quick start
 

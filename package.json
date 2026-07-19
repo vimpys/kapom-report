@@ -50,7 +50,7 @@
     "jspdf-autotable": "^5.0.0"
   },
   "engines": {
-    "node": ">=22.3.0"
+    "node": ">=18.20.4"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
