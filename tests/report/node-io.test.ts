@@ -68,8 +68,8 @@ describe('assertNodeIoSupported — Node < 22.3 guard', () => {
       (process as unknown as { getBuiltinModule?: unknown }).getBuiltinModule = undefined;
 
       expect(() => assertNodeIoSupported('preview')).toThrow(KapomError);
-      expect(() => assertNodeIoSupported('preview')).toThrow(/preview\(\) needs process\.getBuiltinModule/);
-      expect(() => assertNodeIoSupported('save')).toThrow(/save\(\) needs process\.getBuiltinModule/);
+      expect(() => assertNodeIoSupported('preview')).toThrow(/preview\(\) needs Node >= 22\.3/);
+      expect(() => assertNodeIoSupported('save')).toThrow(/save\(\) needs Node >= 22\.3/);
     } finally {
       (process as unknown as { getBuiltinModule?: unknown }).getBuiltinModule = original;
     }

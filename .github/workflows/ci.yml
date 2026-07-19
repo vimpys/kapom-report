@@ -9,17 +9,17 @@ on:
 permissions:
   contents: read
 
+# The library requires Node >= 22.3 (save()/preview() use process.getBuiltinModule, added there).
+# Node 22 is the LTS floor, 24 is current — both run the full pipeline including the demos, which
+# exercise the real library end to end (getBuiltinModule + save() writing a PDF).
 jobs:
-  # Full pipeline on the Node versions the dev toolchain supports (vitest/eslint need >= 20.19).
-  # Node 20.19.0 is the floor: it's the lowest that runs the tools AND already carries the
-  # back-ported process.getBuiltinModule (Node 20.16+), so it exercises the LTS I/O path too.
   verify:
     name: verify (node ${{ matrix.node }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        node: ['20.19.0', '22', '24']
+        node: ['22', '24']
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -29,27 +29,6 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
-      - run: npm test
-      - run: npm run build
-      - run: npm run demo
-
-  # The engines floor: Node 20.16.0 is where process.getBuiltinModule was back-ported (also 22.3),
-  # so it's the lowest Node where save()/preview() work. eslint needs >= 20.19 so lint runs in the
-  # verify job above, but vitest/tsup/tsx run here — and the demos exercise the real library end to
-  # end (process.getBuiltinModule + save() writing a PDF), proving the floor actually works.
-  # (Node 18 is intentionally not covered: getBuiltinModule isn't available there, so save()/preview()
-  # can't run — Node 18 users use report.doc.output('arraybuffer') instead.)
-  floor:
-    name: node 20.16.0 (engines floor — no lint)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20.16.0'
-          cache: npm
-      - run: npm ci
-      - run: npm run typecheck
       - run: npm test
       - run: npm run build
       - run: npm run demo
