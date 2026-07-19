@@ -37,6 +37,9 @@
     "thai"
   ],
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "author": "Kapom (https://github.com/vimpys)",
   "repository": {
     "type": "git",

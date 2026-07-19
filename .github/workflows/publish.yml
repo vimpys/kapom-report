@@ -1,0 +1,29 @@
+name: Publish
+
+# Publishes to npm when a GitHub Release is published (create a release tagged
+# e.g. v1.0.0). Can also be triggered manually from the Actions tab.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # required for npm provenance (supply-chain attestation)
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+          cache: npm
+      - run: npm ci
+      # npm publish runs prepublishOnly (typecheck + lint + test + build) first,
+      # so a broken build never reaches the registry.
+      - run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
