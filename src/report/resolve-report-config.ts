@@ -10,13 +10,26 @@ import type { WatermarkInput } from '../core/watermark';
 import type { ThemeInput } from '../theme/theme';
 import type { RenderEngineOptions } from '../core/engine';
 import type { FontConfig } from '../font/font-config';
-import type { DeepPartial } from '../types/primitives';
+import type { DeepPartial, HAlign } from '../types/primitives';
 import type { Typography } from '../types/typography';
-import type { DataColumnShorthand, ReportColumn } from '../types/column';
+import type { DataColumnShorthand, ReportColumn, TableColumn } from '../types/column';
 import type { GroupResolver, ReportNode, ReportNodeInput, TableNode, TableStyleOptions } from '../types/node';
 
-/** layer 1: the shorthand `{ key, header }`; layer 3: a full ReportColumn (rowNumber/computed/runningTotal still need `type`) */
-export type KapomColumnInput<T> = ReportColumn<T> | DataColumnShorthand<T>;
+/**
+ * A column group whose children may themselves use the `{ key, header }` shorthand (recursively) —
+ * the shorthand-aware input counterpart of `ColumnGroup`. Lets the single-table config / `.table()`
+ * express multi-level spanned headers, same as a full `TableNode`.
+ */
+export interface KapomColumnGroupInput<T> {
+  type: 'group';
+  header: string;
+  /** super-header cell alignment — default 'center' */
+  headerAlign?: HAlign;
+  columns: readonly KapomColumnInput<T>[];
+}
+
+/** layer 1: the shorthand `{ key, header }`; a full ReportColumn (rowNumber/computed/runningTotal need `type`); or a column group (children may use shorthand too) */
+export type KapomColumnInput<T> = ReportColumn<T> | DataColumnShorthand<T> | KapomColumnGroupInput<T>;
 
 /**
  * layer 2: a simple string key group, or an array of keys = a nested group ordered outer→inner (roadmap 10);
@@ -99,11 +112,19 @@ export interface ResolvedReportConfig<T> {
   documentOptions: jsPDFOptions | undefined;
 }
 
-function isShorthandColumn<T>(input: KapomColumnInput<T>): input is DataColumnShorthand<T> {
+function isColumnGroupInput<T>(input: KapomColumnInput<T>): input is KapomColumnGroupInput<T> {
+  return 'type' in input && input.type === 'group';
+}
+
+function isShorthandColumn<T>(input: ReportColumn<T> | DataColumnShorthand<T>): input is DataColumnShorthand<T> {
   return !('type' in input);
 }
 
-function resolveColumn<T>(input: KapomColumnInput<T>): ReportColumn<T> {
+/** normalize one input column into a resolved TableColumn — a group recurses into its children, a shorthand gets `type: 'data'`, a full column passes through */
+function resolveColumn<T>(input: KapomColumnInput<T>): TableColumn<T> {
+  if (isColumnGroupInput(input)) {
+    return { ...input, columns: input.columns.map(resolveColumn) };
+  }
   return isShorthandColumn(input) ? { ...input, type: 'data' } : input;
 }
 

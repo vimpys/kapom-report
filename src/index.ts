@@ -192,6 +192,7 @@ export { ReportRegistry } from './report/report-registry';
 
 export type {
   KapomColumnInput,
+  KapomColumnGroupInput,
   KapomGroupInput,
   KapomTableInput,
   KapomDeclarativeBand,

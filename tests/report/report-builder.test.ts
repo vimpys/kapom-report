@@ -182,6 +182,40 @@ describe('reportBuilder — table() single-table shorthand', () => {
     ]);
   });
 
+  it('column group → resolve recursive, ลูกที่เป็น shorthand {key,header} ได้ type:data', () => {
+    const config = reportBuilder<Sale>()
+      .table({
+        columns: [
+          { key: 'product', header: 'Product' },
+          {
+            type: 'group',
+            header: 'Metrics',
+            columns: [
+              { key: 'qty', header: 'Qty', align: 'right' }, // shorthand ใน group
+              { type: 'computed', header: 'x2', compute: (row) => row.qty * 2 },
+            ],
+          },
+        ],
+        data: [],
+      })
+      .toConfig();
+
+    expect(config.blocks[0]).toMatchObject({
+      type: 'table',
+      columns: [
+        { type: 'data', key: 'product', header: 'Product' },
+        {
+          type: 'group',
+          header: 'Metrics',
+          columns: [
+            { type: 'data', key: 'qty', header: 'Qty', align: 'right' },
+            { type: 'computed', header: 'x2' },
+          ],
+        },
+      ],
+    });
+  });
+
   it('เรียก table() ครั้งที่ 2 → throw', () => {
     const builder = reportBuilder<Sale>().table({ columns: [{ key: 'product', header: 'Product' }], data: [] });
 

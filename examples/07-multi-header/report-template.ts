@@ -12,7 +12,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { col, reportBuilder } from '../../src/index';
-import type { KapomReport, ReportNodeInput, RGB, TableNode } from '../../src/index';
+import type { KapomReport, ReportNodeInput, RGB } from '../../src/index';
 import { fontConfig } from '../shared';
 import type { Sale } from './data';
 
@@ -67,28 +67,27 @@ const month = (key: MonthKey) => c.data(key, capitalize(key), { align: 'right', 
 const quarter = (label: string) => c.group(label, QUARTERS[label]!.map(month));
 
 export function buildQuarterlySales(sales: Sale[]): KapomReport {
-  const salesTable: TableNode<Sale> = {
-    type: 'table',
-    columns: [
-      // plain leaf columns span all 3 header rows automatically (rowSpan, centered vertically)
-      c.data('product', 'Product', { width: 30 }),
-      c.data('customer', 'Customer', { width: 22 }),
-      // 3-level header: Quarterly → Qtr 1-4 → the three months of each quarter
-      c.group('Quarterly', Object.keys(QUARTERS).map(quarter)),
-      c.computed('Total', (row) => MONTH_KEYS.reduce((sum, key) => sum + row[key], 0), {
-        align: 'right',
-        width: 22,
-        formatter: (value) => compact(Number(value)),
-        cellStyle: { fontStyle: 'bold' },
-      }),
-    ],
-    data: sales,
-  };
-
   const report = reportBuilder<Sale>()
     .font(fontConfig)
     .pageSetup({ orientation: 'landscape', margins: { top: 12, bottom: 12, left: 10, right: 10 } })
-    .title('Quarterly Sales — 3-level column-group header');
+    .title('Quarterly Sales — 3-level column-group header')
+    .table({
+      columns: [
+        // plain leaf columns span all 3 header rows automatically (rowSpan, centered vertically)
+        c.data('product', 'Product', { width: 30 }),
+        c.data('customer', 'Customer', { width: 22 }),
+        // 3-level header: Quarterly → Qtr 1-4 → the three months of each quarter — `.table()` takes
+        // column groups too (a group's children may even use the { key, header } shorthand)
+        c.group('Quarterly', Object.keys(QUARTERS).map(quarter)),
+        c.computed('Total', (row) => MONTH_KEYS.reduce((sum, key) => sum + row[key], 0), {
+          align: 'right',
+          width: 22,
+          formatter: (value) => compact(Number(value)),
+          cellStyle: { fontStyle: 'bold' },
+        }),
+      ],
+      data: sales,
+    });
 
   // brand page-header band — repeats on every page; reserved height is auto-measured from the blocks
   report.pageHeader
@@ -96,8 +95,6 @@ export function buildQuarterlySales(sales: Sale[]): KapomReport {
     .addBlock({ type: 'spacer', height: 1.5 })
     .addBlock({ type: 'divider', thickness: 0.2, color: RULE })
     .addBlock({ type: 'spacer', height: 2 });
-
-  report.content(salesTable);
 
   return report.build();
 }
