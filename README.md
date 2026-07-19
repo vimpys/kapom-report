@@ -37,24 +37,24 @@ writeFileSync('report.pdf', Buffer.from(report.doc.output('arraybuffer')));
 ## Quick start
 
 ```ts
-import { createKapomReport } from 'kapom-report';
+import { reportBuilder } from 'kapom-report';
 
-const report = createKapomReport({
-  title: 'Monthly Sales Report',
-  columns: [
-    { key: 'product', header: 'Product' },
-    { key: 'qty', header: 'Qty', align: 'right', aggregate: 'sum' },
-  ],
-  data: [
-    { product: 'Widget', qty: 12 },
-    { product: 'Gadget', qty: 7 },
-  ],
-});
-
-report.save('report.pdf');
+reportBuilder<{ product: string; qty: number }>()
+  .title('Monthly Sales Report')
+  .table({
+    columns: [
+      { key: 'product', header: 'Product' },
+      { key: 'qty', header: 'Qty', align: 'right', aggregate: 'sum' },
+    ],
+    data: [
+      { product: 'Widget', qty: 12 },
+      { product: 'Gadget', qty: 7 },
+    ],
+  })
+  .save('report.pdf');
 ```
 
-No font setup, no jsPDF/AutoTable knowledge required — this renders a titled table with a summed "Total" row out of the box.
+No font setup, no jsPDF/AutoTable knowledge required — this renders a titled table with a summed "Total" row out of the box. Prefer an object config? The same report is `createKapomReport({ title, columns, data }).save('report.pdf')`.
 
 New to the layout? **[Report anatomy](https://github.com/vimpys/kapom-report/tree/main/examples/00-report-anatomy)** maps every region of a report to the `reportBuilder()` method that produces it.
 
@@ -62,14 +62,16 @@ New to the layout? **[Report anatomy](https://github.com/vimpys/kapom-report/tre
 
 ```ts
 // sales: { product: string; category: string; qty: number }[]
-const report = createKapomReport({
-  columns: [
-    { key: 'product', header: 'Product' },
-    { key: 'qty', header: 'Qty', align: 'right', aggregate: 'sum' },
-  ],
-  data: sales,
-  group: 'category', // shorthand — or ['region', 'category'] for nested groups
-});
+reportBuilder<{ product: string; category: string; qty: number }>()
+  .table({
+    columns: [
+      { key: 'product', header: 'Product' },
+      { key: 'qty', header: 'Qty', align: 'right', aggregate: 'sum' },
+    ],
+    data: sales,
+    group: 'category', // shorthand — or ['region', 'category'] for nested groups
+  })
+  .save('sales.pdf');
 ```
 
 Each group gets a header band and a subtotal row; the whole table gets a grand total. Groups can nest to any depth via `GroupResolver.subGroup`, and keep-together rules stop a group's header from ever being stranded alone at the bottom of a page.
@@ -80,15 +82,17 @@ Standard PDF fonts (helvetica, times, etc.) have no Thai glyphs — kapom-report
 
 ```ts
 import { readFileSync } from 'node:fs';
-import { createKapomReport } from 'kapom-report';
+import { reportBuilder } from 'kapom-report';
 
-const report = createKapomReport({
-  font: {
+reportBuilder<{ name: string }>()
+  .font({
     fonts: [{ family: 'Sarabun', data: new Uint8Array(readFileSync('Sarabun-Regular.ttf')), style: 'normal' }],
-  },
-  columns: [{ key: 'name', header: 'ชื่อ' }],
-  data: [{ name: 'ทดสอบ' }],
-});
+  })
+  .table({
+    columns: [{ key: 'name', header: 'ชื่อ' }],
+    data: [{ name: 'ทดสอบ' }],
+  })
+  .save('report.pdf');
 ```
 
 ## Design
