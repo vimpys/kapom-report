@@ -51,7 +51,7 @@ report.save('report.pdf');
 
 No font setup, no jsPDF/AutoTable knowledge required — this renders a titled table with a summed "Total" row out of the box.
 
-New to the layout? **[Report anatomy](examples/00-report-anatomy/)** maps every region of a report to the `reportBuilder()` method that produces it.
+New to the layout? **[Report anatomy](https://github.com/vimpys/kapom-report/tree/main/examples/00-report-anatomy)** maps every region of a report to the `reportBuilder()` method that produces it.
 
 ### Grouping and subtotals
 
@@ -104,7 +104,7 @@ Everything ultimately compiles to the same `ReportNode` tree, which is the singl
 - **Universal**: the core renders in Node and the browser (bundler-friendly, no static `node:` imports outside the Node I/O boundary)
 - **Strict TypeScript**: no `any`, `noUncheckedIndexedAccess` + `exactOptionalPropertyTypes` clean
 
-See [`examples/`](examples) for 14 runnable demos (numbered basic → advanced) covering every feature above — run any of them directly with `npx tsx examples/<name>/index.ts`, or `npm run demo` to generate all of them at once into `examples/output/`.
+See [`examples/`](https://github.com/vimpys/kapom-report/tree/main/examples) for 14 runnable demos (numbered basic → advanced) covering every feature above — run any of them directly with `npx tsx examples/<name>/index.ts`, or `npm run demo` to generate all of them at once into `examples/output/`.
 
 ## Scripts
 
