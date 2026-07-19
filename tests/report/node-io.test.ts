@@ -2,7 +2,8 @@ import { existsSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { isNodeRuntime, TEMP_PDF_MAX_AGE_MS, writeTempPdf } from '../../src/report/node-io';
+import { KapomError } from '../../src/core/errors';
+import { assertNodeIoSupported, isNodeRuntime, TEMP_PDF_MAX_AGE_MS, writeTempPdf } from '../../src/report/node-io';
 
 const PDF_BYTES = new Uint8Array([0x25, 0x50, 0x44, 0x46]); // '%PDF'
 const created: string[] = [];
@@ -52,5 +53,25 @@ describe('node-io', () => {
     created.push(newFile);
 
     expect(existsSync(foreign)).toBe(true);
+  });
+});
+
+describe('assertNodeIoSupported — Node < 22.3 guard', () => {
+  it('Node จริง (>= 22.3, มี getBuiltinModule) → ไม่ throw', () => {
+    expect(() => assertNodeIoSupported('save')).not.toThrow();
+  });
+
+  it('จำลอง Node เก่า (ไม่มี getBuiltinModule) → throw KapomError ข้อความชัด พร้อมชื่อ op', () => {
+    const original = process.getBuiltinModule;
+    try {
+      // simulate Node < 22.3: still a Node process (process.versions.node), but no builtin loader
+      (process as unknown as { getBuiltinModule?: unknown }).getBuiltinModule = undefined;
+
+      expect(() => assertNodeIoSupported('preview')).toThrow(KapomError);
+      expect(() => assertNodeIoSupported('preview')).toThrow(/preview\(\) needs Node >= 22\.3/);
+      expect(() => assertNodeIoSupported('save')).toThrow(/save\(\) needs Node >= 22\.3/);
+    } finally {
+      (process as unknown as { getBuiltinModule?: unknown }).getBuiltinModule = original;
+    }
   });
 });

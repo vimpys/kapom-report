@@ -5,12 +5,31 @@
  * a shim or conditional exports (code in the Node branch never runs in the browser, since callers always check isNodeRuntime() first)
  */
 
+import { KapomError } from '../core/errors';
+
+/** true on any Node.js, regardless of version (has a `process.versions.node`) */
+function isNodeProcess(): boolean {
+  return typeof process !== 'undefined' && typeof process.versions?.node === 'string';
+}
+
+/** Node with the builtin-module loader (>= 22.3) — the only Node we can actually do file I/O in */
 export function isNodeRuntime(): boolean {
-  return (
-    typeof process !== 'undefined' &&
-    typeof process.versions?.node === 'string' &&
-    typeof process.getBuiltinModule === 'function'
-  );
+  return isNodeProcess() && typeof process.getBuiltinModule === 'function';
+}
+
+/**
+ * Guards save()/preview() against a too-old Node: on Node < 22.3 (Node but no getBuiltinModule),
+ * isNodeRuntime() is false, so the caller would otherwise fall through to jsPDF's browser-only path
+ * and crash with a confusing "document is not defined". Throw a clear, actionable error instead.
+ * No-op in the browser (not a Node process) — the browser path is legitimate there.
+ */
+export function assertNodeIoSupported(op: 'save' | 'preview'): void {
+  if (isNodeProcess() && typeof process.getBuiltinModule !== 'function') {
+    throw new KapomError(
+      `${op}() needs Node >= 22.3 (running Node ${process.versions.node}). On older Node, ` +
+        `get the bytes with report.doc.output('arraybuffer') and write the file yourself.`,
+    );
+  }
 }
 
 export function writeFile(filename: string, data: Uint8Array): void {

@@ -6,6 +6,7 @@ import { createKapomReport } from '../../src/report/create-kapom-report';
 // (Node I/O ทุกตัว mock ทิ้ง — เส้นทาง browser ห้ามเรียกถึงเลย)
 vi.mock('../../src/report/node-io', () => ({
   isNodeRuntime: () => false,
+  assertNodeIoSupported: vi.fn(), // browser = no-op (real one only throws on old Node)
   writeFile: vi.fn(),
   writeTempPdf: vi.fn(),
   openWithDefaultViewer: vi.fn(),

@@ -2,7 +2,7 @@ import { jsPDF } from 'jspdf';
 import { RenderEngine } from '../core/engine';
 import { createBlock } from '../blocks/create-block';
 import { KapomError } from '../core/errors';
-import { isNodeRuntime, openWithDefaultViewer, writeFile, writeTempPdf } from './node-io';
+import { assertNodeIoSupported, isNodeRuntime, openWithDefaultViewer, writeFile, writeTempPdf } from './node-io';
 import type { KapomReportInput } from './resolve-report-config';
 import { resolveReportConfig } from './resolve-report-config';
 
@@ -62,6 +62,7 @@ export function createKapomReport<T>(config: KapomReportInput<T>): KapomReport {
         writeFile(filename, pdfBytes());
         return;
       }
+      assertNodeIoSupported('save'); // clear error on Node < 22.3 (else jsPDF throws a cryptic DOM error)
       doc.save(filename); // browser: trigger a download
     },
     preview(): string {
@@ -70,6 +71,7 @@ export function createKapomReport<T>(config: KapomReportInput<T>): KapomReport {
         openWithDefaultViewer(file);
         return file;
       }
+      assertNodeIoSupported('preview'); // clear error on Node < 22.3
       // browser: blob URL + open in a new tab (return the URL in case the caller wants to embed it in an <iframe> themselves)
       const url = String(doc.output('bloburl'));
       openInNewTab(url);
