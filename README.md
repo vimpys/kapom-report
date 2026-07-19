@@ -41,14 +41,20 @@ writeFileSync('report.pdf', Buffer.from(report.doc.output('arraybuffer')));
 ## Quick start
 
 ```ts
-import { reportBuilder } from 'kapom-report';
+import { col, reportBuilder } from 'kapom-report';
 
-reportBuilder<{ product: string; qty: number }>()
+interface Sale {
+  product: string;
+  qty: number;
+}
+const c = col<Sale>(); // column constructors bound to the row type
+
+reportBuilder<Sale>()
   .title('Monthly Sales Report')
   .table({
     columns: [
-      { key: 'product', header: 'Product' },
-      { key: 'qty', header: 'Qty', align: 'right', aggregate: 'sum' },
+      c.data('product', 'Product'),
+      c.data('qty', 'Qty', { align: 'right', aggregate: 'sum' }),
     ],
     data: [
       { product: 'Widget', qty: 12 },
@@ -65,12 +71,12 @@ New to the layout? **[Report anatomy](https://github.com/vimpys/kapom-report/tre
 ### Grouping and subtotals
 
 ```ts
-// sales: { product: string; category: string; qty: number }[]
-reportBuilder<{ product: string; category: string; qty: number }>()
+// Sale = { product: string; category: string; qty: number }; sales: Sale[]; c = col<Sale>()
+reportBuilder<Sale>()
   .table({
     columns: [
-      { key: 'product', header: 'Product' },
-      { key: 'qty', header: 'Qty', align: 'right', aggregate: 'sum' },
+      c.data('product', 'Product'),
+      c.data('qty', 'Qty', { align: 'right', aggregate: 'sum' }),
     ],
     data: sales,
     group: 'category', // shorthand — or ['region', 'category'] for nested groups
@@ -86,15 +92,20 @@ Standard PDF fonts (helvetica, times, etc.) have no Thai glyphs — kapom-report
 
 ```ts
 import { readFileSync } from 'node:fs';
-import { reportBuilder } from 'kapom-report';
+import { col, reportBuilder } from 'kapom-report';
 
-reportBuilder<{ name: string }>()
+interface Person {
+  name: string;
+}
+const c = col<Person>();
+
+reportBuilder<Person>()
   .font({
     // register any TTF — Sarabun here covers Thai; use a CJK / Arabic / etc. font for those scripts
     fonts: [{ family: 'Sarabun', data: new Uint8Array(readFileSync('Sarabun-Regular.ttf')), style: 'normal' }],
   })
   .table({
-    columns: [{ key: 'name', header: 'Name' }],
+    columns: [c.data('name', 'Name')],
     data: [{ name: 'Preecha' }], // renders any Unicode the registered font supports
   })
   .save('report.pdf');
