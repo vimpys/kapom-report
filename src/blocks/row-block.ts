@@ -9,7 +9,7 @@ import { resolveNodeInput } from '../types/node';
 export const DEFAULT_ROW_GAP = 4;
 
 /** a resolved column box, relative to the row's left edge */
-export interface ResolvedRowColumn {
+interface ResolvedRowColumn {
   x: number;
   width: number;
 }
@@ -97,7 +97,7 @@ export function assertRowNodeValid(node: RowNode<unknown>): void {
 }
 
 /** a column after the factory built its children — width config + the child blocks to stack */
-export interface RowBlockColumn {
+interface RowBlockColumn {
   readonly width: number | undefined;
   readonly blocks: readonly MeasurableBlock[];
 }
