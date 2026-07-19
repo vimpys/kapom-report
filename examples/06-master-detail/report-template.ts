@@ -75,27 +75,6 @@ const paymentsOf = (row: Batch): TableNode<unknown> | undefined =>
   } satisfies TableNode<Payment> as unknown as TableNode<unknown>);
 
 export function buildBatchReport(batches: Batch[]): KapomReport {
-  const stackedTable: TableNode<Batch> = {
-    type: 'table',
-    columns: masterColumns,
-    data: batches,
-    summaryLabel: 'Grand Total',
-    nested: paymentsOf,
-    nestedLayout: 'stacked',
-  };
-
-  const belowTable: TableNode<Batch> = {
-    type: 'table',
-    columns: masterColumns,
-    data: batches,
-    summaryLabel: 'Grand Total',
-    nested: paymentsOf,
-    nestedLayout: 'below', // the default — spelled out here to contrast with the section above
-    // start the child at master column 1 ("Type"), i.e. indented past "Batch Name" — the child
-    // ends up ~80% wide, its right edge flush with the master's
-    nestedIndentColumn: 1,
-  };
-
   const report = reportBuilder<Batch>()
     .font(fontConfig)
     .title('Payment Batches — master-detail, a sub-table per row');
@@ -107,23 +86,42 @@ export function buildBatchReport(batches: Batch[]): KapomReport {
     .addBlock({ type: 'divider', thickness: 0.2, color: RULE })
     .addBlock({ type: 'spacer', height: 2 });
 
-  report.content(
-    {
-      content: "1. nestedLayout: 'stacked' — full width; the master identity repeats on every page",
-      role: 'sectionHeading',
-    },
-    spacer(3),
-    stackedTable,
-
-    pageBreak(),
-
-    {
-      content: "2. nestedLayout: 'below' + nestedIndentColumn: 1 — child indented to ~80%, flush right",
-      role: 'sectionHeading',
-    },
-    spacer(3),
-    belowTable,
-  );
+  // `.table()` is repeatable — each call adds one table. The two sections share the same master
+  // columns + nested detail (`nested` is part of the single-table config now) and differ only in
+  // nestedLayout ('stacked' vs 'below'), split by a pageBreak in between.
+  report
+    .content(
+      {
+        content: "1. nestedLayout: 'stacked' — full width; the master identity repeats on every page",
+        role: 'sectionHeading',
+      },
+      spacer(3),
+    )
+    .table({
+      columns: masterColumns,
+      data: batches,
+      summaryLabel: 'Grand Total',
+      nested: paymentsOf,
+      nestedLayout: 'stacked',
+    })
+    .content(
+      pageBreak(),
+      {
+        content: "2. nestedLayout: 'below' + nestedIndentColumn: 1 — child indented to ~80%, flush right",
+        role: 'sectionHeading',
+      },
+      spacer(3),
+    )
+    .table({
+      columns: masterColumns,
+      data: batches,
+      summaryLabel: 'Grand Total',
+      nested: paymentsOf,
+      nestedLayout: 'below', // the default — spelled out here to contrast with the section above
+      // start the child at master column 1 ("Type"), i.e. indented past "Batch Name" — the child
+      // ends up ~80% wide, its right edge flush with the master's
+      nestedIndentColumn: 1,
+    });
 
   return report.build();
 }
