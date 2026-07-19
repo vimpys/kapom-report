@@ -1,6 +1,6 @@
 {
   "name": "kapom-report",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "The easy way to build jsPDF + AutoTable reports — declarative, strictly-typed, with automatic grouping, subtotals, and multi-page layout, no manual cursor math. Thai-ready.",
   "type": "module",
   "main": "./dist/index.cjs",
