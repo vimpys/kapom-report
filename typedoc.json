@@ -1,0 +1,14 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["src/index.ts"],
+  "out": "docs",
+  "readme": "README.md",
+  "name": "kapom-report",
+  "includeVersion": true,
+  "excludeExternals": true,
+  "categorizeByGroup": true,
+  "intentionallyNotExported": ["Opt", "ResolvedPageNumber"],
+  "navigationLinks": {
+    "GitHub": "https://github.com/vimpys/kapom-report"
+  }
+}

@@ -1,0 +1,44 @@
+name: Docs
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Needs GitHub Pages enabled with "GitHub Actions" as the source
+# (repo Settings -> Pages -> Build and deployment -> Source: GitHub Actions).
+# For a private repo, Pages requires a paid plan (Pro/Team/Enterprise) — otherwise make the repo public.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only the latest docs deploy matters; cancel in-flight ones.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run docs
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
