@@ -11,6 +11,8 @@
 
 It solves the usual pain points of hand-rolled jsPDF reports: manual x/y cursor tracking, page-break bookkeeping, and re-deriving the same table/group/subtotal logic on every report. Multi-page (100+ pages) reports are a first-class case, not an afterthought.
 
+**Where it runs — the same API everywhere.** kapom-report is framework-agnostic: use it from a **Node.js backend / API / serverless** function to stream a PDF in an HTTP response, or from **any frontend framework** — **Vue**, React, Angular, Svelte, or plain HTML — via a bundler. It's not tied to any one framework; the core builds the PDF, and you decide what to do with the bytes.
+
 **[API reference →](https://vimpys.github.io/kapom-report/)**
 
 ## Install
@@ -36,6 +38,16 @@ On any other runtime (an older Node, Deno, Bun, React Native, an edge runtime), 
 import { writeFileSync } from 'node:fs';
 const report = createKapomReport({ columns, data });
 writeFileSync('report.pdf', Buffer.from(report.doc.output('arraybuffer')));
+```
+
+The same `doc.output('arraybuffer')` is all you need to serve a PDF from an API — e.g. an Express/Fastify route:
+
+```ts
+app.get('/report.pdf', (_req, res) => {
+  const report = createKapomReport({ columns, data });
+  const bytes = Buffer.from(report.doc.output('arraybuffer'));
+  res.setHeader('Content-Type', 'application/pdf').send(bytes);
+});
 ```
 
 ## Quick start
