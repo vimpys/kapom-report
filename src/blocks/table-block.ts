@@ -1,5 +1,5 @@
 import { autoTable } from 'jspdf-autotable';
-import type { FontStyle as AutoTableFontStyle, RowInput, Styles, UserOptions } from 'jspdf-autotable';
+import type { RowInput, Styles, UserOptions } from 'jspdf-autotable';
 import type { MeasurableBlock, MeasureContext, RenderContext } from '../core/context';
 import { applyTextStyle, drawText } from '../core/draw-text';
 import { KapomError } from '../core/errors';
@@ -13,7 +13,6 @@ import {
   cellStyleToAutoTableStyles,
   fitRowToGrid,
   mergeFootLabel,
-  partialTextStyleToAutoTableStyles,
 } from '../table/autotable-styles';
 import type { ResolvedTableContent } from '../table/column-resolver';
 import {
@@ -38,6 +37,7 @@ import { columnDepth, DEFAULT_ROW_NUMBER_MODE, flattenColumns, isAggregatableCol
 import type { GroupResolver, TableNode, TableStyleOptions } from '../types/node';
 import { DEFAULT_NESTED_LAYOUT } from '../types/node';
 import type { CellStyle, RGB, TextStyle } from '../types/primitives';
+import { TableStyleResolver } from './table-style-resolver';
 
 /** row height ≈ line-height + AutoTable's top/bottom cellPadding — an approximate ratio */
 const ESTIMATED_ROW_HEIGHT_RATIO = 1.9;
@@ -96,10 +96,14 @@ interface TotalRowStyle {
 }
 
 export class TableBlock<T> implements MeasurableBlock {
+  /** the render-time style layer (Typography tokens + per-table overrides + theme → AutoTable styles) */
+  private readonly styles: TableStyleResolver<T>;
+
   constructor(private readonly node: TableNode<T>) {
     if (node.nested && node.group) {
       throw new KapomError('nested (master-detail) and group cannot be combined yet — pick one');
     }
+    this.styles = new TableStyleResolver(node.style);
   }
 
   /**
@@ -180,8 +184,8 @@ export class TableBlock<T> implements MeasurableBlock {
     this.runAutoTable(ctx, {
       head: buildHeadRows(this.node.columns),
       body: [[{ content: text, colSpan: columns.length, styles: { halign: 'center' } }]],
-      headStyles: this.resolveHeadStyles(ctx),
-      bodyStyles: this.resolveTokenStyles(ctx, ctx.typography.detailRow),
+      headStyles: this.styles.resolveHeadStyles(ctx),
+      bodyStyles: this.styles.resolveTokenStyles(ctx, ctx.typography.detailRow),
       didParseCell: this.alignHook(aligns),
     });
   }
@@ -501,7 +505,7 @@ export class TableBlock<T> implements MeasurableBlock {
     const childContent = resolveTableContent(child, ctx.numeric);
     const gridCols = Math.max(masterColumns.length, childColumns.length);
     const fontName = ctx.doc.getFont().fontName;
-    const bold = this.resolveSupportedFontStyle(ctx.doc, fontName, 'bold');
+    const bold = this.styles.resolveSupportedFontStyle(ctx.doc, fontName, 'bold');
 
     const identityStyle: Partial<Styles> = {
       fillColor: [...ctx.theme.nestedIdentityFill],
@@ -524,8 +528,8 @@ export class TableBlock<T> implements MeasurableBlock {
     this.runAutoTable(ctx, {
       head,
       body,
-      headStyles: this.resolveHeadStyles(ctx),
-      bodyStyles: this.resolveTokenStyles(ctx, ctx.typography.detailRow),
+      headStyles: this.styles.resolveHeadStyles(ctx),
+      bodyStyles: this.styles.resolveTokenStyles(ctx, ctx.typography.detailRow),
     });
   }
 
@@ -632,10 +636,10 @@ export class TableBlock<T> implements MeasurableBlock {
       body,
       ...(foot ? { foot: [mergeFootLabel(foot, labelIndex)] } : {}),
       columnStyles,
-      headStyles: this.resolveHeadStyles(ctx),
-      bodyStyles: this.resolveTokenStyles(ctx, ctx.typography.detailRow),
-      footStyles: this.resolveFootStyles(ctx, footToken),
-      didParseCell: this.cellHook(aligns, columns, rows, this.effectiveStyle(ctx)),
+      headStyles: this.styles.resolveHeadStyles(ctx),
+      bodyStyles: this.styles.resolveTokenStyles(ctx, ctx.typography.detailRow),
+      footStyles: this.styles.resolveFootStyles(ctx, footToken),
+      didParseCell: this.cellHook(aligns, columns, rows, this.styles.effectiveStyle(ctx)),
       ...(willDrawCell ? { willDrawCell } : {}),
     });
   }
@@ -719,7 +723,7 @@ export class TableBlock<T> implements MeasurableBlock {
   ): void {
     ctx.ensureSpace(rowEstimate);
     const base: Partial<Styles> = {
-      ...this.resolveTokenStyles(ctx, style.token),
+      ...this.styles.resolveTokenStyles(ctx, style.token),
       fillColor: [...style.fillColor],
       textColor: [...style.textColor],
     };
@@ -727,7 +731,7 @@ export class TableBlock<T> implements MeasurableBlock {
       theme: 'plain',
       body: [mergeFootLabel(foot, labelIndex)],
       columnStyles,
-      bodyStyles: this.applyStyleOverride(ctx, base, style.override),
+      bodyStyles: this.styles.applyStyleOverride(ctx, base, style.override),
       didParseCell: this.alignHook(aligns),
     });
   }
@@ -745,7 +749,7 @@ export class TableBlock<T> implements MeasurableBlock {
     const fontName = token.fontFamily ?? doc.getFont().fontName;
     applyTextStyle(doc, {
       ...token,
-      fontStyle: this.resolveSupportedFontStyle(doc, fontName, token.fontStyle),
+      fontStyle: this.styles.resolveSupportedFontStyle(doc, fontName, token.fontStyle),
       // the theme's on-band colour — a band must always set a colour explicitly, never inherit from the previous block
       color: token.color ?? ctx.theme.onBand,
     });
@@ -757,86 +761,6 @@ export class TableBlock<T> implements MeasurableBlock {
     drawText(doc, label, margins.left + inset + indent, cursor.y + lineHeight * 1.15);
 
     ctx.advanceY(bandHeight);
-  }
-
-  // ── style resolution ──────────────────────────────────────────────────
-
-  /** Typography token → AutoTable styles with a fontStyle fallback if the font in use doesn't actually have that variant */
-  private resolveTokenStyles(ctx: RenderContext, token: TextStyle): Partial<Styles> {
-    const styles = partialTextStyleToAutoTableStyles(token);
-    this.guardFontStyle(ctx, styles);
-    return styles;
-  }
-
-  /** replace styles.fontStyle with 'normal' if the font in use lacks that variant (mutates in place) — shared by token/head style resolution */
-  private guardFontStyle(ctx: RenderContext, styles: Partial<Styles>): void {
-    if (!styles.fontStyle) return;
-    const fontName = styles.font ?? ctx.doc.getFont().fontName;
-    styles.fontStyle = this.resolveSupportedFontStyle(ctx.doc, fontName, styles.fontStyle);
-  }
-
-  /** merge an optional CellStyle override over a base style through the fontStyle-variant guard — shared by the symmetric head/foot resolvers */
-  private applyStyleOverride(
-    ctx: RenderContext,
-    base: Partial<Styles>,
-    override: Partial<CellStyle> | undefined,
-  ): Partial<Styles> {
-    if (!override) return base;
-    const merged = { ...base, ...cellStyleToAutoTableStyles(override) };
-    this.guardFontStyle(ctx, merged);
-    return merged;
-  }
-
-  /**
-   * head section = Typography.columnHeader token + TableStyleOptions.header override (e.g. a
-   * brand fillColor — without it the head keeps AutoTable's theme default); the override goes
-   * through the same fontStyle-variant guard as the token
-   */
-  private resolveHeadStyles(ctx: RenderContext): Partial<Styles> {
-    // header cells default to vertically centered (matters for a rowSpan cell in a grouped head;
-    // harmless for a single-row header) — applies to the whole head section, overridable per cell.
-    // the theme drives the fill + on-fill text (primary/onPrimary); style.header still overrides
-    const base: Partial<Styles> = {
-      valign: 'middle',
-      ...this.resolveTokenStyles(ctx, ctx.typography.columnHeader),
-      fillColor: [...ctx.theme.primary],
-      textColor: [...ctx.theme.onPrimary],
-    };
-    return this.applyStyleOverride(ctx, base, this.node.style?.header);
-  }
-
-  /** foot styles = the foot token + theme primary fill / on-primary text, then an optional per-table `style.footer` override (symmetric with resolveHeadStyles) */
-  private resolveFootStyles(ctx: RenderContext, footToken: TextStyle): Partial<Styles> {
-    const base: Partial<Styles> = {
-      ...this.resolveTokenStyles(ctx, footToken),
-      fillColor: [...ctx.theme.primary],
-      textColor: [...ctx.theme.onPrimary],
-    };
-    return this.applyStyleOverride(ctx, base, this.node.style?.footer);
-  }
-
-  /** the node's style with the theme's default zebra filled in — only when the node itself sets no zebra (a node's own `style.zebra` always wins) */
-  private effectiveStyle(ctx: RenderContext): TableStyleOptions<T> | undefined {
-    const style = this.node.style;
-    const zebraFill = ctx.theme.zebraFill;
-    if (!zebraFill || style?.zebra) return style;
-    return { ...style, zebra: { even: zebraFill } };
-  }
-
-  /**
-   * Every one of AutoTable's built-in themes sets head/foot to 'bold' by default — if the font
-   * in use doesn't have that variant registered, jsPDF warns silently and falls back (the exact
-   * silent failure the font decision says we must guard against ourselves); always checks
-   * getFontList first before using it.
-   */
-  private resolveSupportedFontStyle<S extends AutoTableFontStyle>(
-    doc: RenderContext['doc'],
-    fontName: string,
-    requested: S | undefined,
-  ): S | 'normal' {
-    if (!requested || requested === 'normal') return 'normal';
-    const available = doc.getFontList()[fontName] ?? [];
-    return available.includes(requested) ? requested : 'normal';
   }
 
   /**
