@@ -61,6 +61,15 @@ export const DEFAULT_PAGE_MARGINS: PageMargins = {
 };
 
 /**
+ * Whether a per-page decoration draws on page 1 — every later page always shows it; page 1 falls
+ * back to the decoration's own default when it didn't opt in/out (watermark defaults off, a
+ * header/footer band defaults on). Callers gate with `page > 1 || showsOnFirstPage(flag, default)`.
+ */
+function showsOnFirstPage(flag: boolean | undefined, byDefault: boolean): boolean {
+  return flag ?? byDefault;
+}
+
+/**
  * Wraps a single jsPDF doc — manages the cursor/page-breaks centrally, injects context into every block.
  * Blocks must never call doc.addPage() themselves; request space only through ctx.ensureSpace.
  */
@@ -73,6 +82,9 @@ export class RenderEngine {
   private readonly theme: ResolvedTheme;
   private readonly pageHeader: PageBandLike | undefined;
   private readonly pageFooter: PageBandLike | undefined;
+  /** the doc's page dimensions — queried once (the lib assumes a uniform page size, like the cursor) */
+  private readonly pageWidth: number;
+  private readonly pageHeight: number;
   /** resolved reserved heights — a block band with no explicit height is auto-measured here */
   private readonly headerHeight: number;
   private readonly footerHeight: number;
@@ -83,6 +95,8 @@ export class RenderEngine {
 
   constructor(doc: jsPDF, options: RenderEngineOptions = {}) {
     this.doc = doc;
+    this.pageWidth = doc.internal.pageSize.getWidth();
+    this.pageHeight = doc.internal.pageSize.getHeight();
     this.margins = { ...DEFAULT_PAGE_MARGINS, ...options.margins };
     this.numeric = options.numeric ?? nativeNumeric;
     this.typography = resolveTypography(options.typography);
@@ -105,8 +119,8 @@ export class RenderEngine {
     this.footerHeight = this.pageFooter ? this.resolveBandHeight(this.pageFooter) : 0;
 
     this.cursor = new PdfCursor({
-      pageWidth: doc.internal.pageSize.getWidth(),
-      pageHeight: doc.internal.pageSize.getHeight(),
+      pageWidth: this.pageWidth,
+      pageHeight: this.pageHeight,
       margins: this.margins,
       headerHeight: this.headerHeight,
       footerHeight: this.footerHeight,
@@ -124,12 +138,11 @@ export class RenderEngine {
     return band.height;
   }
 
-  /** total natural height of a band's blocks — a MeasureContext that doesn't need the cursor (built before it) */
+  /** total natural height of a band's blocks — a MeasureContext that doesn't need the cursor (built before it, so contentWidth is derived from pageWidth rather than cursor.contentWidth) */
   private measureBandHeight(blocks: readonly MeasurableBlock[]): number {
-    const pageWidth = this.doc.internal.pageSize.getWidth();
     const measureCtx: MeasureContext = {
-      pageWidth,
-      contentWidth: pageWidth - this.margins.left - this.margins.right,
+      pageWidth: this.pageWidth,
+      contentWidth: this.pageWidth - this.margins.left - this.margins.right,
       numeric: this.numeric,
       typography: this.typography,
       measureText: (text, fontSize, maxWidth) => measureTextBlockHeight(this.doc, text, fontSize, maxWidth),
@@ -197,36 +210,37 @@ export class RenderEngine {
     if (!this.pageHeader && !this.pageFooter && !this.watermark && !this.pageNumber) return;
 
     const pageCount = this.doc.getNumberOfPages();
-    const pageWidth = this.doc.internal.pageSize.getWidth();
-    const pageHeight = this.doc.internal.pageSize.getHeight();
-    const bandWidth = pageWidth - this.margins.left - this.margins.right;
+    const bandWidth = this.cursor.contentWidth;
     const currentPage = this.doc.getCurrentPageInfo().pageNumber;
+    // the render context is stable across pages here (a confined band re-pins the cursor per call,
+    // and setPage drives which page the shared doc draws to) — build it once, not per band per page
+    const baseCtx = this.createRenderContext();
 
     for (let page = 1; page <= pageCount; page += 1) {
       const pageIndex = page - 1;
       this.doc.setPage(page);
 
       // watermark always before header/footer — so the (opaque) header/footer stays crisp on top
-      if (this.watermark && (page > 1 || this.watermark.showOnFirstPage === true)) {
+      if (this.watermark && (page > 1 || showsOnFirstPage(this.watermark.showOnFirstPage, false))) {
         this.watermark.render({
           doc: this.doc,
           pageIndex,
           pageCount,
-          pageWidth,
-          pageHeight,
+          pageWidth: this.pageWidth,
+          pageHeight: this.pageHeight,
           defaultFontFamily: this.defaultFontFamily,
           drawText: (text, x, y, opts) => drawText(this.doc, text, x, y, undefined, opts),
         });
       }
-      if (this.pageHeader && (page > 1 || this.pageHeader.showOnFirstPage !== false)) {
-        this.drawBand(this.pageHeader, this.margins.top, bandWidth, pageIndex, pageCount);
+      if (this.pageHeader && (page > 1 || showsOnFirstPage(this.pageHeader.showOnFirstPage, true))) {
+        this.drawBand(this.pageHeader, this.margins.top, bandWidth, pageIndex, pageCount, baseCtx);
       }
-      if (this.pageFooter && (page > 1 || this.pageFooter.showOnFirstPage !== false)) {
-        const footerTop = pageHeight - this.margins.bottom - this.footerHeight;
-        this.drawBand(this.pageFooter, footerTop, bandWidth, pageIndex, pageCount);
+      if (this.pageFooter && (page > 1 || showsOnFirstPage(this.pageFooter.showOnFirstPage, true))) {
+        const footerTop = this.pageHeight - this.margins.bottom - this.footerHeight;
+        this.drawBand(this.pageFooter, footerTop, bandWidth, pageIndex, pageCount, baseCtx);
       }
       if (this.pageNumber && (page > 1 || this.pageNumber.showOnFirstPage)) {
-        renderPageNumber(this.doc, pageIndex, pageCount, pageWidth, pageHeight, this.margins, this.pageNumber);
+        renderPageNumber(this.doc, pageIndex, pageCount, this.pageWidth, this.pageHeight, this.margins, this.pageNumber);
       }
     }
 
@@ -239,11 +253,12 @@ export class RenderEngine {
     width: number,
     pageIndex: number,
     pageCount: number,
+    baseCtx: RenderContext,
   ): void {
     if (isBlockBand(band)) {
       // render the block tree into the band's reserved rect via a confined context (cursor pinned
       // to the band's top-left, ensureSpace a no-op) — the doc is already on the right page (setPage)
-      const ctx = buildConfinedContext(this.createRenderContext(), this.margins.left, width, top, 'page band');
+      const ctx = buildConfinedContext(baseCtx, this.margins.left, width, top, 'page band');
       for (const block of band.blocks) {
         block.render(ctx);
       }
