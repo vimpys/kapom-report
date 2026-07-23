@@ -1,5 +1,5 @@
 import { autoTable } from 'jspdf-autotable';
-import type { CellDef, FontStyle as AutoTableFontStyle, RowInput, Styles, UserOptions } from 'jspdf-autotable';
+import type { FontStyle as AutoTableFontStyle, RowInput, Styles, UserOptions } from 'jspdf-autotable';
 import type { MeasurableBlock, MeasureContext, RenderContext } from '../core/context';
 import { applyTextStyle, drawText } from '../core/draw-text';
 import { KapomError } from '../core/errors';
@@ -8,6 +8,13 @@ import { sum } from '../core/layout-math';
 import { lineHeightOf } from '../core/text-metrics';
 import { normalizeText } from '../core/text-normalizer';
 import { resolveRowStyle } from '../style/resolve-cell-style';
+import {
+  cellStringContent,
+  cellStyleToAutoTableStyles,
+  fitRowToGrid,
+  mergeFootLabel,
+  partialTextStyleToAutoTableStyles,
+} from '../table/autotable-styles';
 import type { ResolvedTableContent } from '../table/column-resolver';
 import {
   createSegmentState,
@@ -25,8 +32,9 @@ import {
   countGroupBands,
   flattenGroupTreeRows,
 } from '../table/group-tree';
-import type { ReportColumn, ResolvedAlign, RowNumberColumn, TableColumn } from '../types/column';
-import { columnDepth, DEFAULT_ROW_NUMBER_MODE, flattenColumns, isAggregatableColumn, isColumnGroup, isColumnVisible, normalizeColumn, resolveColumnAlign } from '../types/column';
+import { buildHeadRows } from '../table/head-rows';
+import type { ReportColumn, ResolvedAlign, RowNumberColumn } from '../types/column';
+import { columnDepth, DEFAULT_ROW_NUMBER_MODE, flattenColumns, isAggregatableColumn, resolveColumnAlign } from '../types/column';
 import type { GroupResolver, TableNode, TableStyleOptions } from '../types/node';
 import { DEFAULT_NESTED_LAYOUT } from '../types/node';
 import type { CellStyle, RGB, TextStyle } from '../types/primitives';
@@ -35,80 +43,6 @@ import type { CellStyle, RGB, TextStyle } from '../types/primitives';
 const ESTIMATED_ROW_HEIGHT_RATIO = 1.9;
 /** group header band height as a ratio of line-height */
 const GROUP_BAND_HEIGHT_RATIO = 1.6;
-
-/**
- * Lay a row of `values` across `gridCols` columns — the last cell colSpans to fill any shortfall.
- * Used by nestedLayout 'stacked' to stack a K-column master row and an M-column child row in one
- * shared grid (gridCols = max(K, M)); the shorter side's last cell simply spans the extra columns.
- */
-function fitRowToGrid(
-  values: readonly string[],
-  aligns: readonly ResolvedAlign[],
-  which: keyof ResolvedAlign, // 'header' for a label row, 'data' for a values row
-  gridCols: number,
-  extra?: Partial<Styles>,
-): CellDef[] {
-  return values.map((content, idx) => {
-    const isLast = idx === values.length - 1;
-    const colSpan = isLast ? gridCols - (values.length - 1) : 1;
-    const halign = aligns[idx]?.[which] ?? 'left';
-    return { content, colSpan, styles: { halign, ...(extra ?? {}) } };
-  });
-}
-
-/** CellStyle (zebra/conditional override, column headerStyle/cellStyle) → AutoTable Partial<Styles> */
-function cellStyleToAutoTableStyles(style: Partial<CellStyle> | undefined): Partial<Styles> {
-  if (!style) return {};
-  const styles: Partial<Styles> = {};
-  if (style.fillColor) styles.fillColor = [...style.fillColor];
-  if (style.textColor) styles.textColor = [...style.textColor];
-  if (style.fontStyle) styles.fontStyle = style.fontStyle;
-  if (style.fontSize !== undefined) styles.fontSize = style.fontSize;
-  if (style.halign) styles.halign = style.halign;
-  return styles;
-}
-
-/** extracts a string from an AutoTable cell — handles both a plain string and a CellDef object ({content}, e.g. the no-data colSpan row) */
-function cellStringContent(cell: unknown): string | undefined {
-  if (typeof cell === 'string') return cell;
-  if (typeof cell === 'object' && cell !== null && 'content' in cell) {
-    const { content } = cell as { content?: unknown };
-    if (typeof content === 'string') return content;
-  }
-  return undefined;
-}
-
-/**
- * Merges an aggregate row's label cell with any immediately-following empty columns into one
- * wider colSpan cell — purely a display concern (the flat `foot` array is still what's used for
- * column-width measurement and GroupTreeNode.foot, both untouched by this). Gives the label room
- * instead of squeezing into a single narrow column (e.g. a rowNumber column, see demo 03) and
- * forces left-align, since a merged cell is now a text label, not whatever alignment the
- * underlying columns (e.g. right-aligned rowNumber) would otherwise use.
- */
-function mergeFootLabel(foot: readonly string[], labelIndex: number): (string | CellDef)[] {
-  if (labelIndex === -1) return [...foot];
-  let span = 1;
-  while (labelIndex + span < foot.length && foot[labelIndex + span] === '') span += 1;
-  if (span === 1) return [...foot];
-
-  return [
-    ...foot.slice(0, labelIndex),
-    { content: foot[labelIndex] ?? '', colSpan: span, styles: { halign: 'left' } },
-    ...foot.slice(labelIndex + span),
-  ];
-}
-
-/** TextStyle (a Typography token) → AutoTable Partial<Styles> — font family isn't set unless specified (inherits from the base styles.font instead) */
-function partialTextStyleToAutoTableStyles(style: Partial<TextStyle> | undefined): Partial<Styles> {
-  if (!style) return {};
-  const styles: Partial<Styles> = {};
-  if (style.fontSize !== undefined) styles.fontSize = style.fontSize;
-  if (style.fontStyle) styles.fontStyle = style.fontStyle;
-  if (style.color) styles.textColor = [...style.color];
-  if (style.fontFamily) styles.font = style.fontFamily;
-  return styles;
-}
 
 /**
  * `rowNumber` mode 'per-page' counts per physical PDF page — a page's row 1 has to actually be
@@ -211,7 +145,7 @@ export class TableBlock<T> implements MeasurableBlock {
     const text = normalizeText(this.node.noDataText ?? DEFAULT_NO_DATA_TEXT);
 
     this.runAutoTable(ctx, {
-      head: this.buildHeadRows(),
+      head: buildHeadRows(this.node.columns),
       body: [[{ content: text, colSpan: columns.length, styles: { halign: 'center' } }]],
       headStyles: this.resolveHeadStyles(ctx),
       bodyStyles: this.resolveTokenStyles(ctx, ctx.typography.detailRow),
@@ -336,7 +270,7 @@ export class TableBlock<T> implements MeasurableBlock {
     });
 
     this.runSegmentTable(ctx, {
-      head: this.buildHeadRows(),
+      head: buildHeadRows(this.node.columns),
       body: content.body,
       foot: content.foot,
       labelIndex: firstAggregateLabelIndex(columns),
@@ -392,7 +326,7 @@ export class TableBlock<T> implements MeasurableBlock {
       if (child === undefined) continue;
 
       this.runSegmentTable(ctx, {
-        head: this.buildHeadRows(),
+        head: buildHeadRows(this.node.columns),
         body: content.body.slice(segmentStart, i + 1),
         foot: undefined,
         labelIndex,
@@ -410,7 +344,7 @@ export class TableBlock<T> implements MeasurableBlock {
 
     if (segmentStart < rows.length) {
       this.runSegmentTable(ctx, {
-        head: this.buildHeadRows(),
+        head: buildHeadRows(this.node.columns),
         body: content.body.slice(segmentStart),
         foot: content.foot,
         labelIndex,
@@ -478,7 +412,7 @@ export class TableBlock<T> implements MeasurableBlock {
     const flushPlain = (end: number, foot: readonly string[] | undefined): void => {
       if (segmentStart >= end) return;
       this.runSegmentTable(ctx, {
-        head: this.buildHeadRows(),
+        head: buildHeadRows(this.node.columns),
         body: content.body.slice(segmentStart, end),
         foot,
         labelIndex,
@@ -584,7 +518,7 @@ export class TableBlock<T> implements MeasurableBlock {
     const labelIndex = firstAggregateLabelIndex(columns);
 
     this.renderGroupTree(ctx, tree, {
-      head: this.buildHeadRows(),
+      head: buildHeadRows(this.node.columns),
       aligns,
       columns,
       columnStyles,
@@ -840,62 +774,6 @@ export class TableBlock<T> implements MeasurableBlock {
     if (!styles.fontStyle) return;
     const fontName = styles.font ?? ctx.doc.getFont().fontName;
     styles.fontStyle = this.resolveSupportedFontStyle(ctx.doc, fontName, styles.fontStyle);
-  }
-
-  /**
-   * The head as AutoTable rows — a single row of leaf headers normally, or a multi-row header when
-   * any top-level column is a group (nested to any depth). Built recursively: a group's `header`
-   * gets `colSpan` = its visible-leaf count and sits on its own depth's row; a leaf's header gets
-   * `rowSpan` = the rows remaining below it (so it stretches to the bottom, vertically centered).
-   * Grouped-head cells carry their own inline styles, so cellHook skips styling any object head cell.
-   */
-  private buildHeadRows(): RowInput[] {
-    const topColumns = this.node.columns.filter((col) => isColumnGroup(col) || isColumnVisible(col));
-
-    if (!topColumns.some(isColumnGroup)) {
-      // single row of plain strings — cellHook applies alignment (backward-compatible path unchanged)
-      return [flattenColumns(topColumns).filter(isColumnVisible).map((col) => normalizeText(col.header))];
-    }
-
-    const totalRows = Math.max(...topColumns.map(columnDepth));
-    const rows: CellDef[][] = Array.from({ length: totalRows }, () => []);
-    const rowAt = (index: number): CellDef[] => {
-      const row = rows[index];
-      if (!row) throw new KapomError(`buildHeadRows: header row ${index} is out of range`);
-      return row;
-    };
-
-    const place = (col: TableColumn<T>, depth: number): void => {
-      if (isColumnGroup(col)) {
-        const leaves = flattenColumns(col.columns).filter(isColumnVisible);
-        if (leaves.length === 0) return;
-        rowAt(depth).push({
-          content: normalizeText(col.header),
-          colSpan: leaves.length,
-          styles: { halign: col.headerAlign ?? 'center', valign: 'middle' },
-        });
-        for (const child of col.columns) place(child, depth + 1);
-      } else if (isColumnVisible(col)) {
-        const leaf = normalizeColumn(col); // shorthand → data, so headCellStyles/resolveColumnAlign work
-        // a leaf stretches from its own row down to the bottom (rowSpan) → vertically centered
-        rowAt(depth).push({
-          content: normalizeText(leaf.header),
-          rowSpan: totalRows - depth,
-          styles: { ...this.headCellStyles(leaf), valign: 'middle' },
-        });
-      }
-    };
-
-    for (const col of topColumns) place(col, 0);
-    return rows;
-  }
-
-  /** inline styles for a leaf head cell (halign + per-column headerStyle) — used in the 2-row grouped head, where cellHook skips object cells */
-  private headCellStyles(col: ReportColumn<T>): Partial<Styles> {
-    return {
-      halign: resolveColumnAlign(col).header,
-      ...cellStyleToAutoTableStyles(col.headerStyle),
-    };
   }
 
   /** merge an optional CellStyle override over a base style through the fontStyle-variant guard — shared by the symmetric head/foot resolvers */
