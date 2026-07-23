@@ -63,14 +63,12 @@ function createPerPageRowNumberState(): PerPageRowNumberState {
 
 /** row/band height estimates derived once from the body font's line height — shared by measureHeight and every render path */
 interface RowMetrics {
-  lineHeight: number;
   rowEstimate: number;
   bandHeight: number;
 }
 
 function rowMetricsFromLineHeight(lineHeight: number): RowMetrics {
   return {
-    lineHeight,
     rowEstimate: lineHeight * ESTIMATED_ROW_HEIGHT_RATIO,
     bandHeight: lineHeight * GROUP_BAND_HEIGHT_RATIO,
   };
@@ -329,37 +327,47 @@ export class TableBlock<T> implements MeasurableBlock {
   // without a child, with each nested row's own child table rendered in between ──────
 
   /**
-   * Splits the master table around every row that has a `nested(row)` child — a row with a
-   * child still shows its own values (flushed as part of the segment through that row,
-   * inclusive), then the child table renders indented right after; the remaining rows continue
-   * in a fresh segment. Only the trailing segment carries the grand summary foot — a mid-table
-   * segment never does, since the report reads top to bottom and a summary belongs at the end.
+   * Shared skeleton for both nested (master-detail) layouts: walk the master rows, and at every row
+   * that has a `nested(row)` child, flush the master rows up to that point as one AutoTable segment
+   * (never a mid-table foot), then draw the detail via `renderDetail`. Only the trailing content
+   * carries the grand foot — the report reads top to bottom and a summary belongs at the end. The
+   * two layouts differ in exactly two points: whether the detail row's own values join the preceding
+   * master segment (`masterInclusive` — 'below' shows them, 'stacked' promotes them to the detail's
+   * identity head) and how the detail itself is drawn (`renderDetail`).
    */
-  private renderFlatWithNested(
+  private renderNestedSegments(
     ctx: RenderContext,
     columns: readonly ReportColumn<T>[],
     content: ResolvedTableContent,
     perPage: PerPageRowNumberState,
+    options: {
+      labelIndex: number;
+      columnStyles: Record<string, Partial<Styles>>;
+      masterInclusive: boolean;
+      renderDetail: (rowIndex: number, child: TableNode<unknown>) => void;
+    },
   ): void {
     const nested = this.node.nested;
     if (!nested) return;
-
-    const indentColumn = this.node.nestedIndentColumn ?? 0;
-    if (indentColumn < 0 || indentColumn >= columns.length) {
-      throw new KapomError(
-        `nestedIndentColumn must be between 0 and ${columns.length - 1} (got ${indentColumn})`,
-      );
-    }
-
-    // a single, fixed set of column widths across every segment (same reasoning as renderGrouped)
-    // — this is also what makes the nested child's indent line up exactly with the column grid,
-    // like a colSpan across the remaining columns, without needing an actual colSpan cell
-    const { labelIndex, widths, columnStyles } = this.resolveNestedLayout(ctx, columns, content);
-    const indentX = sum(widths.slice(0, indentColumn));
-    const childWidth = sum(widths.slice(indentColumn));
-
+    const { labelIndex, columnStyles, masterInclusive, renderDetail } = options;
     const rows = this.node.data;
     let segmentStart = 0;
+
+    const flush = (end: number, foot: readonly string[] | undefined): void => {
+      if (segmentStart >= end) return;
+      this.runSegmentTable(ctx, {
+        head: buildHeadRows(this.node.columns),
+        body: content.body.slice(segmentStart, end),
+        foot,
+        labelIndex,
+        columnStyles,
+        aligns: content.aligns,
+        columns,
+        rows: rows.slice(segmentStart, end),
+        footToken: ctx.typography.summary,
+        perPage,
+      });
+    };
 
     for (let i = 0; i < rows.length; i += 1) {
       const row = rows[i];
@@ -367,40 +375,48 @@ export class TableBlock<T> implements MeasurableBlock {
       const child = nested(row);
       if (child === undefined) continue;
 
-      this.runSegmentTable(ctx, {
-        head: buildHeadRows(this.node.columns),
-        body: content.body.slice(segmentStart, i + 1),
-        foot: undefined,
-        labelIndex,
-        columnStyles,
-        aligns: content.aligns,
-        columns,
-        rows: rows.slice(segmentStart, i + 1),
-        footToken: ctx.typography.summary,
-        perPage,
-      });
-
-      this.renderNestedChild(ctx, child, indentX, childWidth);
+      flush(masterInclusive ? i + 1 : i, undefined); // detail row joins the master segment ('below') or is excluded ('stacked')
+      renderDetail(i, child);
       segmentStart = i + 1;
     }
 
     if (segmentStart < rows.length) {
-      this.runSegmentTable(ctx, {
-        head: buildHeadRows(this.node.columns),
-        body: content.body.slice(segmentStart),
-        foot: content.foot,
-        labelIndex,
-        columnStyles,
-        aligns: content.aligns,
-        columns,
-        rows: rows.slice(segmentStart),
-        footToken: ctx.typography.summary,
-        perPage,
-      });
+      flush(rows.length, content.foot); // trailing rows carry the grand foot
     } else if (content.foot) {
-      // the last row itself had a nested child — no trailing body rows left for the foot to attach to
+      // the last row itself had a child — no trailing rows left for the foot to attach to
       this.renderTrailingGrandFoot(ctx, content.foot, labelIndex, columnStyles, content.aligns);
     }
+  }
+
+  /**
+   * 'below' layout: a row with a child still shows its own values (part of the segment through that
+   * row, inclusive), then the child table renders indented right after — a fixed column-width set
+   * across every segment makes the child's indent line up with the column grid, like a colSpan
+   * across the remaining columns without an actual colSpan cell.
+   */
+  private renderFlatWithNested(
+    ctx: RenderContext,
+    columns: readonly ReportColumn<T>[],
+    content: ResolvedTableContent,
+    perPage: PerPageRowNumberState,
+  ): void {
+    const indentColumn = this.node.nestedIndentColumn ?? 0;
+    if (indentColumn < 0 || indentColumn >= columns.length) {
+      throw new KapomError(
+        `nestedIndentColumn must be between 0 and ${columns.length - 1} (got ${indentColumn})`,
+      );
+    }
+
+    const { labelIndex, widths, columnStyles } = this.resolveNestedLayout(ctx, columns, content);
+    const indentX = sum(widths.slice(0, indentColumn));
+    const childWidth = sum(widths.slice(indentColumn));
+
+    this.renderNestedSegments(ctx, columns, content, perPage, {
+      labelIndex,
+      columnStyles,
+      masterInclusive: true,
+      renderDetail: (_i, child) => this.renderNestedChild(ctx, child, indentX, childWidth),
+    });
   }
 
   /**
@@ -432,10 +448,10 @@ export class TableBlock<T> implements MeasurableBlock {
   // whole stacked head repeats on a page break (see TableNode.nestedLayout) ──────
 
   /**
-   * Flat master-detail in 'stacked' layout: rows without a child flush as ordinary master
-   * segments; each row *with* a child renders as its own block whose repeating head carries the
-   * master identity, so a reader landing mid-detail on a later page still sees which master row
-   * it belongs to. Only the trailing content carries the grand foot (a summary belongs at the end).
+   * 'stacked' layout: rows without a child flush as ordinary master segments; each row *with* a
+   * child renders as its own block whose repeating head carries the master identity, so a reader
+   * landing mid-detail on a later page still sees which master row it belongs to. The detail row is
+   * excluded from the preceding segment (masterInclusive: false) — its values become the identity head.
    */
   private renderFlatWithNestedStacked(
     ctx: RenderContext,
@@ -443,48 +459,17 @@ export class TableBlock<T> implements MeasurableBlock {
     content: ResolvedTableContent,
     perPage: PerPageRowNumberState,
   ): void {
-    const nested = this.node.nested;
-    if (!nested) return;
+    const { labelIndex, columnStyles } = this.resolveNestedLayout(ctx, columns, content);
 
-    const { labelIndex, columnStyles: masterColumnStyles } = this.resolveNestedLayout(ctx, columns, content);
-
-    const rows = this.node.data;
-    let segmentStart = 0;
-
-    const flushPlain = (end: number, foot: readonly string[] | undefined): void => {
-      if (segmentStart >= end) return;
-      this.runSegmentTable(ctx, {
-        head: buildHeadRows(this.node.columns),
-        body: content.body.slice(segmentStart, end),
-        foot,
-        labelIndex,
-        columnStyles: masterColumnStyles,
-        aligns: content.aligns,
-        columns,
-        rows: rows.slice(segmentStart, end),
-        footToken: ctx.typography.summary,
-        perPage,
-      });
-    };
-
-    for (let i = 0; i < rows.length; i += 1) {
-      const row = rows[i];
-      if (row === undefined) continue;
-      const child = nested(row);
-      if (child === undefined) continue;
-
-      flushPlain(i, undefined); // plain rows before this detail row — no mid-table foot
-      const identity = content.body[i];
-      if (identity) this.renderStackedBlock(ctx, columns, content.head, content.aligns, identity, child);
-      segmentStart = i + 1;
-    }
-
-    if (segmentStart < rows.length) {
-      flushPlain(rows.length, content.foot); // trailing plain rows carry the grand foot
-    } else if (content.foot) {
-      // the last row had a child — no trailing plain rows for the foot to attach to
-      this.renderTrailingGrandFoot(ctx, content.foot, labelIndex, masterColumnStyles, content.aligns);
-    }
+    this.renderNestedSegments(ctx, columns, content, perPage, {
+      labelIndex,
+      columnStyles,
+      masterInclusive: false,
+      renderDetail: (i, child) => {
+        const identity = content.body[i];
+        if (identity) this.renderStackedBlock(ctx, columns, content.head, content.aligns, identity, child);
+      },
+    });
   }
 
   /**
