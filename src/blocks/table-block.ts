@@ -61,6 +61,40 @@ function createPerPageRowNumberState(): PerPageRowNumberState {
   return { page: -1, counts: new Map() };
 }
 
+/** row/band height estimates derived once from the body font's line height — shared by measureHeight and every render path */
+interface RowMetrics {
+  lineHeight: number;
+  rowEstimate: number;
+  bandHeight: number;
+}
+
+function rowMetricsFromLineHeight(lineHeight: number): RowMetrics {
+  return {
+    lineHeight,
+    rowEstimate: lineHeight * ESTIMATED_ROW_HEIGHT_RATIO,
+    bandHeight: lineHeight * GROUP_BAND_HEIGHT_RATIO,
+  };
+}
+
+/** the fields fixed across every AutoTable segment of one table render — head/columns/styles/aligns/label slot/per-page state */
+interface SegmentContext<T> {
+  head: RowInput[];
+  aligns: readonly ResolvedAlign[];
+  columns: readonly ReportColumn<T>[];
+  columnStyles: Record<string, Partial<Styles>>;
+  labelIndex: number;
+  perPage: PerPageRowNumberState;
+}
+
+/** the styling of a single-total row (grand total or a non-leaf subtotal) — see renderSingleTotalRow */
+interface TotalRowStyle {
+  token: TextStyle;
+  fillColor: RGB;
+  textColor: RGB;
+  /** grand totals theme the row like the leaf foot (style.footer); a group-band subtotal passes nothing */
+  override?: Partial<CellStyle>;
+}
+
 export class TableBlock<T> implements MeasurableBlock {
   constructor(private readonly node: TableNode<T>) {
     if (node.nested && node.group) {
@@ -76,8 +110,8 @@ export class TableBlock<T> implements MeasurableBlock {
    */
   measureHeight(ctx: MeasureContext): number {
     const fontSize = ctx.typography.detailRow.fontSize;
-    const lineHeight = ctx.measureText('X', fontSize, ctx.contentWidth);
-    const rowHeight = lineHeight * ESTIMATED_ROW_HEIGHT_RATIO;
+    // measureHeight only has a MeasureContext (no doc) — line height comes from measureText, not lineHeightOf
+    const { rowEstimate: rowHeight, bandHeight } = rowMetricsFromLineHeight(ctx.measureText('X', fontSize, ctx.contentWidth));
     const footRows = this.hasAggregate() ? 1 : 0;
     // a grouped header is multiple rows tall (the deepest column tree) — 1 for a flat header
     const headRows = Math.max(1, ...this.node.columns.map(columnDepth));
@@ -96,7 +130,6 @@ export class TableBlock<T> implements MeasurableBlock {
     // grouped: every group at every level has a band + subtotal (if there's an aggregate); a leaf segment has its own head
     // countGroupBands counts across every level of the subGroup chain (nested group, roadmap 10)
     const groupCount = countGroupBands(this.node.group, this.node.data);
-    const bandHeight = lineHeight * GROUP_BAND_HEIGHT_RATIO;
     return (
       groupCount * (bandHeight + rowHeight + footRows * rowHeight) +
       this.node.data.length * rowHeight +
@@ -222,6 +255,22 @@ export class TableBlock<T> implements MeasurableBlock {
     return { labelIndex, widths, columnStyles };
   }
 
+  /** row/band height estimates for the render paths — the body font's real line height (lineHeightOf needs the doc) */
+  private estimateRowMetrics(ctx: RenderContext): RowMetrics {
+    return rowMetricsFromLineHeight(lineHeightOf(ctx.doc, ctx.typography.detailRow.fontSize));
+  }
+
+  /** the grand total's styling — themed like the leaf foot (theme.primary + optional style.footer); shared by the grouped and nested-trailing grand foots */
+  private grandTotalStyle(ctx: RenderContext): TotalRowStyle {
+    const footer = this.node.style?.footer;
+    return {
+      token: ctx.typography.summary,
+      fillColor: ctx.theme.primary,
+      textColor: ctx.theme.onPrimary,
+      ...(footer !== undefined ? { override: footer } : {}),
+    };
+  }
+
   /**
    * Grand foot for a nested table whose last row carried a child — no trailing body rows for the
    * foot to attach to, so reuse the single-total-row mechanism the grand total already relies on
@@ -234,19 +283,8 @@ export class TableBlock<T> implements MeasurableBlock {
     columnStyles: Record<string, Partial<Styles>>,
     aligns: readonly ResolvedAlign[],
   ): void {
-    const rowEstimate = lineHeightOf(ctx.doc, ctx.typography.detailRow.fontSize) * ESTIMATED_ROW_HEIGHT_RATIO;
-    this.renderSingleTotalRow(
-      ctx,
-      foot,
-      labelIndex,
-      columnStyles,
-      aligns,
-      ctx.typography.summary,
-      ctx.theme.primary,
-      ctx.theme.onPrimary,
-      rowEstimate,
-      this.node.style?.footer,
-    );
+    const { rowEstimate } = this.estimateRowMetrics(ctx);
+    this.renderSingleTotalRow(ctx, foot, labelIndex, columnStyles, aligns, rowEstimate, this.grandTotalStyle(ctx));
   }
 
   // ── flat (ungrouped) ────────────────────────────────────────────────
@@ -512,9 +550,7 @@ export class TableBlock<T> implements MeasurableBlock {
     const widths = this.resolveColumnWidths(ctx, columns, head, flattenGroupTreeRows(tree), grandFoot);
     const columnStyles = this.buildFixedColumnStyles(aligns, columns, widths);
 
-    const lineHeight = lineHeightOf(ctx.doc, ctx.typography.detailRow.fontSize);
-    const bandHeight = lineHeight * GROUP_BAND_HEIGHT_RATIO;
-    const rowEstimate = lineHeight * ESTIMATED_ROW_HEIGHT_RATIO;
+    const { bandHeight, rowEstimate } = this.estimateRowMetrics(ctx);
     const labelIndex = firstAggregateLabelIndex(columns);
 
     this.renderGroupTree(ctx, tree, {
@@ -532,35 +568,15 @@ export class TableBlock<T> implements MeasurableBlock {
       // the grand total is a single, boldly-styled body row — not AutoTable's own foot, because
       // a table with only a foot and no body is an edge case the library doesn't guarantee (same
       // reasoning as a non-leaf group's subtotal — see renderSingleTotalRow)
-      this.renderSingleTotalRow(
-        ctx,
-        grandFoot,
-        labelIndex,
-        columnStyles,
-        aligns,
-        ctx.typography.summary,
-        ctx.theme.primary,
-        ctx.theme.onPrimary,
-        rowEstimate,
-        this.node.style?.footer,
-      );
+      this.renderSingleTotalRow(ctx, grandFoot, labelIndex, columnStyles, aligns, rowEstimate, this.grandTotalStyle(ctx));
     }
   }
 
-  /** the shared context passed down every level of renderGroupTree (computed once in renderGrouped) */
+  /** the shared context passed down every level of renderGroupTree (computed once in renderGrouped) — plus the two height estimates the keep-together check needs */
   private renderGroupTree(
     ctx: RenderContext,
     tree: readonly GroupTreeNode<T>[],
-    shared: {
-      head: RowInput[];
-      aligns: readonly ResolvedAlign[];
-      columns: readonly ReportColumn<T>[];
-      columnStyles: Record<string, Partial<Styles>>;
-      bandHeight: number;
-      rowEstimate: number;
-      labelIndex: number;
-      perPage: PerPageRowNumberState;
-    },
+    shared: SegmentContext<T> & { bandHeight: number; rowEstimate: number },
   ): void {
     for (const node of tree) {
       // keep-together: the band (+ any child bands nested below it) + head + the first N rows must all land on the same page
@@ -571,17 +587,11 @@ export class TableBlock<T> implements MeasurableBlock {
         this.renderGroupTree(ctx, node.children, shared);
         // a non-leaf subtotal has no segment to attach a foot to — drawn as a separate single row instead
         if (node.foot) {
-          this.renderSingleTotalRow(
-            ctx,
-            node.foot,
-            shared.labelIndex,
-            shared.columnStyles,
-            shared.aligns,
-            ctx.typography.groupFooter,
-            ctx.theme.bandFill,
-            ctx.theme.onBand,
-            shared.rowEstimate,
-          );
+          this.renderSingleTotalRow(ctx, node.foot, shared.labelIndex, shared.columnStyles, shared.aligns, shared.rowEstimate, {
+            token: ctx.typography.groupFooter,
+            fillColor: ctx.theme.bandFill,
+            textColor: ctx.theme.onBand,
+          });
         }
         continue;
       }
@@ -608,17 +618,11 @@ export class TableBlock<T> implements MeasurableBlock {
    */
   private runSegmentTable(
     ctx: RenderContext,
-    params: {
-      head: RowInput[];
+    params: SegmentContext<T> & {
       body: string[][];
       foot: readonly string[] | undefined;
-      labelIndex: number;
-      columnStyles: Record<string, Partial<Styles>>;
-      aligns: readonly ResolvedAlign[];
-      columns: readonly ReportColumn<T>[];
       rows: readonly T[];
       footToken: TextStyle;
-      perPage: PerPageRowNumberState;
     },
   ): void {
     const { head, body, foot, labelIndex, columnStyles, aligns, columns, rows, footToken, perPage } = params;
@@ -710,25 +714,20 @@ export class TableBlock<T> implements MeasurableBlock {
     labelIndex: number,
     columnStyles: Record<string, Partial<Styles>>,
     aligns: readonly ResolvedAlign[],
-    token: TextStyle,
-    fillColor: RGB,
-    textColor: RGB,
     rowEstimate: number,
-    // grand-total callers pass `style.footer` here so the row can be themed like the leaf foot;
-    // the group-band subtotal caller passes nothing, keeping the theme's band identity
-    override?: Partial<CellStyle>,
+    style: TotalRowStyle,
   ): void {
     ctx.ensureSpace(rowEstimate);
     const base: Partial<Styles> = {
-      ...this.resolveTokenStyles(ctx, token),
-      fillColor: [...fillColor],
-      textColor: [...textColor],
+      ...this.resolveTokenStyles(ctx, style.token),
+      fillColor: [...style.fillColor],
+      textColor: [...style.textColor],
     };
     this.runAutoTable(ctx, {
       theme: 'plain',
       body: [mergeFootLabel(foot, labelIndex)],
       columnStyles,
-      bodyStyles: this.applyStyleOverride(ctx, base, override),
+      bodyStyles: this.applyStyleOverride(ctx, base, style.override),
       didParseCell: this.alignHook(aligns),
     });
   }
