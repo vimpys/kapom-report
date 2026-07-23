@@ -93,6 +93,12 @@ interface TotalRowStyle {
   override?: Partial<CellStyle>;
 }
 
+/** a table shape's paired height-estimate + render — selected once by TableBlock.layout() */
+interface TableLayout {
+  measure(ctx: MeasureContext): number;
+  render(ctx: RenderContext): void;
+}
+
 export class TableBlock<T> implements MeasurableBlock {
   /** the render-time style layer (Typography tokens + per-table overrides + theme → AutoTable styles) */
   private readonly styles: TableStyleResolver<T>;
@@ -111,27 +117,66 @@ export class TableBlock<T> implements MeasurableBlock {
    * know the real height.
    */
   measureHeight(ctx: MeasureContext): number {
-    const fontSize = ctx.typography.detailRow.fontSize;
-    // measureHeight only has a MeasureContext (no doc) — line height comes from measureText, not lineHeightOf
-    const { rowEstimate: rowHeight, bandHeight } = rowMetricsFromLineHeight(ctx.measureText('X', fontSize, ctx.contentWidth));
-    const footRows = this.hasAggregate() ? 1 : 0;
-    // a grouped header is multiple rows tall (the deepest column tree) — 1 for a flat header
-    const headRows = Math.max(1, ...this.node.columns.map(columnDepth));
+    return this.layout().measure(ctx);
+  }
 
-    // No-Data fallback: header + a single message row
-    if (this.node.data.length === 0) return (headRows + 1) * rowHeight;
+  render(ctx: RenderContext): void {
+    this.layout().render(ctx);
+  }
 
+  /**
+   * Picks the measure+render pair for this table's shape — one dispatch point instead of the same
+   * four-way branch duplicated across measureHeight and render. The shapes are mutually exclusive
+   * (the constructor already forbids nested+group), checked in a fixed priority: empty data first,
+   * then nested (master-detail), then grouped, else the plain flat table.
+   */
+  private layout(): TableLayout {
+    if (this.node.data.length === 0) {
+      return { measure: (ctx) => this.measureNoData(ctx), render: (ctx) => this.renderNoData(ctx) };
+    }
     if (this.node.nested) {
-      return this.measureNested(ctx, rowHeight, footRows);
+      return { measure: (ctx) => this.measureNested(ctx), render: (ctx) => this.renderNested(ctx) };
     }
-
-    if (!this.node.group) {
-      return (headRows + this.node.data.length + footRows) * rowHeight;
+    const group = this.node.group;
+    if (group) {
+      return { measure: (ctx) => this.measureGrouped(ctx, group), render: (ctx) => this.renderGrouped(ctx, group) };
     }
+    return { measure: (ctx) => this.measureFlat(ctx), render: (ctx) => this.renderFlat(ctx) };
+  }
 
-    // grouped: every group at every level has a band + subtotal (if there's an aggregate); a leaf segment has its own head
-    // countGroupBands counts across every level of the subGroup chain (nested group, roadmap 10)
-    const groupCount = countGroupBands(this.node.group, this.node.data);
+  /** the shared height inputs for the measure strategies — all from a single 'X' line-height (measureHeight has no doc, so measureText not lineHeightOf) */
+  private measureBasis(ctx: MeasureContext): { rowHeight: number; bandHeight: number; footRows: number; headRows: number } {
+    const { rowEstimate: rowHeight, bandHeight } = rowMetricsFromLineHeight(
+      ctx.measureText('X', ctx.typography.detailRow.fontSize, ctx.contentWidth),
+    );
+    return {
+      rowHeight,
+      bandHeight,
+      footRows: this.hasAggregate() ? 1 : 0,
+      // a grouped header is multiple rows tall (the deepest column tree) — 1 for a flat header
+      headRows: Math.max(1, ...this.node.columns.map(columnDepth)),
+    };
+  }
+
+  /** No-Data fallback: header + a single message row */
+  private measureNoData(ctx: MeasureContext): number {
+    const { rowHeight, headRows } = this.measureBasis(ctx);
+    return (headRows + 1) * rowHeight;
+  }
+
+  /** flat: head + every body row + optional foot */
+  private measureFlat(ctx: MeasureContext): number {
+    const { rowHeight, footRows, headRows } = this.measureBasis(ctx);
+    return (headRows + this.node.data.length + footRows) * rowHeight;
+  }
+
+  /**
+   * grouped: every group at every level has a band + subtotal (if there's an aggregate); a leaf
+   * segment has its own head. countGroupBands counts across every level of the subGroup chain.
+   */
+  private measureGrouped(ctx: MeasureContext, group: GroupResolver<T>): number {
+    const { rowHeight, bandHeight, footRows } = this.measureBasis(ctx);
+    const groupCount = countGroupBands(group, this.node.data);
     return (
       groupCount * (bandHeight + rowHeight + footRows * rowHeight) +
       this.node.data.length * rowHeight +
@@ -146,9 +191,10 @@ export class TableBlock<T> implements MeasurableBlock {
    * renders narrower (indented): this estimate only measures a single 'X' character's line
    * height, which doesn't depend on the available width at all.
    */
-  private measureNested(ctx: MeasureContext, rowHeight: number, footRows: number): number {
+  private measureNested(ctx: MeasureContext): number {
     const nested = this.node.nested;
     if (!nested) return 0;
+    const { rowHeight, footRows } = this.measureBasis(ctx);
     let height = rowHeight;
     for (const row of this.node.data) {
       height += rowHeight;
@@ -156,19 +202,6 @@ export class TableBlock<T> implements MeasurableBlock {
       if (child) height += new TableBlock(child).measureHeight(ctx);
     }
     return height + footRows * rowHeight;
-  }
-
-  render(ctx: RenderContext): void {
-    if (this.node.data.length === 0) {
-      this.renderNoData(ctx);
-      return;
-    }
-    const perPage = createPerPageRowNumberState();
-    if (this.node.group) {
-      this.renderGrouped(ctx, this.node.group, perPage);
-    } else {
-      this.renderFlat(ctx, perPage);
-    }
   }
 
   // ── No-Data fallback (empty data — review fix #5) ────────────────────────
@@ -291,18 +324,10 @@ export class TableBlock<T> implements MeasurableBlock {
 
   // ── flat (ungrouped) ────────────────────────────────────────────────
 
-  private renderFlat(ctx: RenderContext, perPage: PerPageRowNumberState): void {
+  private renderFlat(ctx: RenderContext): void {
+    const perPage = createPerPageRowNumberState();
     const columns = visibleColumns(this.node.columns);
     const content = resolveTableContent(this.node, ctx.numeric);
-
-    if (this.node.nested) {
-      if ((this.node.nestedLayout ?? DEFAULT_NESTED_LAYOUT) === 'stacked') {
-        this.renderFlatWithNestedStacked(ctx, columns, content, perPage);
-      } else {
-        this.renderFlatWithNested(ctx, columns, content, perPage);
-      }
-      return;
-    }
 
     const columnStyles = this.buildColumnStyles(content.aligns, columns, (index) => {
       const width = content.widths[index];
@@ -321,6 +346,19 @@ export class TableBlock<T> implements MeasurableBlock {
       footToken: ctx.typography.summary,
       perPage,
     });
+  }
+
+  // ── master-detail (nested): dispatches to the 'below' or 'stacked' layout ──────
+
+  private renderNested(ctx: RenderContext): void {
+    const perPage = createPerPageRowNumberState();
+    const columns = visibleColumns(this.node.columns);
+    const content = resolveTableContent(this.node, ctx.numeric);
+    if ((this.node.nestedLayout ?? DEFAULT_NESTED_LAYOUT) === 'stacked') {
+      this.renderFlatWithNestedStacked(ctx, columns, content, perPage);
+    } else {
+      this.renderFlatWithNested(ctx, columns, content, perPage);
+    }
   }
 
   // ── master-detail (nested): the master AutoTable is split into a segment per run of rows
@@ -520,7 +558,8 @@ export class TableBlock<T> implements MeasurableBlock {
 
   // ── grouped (composite: a band + segment per group + grand total; recursive when there's a subGroup) ──────
 
-  private renderGrouped(ctx: RenderContext, resolver: GroupResolver<T>, perPage: PerPageRowNumberState): void {
+  private renderGrouped(ctx: RenderContext, resolver: GroupResolver<T>): void {
+    const perPage = createPerPageRowNumberState();
     const columns = visibleColumns(this.node.columns);
     const aligns = columns.map(resolveColumnAlign);
     const head = columns.map((col) => normalizeText(col.header));
