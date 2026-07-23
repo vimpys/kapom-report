@@ -155,8 +155,9 @@ export class RenderEngine {
    * keep-together at the composite level is the block's own responsibility (recursive measureHeight)
    */
   render(blocks: readonly MeasurableBlock[]): void {
-    const measureCtx = this.createMeasureContext();
+    // one context, derived — not two builds (createMeasureContext would build a second render context internally)
     const renderCtx = this.createRenderContext();
+    const measureCtx = deriveMeasureContext(renderCtx);
     for (const block of blocks) {
       // a self-splitting block (breakable box) only needs room to start — full height otherwise
       const height = block.minStartHeight?.(measureCtx) ?? block.measureHeight(measureCtx);
@@ -217,34 +218,39 @@ export class RenderEngine {
     const baseCtx = this.createRenderContext();
 
     for (let page = 1; page <= pageCount; page += 1) {
-      const pageIndex = page - 1;
-      this.doc.setPage(page);
-
-      // watermark always before header/footer — so the (opaque) header/footer stays crisp on top
-      if (this.watermark && (page > 1 || showsOnFirstPage(this.watermark.showOnFirstPage, false))) {
-        this.watermark.render({
-          doc: this.doc,
-          pageIndex,
-          pageCount,
-          pageWidth: this.pageWidth,
-          pageHeight: this.pageHeight,
-          defaultFontFamily: this.defaultFontFamily,
-          drawText: (text, x, y, opts) => drawText(this.doc, text, x, y, undefined, opts),
-        });
-      }
-      if (this.pageHeader && (page > 1 || showsOnFirstPage(this.pageHeader.showOnFirstPage, true))) {
-        this.drawBand(this.pageHeader, this.margins.top, bandWidth, pageIndex, pageCount, baseCtx);
-      }
-      if (this.pageFooter && (page > 1 || showsOnFirstPage(this.pageFooter.showOnFirstPage, true))) {
-        const footerTop = this.pageHeight - this.margins.bottom - this.footerHeight;
-        this.drawBand(this.pageFooter, footerTop, bandWidth, pageIndex, pageCount, baseCtx);
-      }
-      if (this.pageNumber && (page > 1 || this.pageNumber.showOnFirstPage)) {
-        renderPageNumber(this.doc, pageIndex, pageCount, this.pageWidth, this.pageHeight, this.margins, this.pageNumber);
-      }
+      this.drawPageDecorations(page, pageCount, bandWidth, baseCtx);
     }
 
     this.doc.setPage(currentPage); // restore the original active page, so the caller isn't confused if they draw more
+  }
+
+  /** draws every per-page decoration (watermark, header/footer bands, page number) onto one page */
+  private drawPageDecorations(page: number, pageCount: number, bandWidth: number, baseCtx: RenderContext): void {
+    const pageIndex = page - 1;
+    this.doc.setPage(page);
+
+    // watermark always before header/footer — so the (opaque) header/footer stays crisp on top
+    if (this.watermark && (page > 1 || showsOnFirstPage(this.watermark.showOnFirstPage, false))) {
+      this.watermark.render({
+        doc: this.doc,
+        pageIndex,
+        pageCount,
+        pageWidth: this.pageWidth,
+        pageHeight: this.pageHeight,
+        defaultFontFamily: this.defaultFontFamily,
+        drawText: (text, x, y, opts) => drawText(this.doc, text, x, y, undefined, opts),
+      });
+    }
+    if (this.pageHeader && (page > 1 || showsOnFirstPage(this.pageHeader.showOnFirstPage, true))) {
+      this.drawBand(this.pageHeader, this.margins.top, bandWidth, pageIndex, pageCount, baseCtx);
+    }
+    if (this.pageFooter && (page > 1 || showsOnFirstPage(this.pageFooter.showOnFirstPage, true))) {
+      const footerTop = this.pageHeight - this.margins.bottom - this.footerHeight;
+      this.drawBand(this.pageFooter, footerTop, bandWidth, pageIndex, pageCount, baseCtx);
+    }
+    if (this.pageNumber && (page > 1 || this.pageNumber.showOnFirstPage)) {
+      renderPageNumber(this.doc, pageIndex, pageCount, this.pageWidth, this.pageHeight, this.margins, this.pageNumber);
+    }
   }
 
   private drawBand(
