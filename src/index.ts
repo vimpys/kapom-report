@@ -5,22 +5,41 @@
 // plain `.ts` (not `.d.ts`) so esbuild can resolve it as a real (empty-at-runtime) module
 import './types/jspdf-autotable';
 
-export type {
-  Decimalish,
-  NumericStrategy,
-} from './numeric/numeric-strategy';
-export { nativeNumeric } from './numeric/numeric-strategy';
+/**
+ * Public API — everything needed to author a report the intended way: the facade
+ * (`createKapomReport`/`reportBuilder`), the declarative node tree, columns, theme, font,
+ * page frame (header/footer/watermark/page-number), formatting, and errors.
+ *
+ * Low-level internals — the render engine, cursor, block classes, the pure table pipeline
+ * (group tree / aggregate / column width), and plugin authoring (`registerBlockType`) — live in
+ * a separate entry: `import { ... } from 'kapom-report/advanced'`. They're stable enough to use,
+ * but change more freely than this surface, so they're kept out of the default import.
+ */
 
-export type {
-  HAlign,
-  FontStyle,
-  RGB,
-  DeepPartial,
-  TextStyle,
-  NumberFormat,
-  CellStyle,
-} from './types/primitives';
+// ── facade (the primary entry points) ────────────────────────────────────
+export type { KapomReport } from './report/create-kapom-report';
+export { createKapomReport } from './report/create-kapom-report';
+export { KapomReportBuilder, BandBuilder, reportBuilder } from './report/report-builder';
 
+// ── report config (Progressive-Disclosure input types) ───────────────────
+export type {
+  KapomColumnInput,
+  KapomColumnGroupInput,
+  KapomGroupInput,
+  KapomTableInput,
+  KapomDeclarativeBand,
+  KapomPageBandInput,
+  KapomReportBaseOptions,
+  KapomReportConfig,
+  KapomBlocksConfig,
+  KapomReportInput,
+} from './report/resolve-report-config';
+
+// ── multi-section composition ─────────────────────────────────────────────
+export type { SectionBuilder } from './report/report-registry';
+export { ReportRegistry } from './report/report-registry';
+
+// ── columns ────────────────────────────────────────────────────────────────
 export type {
   AggregateFn,
   RowNumberMode,
@@ -33,11 +52,11 @@ export type {
   TableColumn,
   DataColumnShorthand,
   ResolvedAlign,
+  ColumnHelpers,
 } from './types/column';
-export type { ColumnHelpers } from './types/column';
 export { normalizeColumn, col } from './types/column';
-export { resolveColumnAlign, isColumnVisible, isColumnGroup, flattenColumns, columnDepth } from './types/column';
 
+// ── declarative node tree ───────────────────────────────────────────────────
 export type {
   TextNode,
   SpacerNode,
@@ -63,31 +82,34 @@ export type {
   TextNodeShorthand,
   ReportNodeInput,
 } from './types/node';
-export { resolveNodeInput, spacer, divider, pageBreak } from './types/node';
+export { spacer, divider, pageBreak } from './types/node';
 export { DEFAULT_ROW_GAP } from './blocks/row-block';
 export { DEFAULT_BOX_PADDING, DEFAULT_BOX_BORDER_WIDTH } from './blocks/box-block';
 
-export type { Typography } from './types/typography';
-export { DEFAULT_TYPOGRAPHY, resolveTypography } from './types/typography';
-
+// ── primitives + typography ─────────────────────────────────────────────────
 export type {
-  PageMargins,
-  CursorState,
-  MeasureContext,
-  RenderContext,
-  MeasurableBlock,
-} from './core/context';
+  HAlign,
+  FontStyle,
+  RGB,
+  DeepPartial,
+  TextStyle,
+  NumberFormat,
+  CellStyle,
+} from './types/primitives';
+export type { Typography } from './types/typography';
+export { DEFAULT_TYPOGRAPHY } from './types/typography';
+export type { PageMargins } from './core/context';
 
-export { KapomError, KapomLayoutError, KapomFontError } from './core/errors';
+// ── theme ────────────────────────────────────────────────────────────────
+export type { Theme, ThemeName, ThemeInput } from './theme/theme';
+export { THEME_PRESETS } from './theme/theme';
 
-export type { PdfCursorOptions } from './core/cursor';
-export { PdfCursor } from './core/cursor';
+// ── font ────────────────────────────────────────────────────────────────
+export type { FontConfig, FontSource, FontVariantStyle } from './font/font-config';
+export { registerFonts } from './font/register-fonts';
 
-export type { RenderEngineOptions } from './core/engine';
-export { RenderEngine, DEFAULT_PAGE_MARGINS } from './core/engine';
-
-export type { PageBand, PageBandContext, PageBandRenderer, BlockBand, PageBandLike } from './core/page-band';
-
+// ── page frame: header/footer bands, watermark, page number ────────────────
+export type { PageBand, PageBandContext, PageBandRenderer } from './core/page-band';
 export type {
   Watermark,
   WatermarkContext,
@@ -99,113 +121,38 @@ export type {
 } from './core/watermark';
 export {
   withOpacity,
-  resolveWatermark,
   DEFAULT_WATERMARK_OPACITY,
   DEFAULT_WATERMARK_FONT_SIZE,
   DEFAULT_WATERMARK_COLOR,
   DEFAULT_WATERMARK_ROTATE,
   DEFAULT_WATERMARK_LAYOUT,
 } from './core/watermark';
-
-export { containsThai, isBuiltinStandardFont } from './core/font-guard';
-
-export type { Theme, ResolvedTheme, ThemeName, ThemeInput } from './theme/theme';
-export { THEME_PRESETS, DEFAULT_RESOLVED_THEME, resolveTheme } from './theme/theme';
-
+export type { PageNumberPosition, PageNumberOptions, PageNumberInput } from './core/page-number';
+export { DEFAULT_PAGE_NUMBER_POSITION, DEFAULT_PAGE_NUMBER_FORMAT } from './core/page-number';
+export type { Anchor, AnchoredBandOptions } from './core/anchor';
+export { DEFAULT_ANCHOR_FONT_SIZE, createAnchoredBand } from './core/anchor';
 export type { SystemFieldValues } from './core/system-field';
 export { resolveSystemFields } from './core/system-field';
 
-export type { Anchor, AnchoredBandOptions } from './core/anchor';
-export { DEFAULT_ANCHOR_FONT_SIZE, createAnchoredBand } from './core/anchor';
-
-export type { PageNumberPosition, PageNumberOptions, PageNumberInput } from './core/page-number';
-export {
-  DEFAULT_PAGE_NUMBER_POSITION,
-  DEFAULT_PAGE_NUMBER_FORMAT,
-  resolvePageNumber,
-  renderPageNumber,
-} from './core/page-number';
-
+// ── text facade (for raw blocks / custom drawing) ──────────────────────────
 export type { TextNormalizeOptions } from './core/text-normalizer';
 export { normalizeText } from './core/text-normalizer';
 export { drawText } from './core/draw-text';
 
-export type { FontConfig, FontSource, FontVariantStyle } from './font/font-config';
-export { registerFonts } from './font/register-fonts';
-
-export { DEFAULT_TEXT_STYLE, TextBlock } from './blocks/text-block';
-export { DEFAULT_SPACER_HEIGHT, SpacerBlock } from './blocks/spacer-block';
-export { PageBreakBlock } from './blocks/page-break-block';
-export {
-  DEFAULT_DIVIDER_THICKNESS,
-  DEFAULT_DIVIDER_COLOR,
-  DividerBlock,
-} from './blocks/divider-block';
-export { ImageBlock } from './blocks/image-block';
-export {
-  DEFAULT_SIGNATURE_SIGN_HEIGHT,
-  DEFAULT_SIGNATURE_LABEL_GAP,
-  DEFAULT_SIGNATURE_SLOT_GAP,
-  SignatureBlock,
-} from './blocks/signature-block';
-export { TableBlock } from './blocks/table-block';
-export { StackBlock } from './blocks/stack-block';
-export { SectionBlock } from './blocks/section-block';
-export { RawBlock } from './blocks/raw-block';
-export { createBlock } from './blocks/create-block';
-
-export type { BlockFactory } from './blocks/block-registry';
-export { registerBlockType } from './blocks/block-registry';
-
-export { DEFAULT_NUMBER_FORMAT, formatNumber, getNumberFormatter } from './format/number-format';
-
+// ── formatting ────────────────────────────────────────────────────────────
+export { DEFAULT_NUMBER_FORMAT, formatNumber } from './format/number-format';
 export type { DateFormat } from './format/date-format';
-export { DEFAULT_DATE_FORMAT, formatDate, formatTime, formatDateTime, formatTimestamp } from './format/date-format';
-
-export type { ResolvedTableContent, SegmentState } from './table/column-resolver';
 export {
-  resolveTableContent,
-  resolveSegmentBody,
-  resolveAggregateRow,
-  firstAggregateLabelIndex,
-  createSegmentState,
-  visibleColumns,
-  DEFAULT_SUMMARY_LABEL,
-  DEFAULT_NO_DATA_TEXT,
-} from './table/column-resolver';
-export { computeAggregate, asDecimalish } from './table/aggregate';
-export type { ResolvedGroup } from './table/group-resolver';
-export {
-  splitGroups,
-  groupHeaderLabel,
-  groupFooterLabel,
-  UNSPECIFIED_GROUP_KEY,
-} from './table/group-resolver';
-export type { GroupTreeNode } from './table/group-tree';
-export { buildGroupTree, flattenGroupTreeRows, countGroupBands } from './table/group-tree';
-export { computeColumnWidths } from './table/column-width';
+  DEFAULT_DATE_FORMAT,
+  formatDate,
+  formatTime,
+  formatDateTime,
+  formatTimestamp,
+} from './format/date-format';
 
-export { resolveRowStyle } from './style/resolve-cell-style';
+// ── numeric strategy ────────────────────────────────────────────────────────
+export type { Decimalish, NumericStrategy } from './numeric/numeric-strategy';
+export { nativeNumeric } from './numeric/numeric-strategy';
 
-export type { SectionBuilder } from './report/report-registry';
-export { ReportRegistry } from './report/report-registry';
-
-export type {
-  KapomColumnInput,
-  KapomColumnGroupInput,
-  KapomGroupInput,
-  KapomTableInput,
-  KapomDeclarativeBand,
-  KapomPageBandInput,
-  KapomReportBaseOptions,
-  KapomReportConfig,
-  KapomBlocksConfig,
-  KapomReportInput,
-  ResolvedReportConfig,
-} from './report/resolve-report-config';
-export { resolveReportConfig, resolveTableNode } from './report/resolve-report-config';
-
-export type { KapomReport } from './report/create-kapom-report';
-
-export { KapomReportBuilder, BandBuilder, reportBuilder } from './report/report-builder';
-export { createKapomReport } from './report/create-kapom-report';
+// ── errors ────────────────────────────────────────────────────────────────
+export { KapomError, KapomLayoutError, KapomFontError } from './core/errors';

@@ -1,6 +1,6 @@
 {
   "$schema": "https://typedoc.org/schema.json",
-  "entryPoints": ["src/index.ts"],
+  "entryPoints": ["src/index.ts", "src/advanced.ts"],
   "out": "docs",
   "readme": "README.md",
   "name": "kapom-report",
