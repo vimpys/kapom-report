@@ -61,12 +61,25 @@ export const DEFAULT_PAGE_MARGINS: PageMargins = {
 };
 
 /**
- * Whether a per-page decoration draws on page 1 — every later page always shows it; page 1 falls
- * back to the decoration's own default when it didn't opt in/out (watermark defaults off, a
- * header/footer band defaults on). Callers gate with `page > 1 || showsOnFirstPage(flag, default)`.
+ * Whether a per-page decoration is drawn on this page: it has to exist at all, and it has to show
+ * on page 1 if that's the page in question (every later page always shows it). A decoration that
+ * didn't opt in or out falls back to its own default — a watermark stays off, a header/footer band
+ * stays on.
+ *
+ * Both halves live here deliberately, and the existence half is what the type predicate reports, so
+ * a caller can pass the decoration straight on afterwards. Splitting them and reaching for optional
+ * chaining on the flag (`showsOnFirstPage(this.pageHeader?.showOnFirstPage, true)`) reads like it
+ * should work and does not: `?.` yields undefined, which `??` then reads as "unspecified, use the
+ * default" — so "there is no header" and "there is a header that didn't set the flag" collapse into
+ * the same answer, and the condition is true even when there is nothing to draw.
  */
-function showsOnFirstPage(flag: boolean | undefined, byDefault: boolean): boolean {
-  return flag ?? byDefault;
+function drawsOnPage<T extends { showOnFirstPage?: boolean }>(
+  decoration: T | undefined,
+  page: number,
+  byDefault: boolean,
+): decoration is T {
+  if (!decoration) return false;
+  return page > 1 || (decoration.showOnFirstPage ?? byDefault);
 }
 
 /**
@@ -230,7 +243,7 @@ export class RenderEngine {
     this.doc.setPage(page);
 
     // watermark always before header/footer — so the (opaque) header/footer stays crisp on top
-    if (this.watermark && (page > 1 || showsOnFirstPage(this.watermark.showOnFirstPage, false))) {
+    if (drawsOnPage(this.watermark, page, false)) {
       this.watermark.render({
         doc: this.doc,
         pageIndex,
@@ -241,14 +254,15 @@ export class RenderEngine {
         drawText: (text, x, y, opts) => drawText(this.doc, text, x, y, undefined, opts),
       });
     }
-    if (this.pageHeader && (page > 1 || showsOnFirstPage(this.pageHeader.showOnFirstPage, true))) {
+    if (drawsOnPage(this.pageHeader, page, true)) {
       this.drawBand(this.pageHeader, this.margins.top, bandWidth, pageIndex, pageCount, baseCtx);
     }
-    if (this.pageFooter && (page > 1 || showsOnFirstPage(this.pageFooter.showOnFirstPage, true))) {
+    if (drawsOnPage(this.pageFooter, page, true)) {
       const footerTop = this.pageHeight - this.margins.bottom - this.footerHeight;
       this.drawBand(this.pageFooter, footerTop, bandWidth, pageIndex, pageCount, baseCtx);
     }
-    if (this.pageNumber && (page > 1 || this.pageNumber.showOnFirstPage)) {
+    // pageNumber is already fully resolved (showOnFirstPage is never undefined), so the default here is never consulted
+    if (drawsOnPage(this.pageNumber, page, true)) {
       renderPageNumber(this.doc, pageIndex, pageCount, this.pageWidth, this.pageHeight, this.margins, this.pageNumber);
     }
   }

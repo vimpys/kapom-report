@@ -138,3 +138,42 @@ describe('RenderEngine — finalize() draws bands per page', () => {
     expect(stub.text).toHaveBeenCalledWith('ab', 15, 297 - 15 - 10);
   });
 });
+describe('RenderEngine — decoration ที่ไม่ได้ตั้ง ต้องไม่ถูกวาด', () => {
+  /**
+   * กันการ "ยุบ" เงื่อนไขสองข้อ (มีของไหม / หน้านี้วาดไหม) เข้าด้วยกัน — ดู drawsOnPage ใน engine.ts
+   * เขียนแบบ optional chaining บน flag จะทำให้ decoration ที่ไม่ได้ตั้งเลย ถูกตีเป็น
+   * "ไม่ได้ระบุ → ใช้ค่า default = วาด" แล้วพยายามวาดของที่ไม่มีอยู่บนหน้า 2 เป็นต้นไป
+   */
+  it('ตั้งแค่ footer: header ที่ไม่ได้ตั้งต้องไม่ถูกแตะ แม้บนหน้า 2+', () => {
+    const { doc } = makeStubDoc();
+    const footerPages: number[] = [];
+    const engine = new RenderEngine(doc, {
+      pageFooter: {
+        height: 10,
+        render: (ctx: PageBandContext) => footerPages.push(ctx.pageIndex),
+      },
+    });
+
+    engine.render([fixedBlock(500), fixedBlock(500)]); // ยาวพอให้ขึ้นหน้าใหม่
+    expect(() => engine.finalize()).not.toThrow();
+
+    expect(footerPages.length).toBeGreaterThan(1); // มีหลายหน้าให้ทดสอบจริง
+    expect(footerPages).toEqual([...footerPages.keys()]); // วาดทุกหน้าตั้งแต่ 0
+  });
+
+  it('ตั้งแค่ header: footer ที่ไม่ได้ตั้งต้องไม่ถูกแตะ', () => {
+    const { doc } = makeStubDoc();
+    const headerPages: number[] = [];
+    const engine = new RenderEngine(doc, {
+      pageHeader: {
+        height: 10,
+        render: (ctx: PageBandContext) => headerPages.push(ctx.pageIndex),
+      },
+    });
+
+    engine.render([fixedBlock(500), fixedBlock(500)]);
+    expect(() => engine.finalize()).not.toThrow();
+
+    expect(headerPages.length).toBeGreaterThan(1);
+  });
+});
