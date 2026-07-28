@@ -24,7 +24,7 @@ export type { CursorState, MeasureContext, RenderContext, MeasurableBlock } from
 
 // ── plugin authoring: register a new block type ────────────────────────────
 export type { BlockFactory } from './blocks/block-registry';
-export { registerBlockType } from './blocks/block-registry';
+export { registerBlockType, hasBlockType } from './blocks/block-registry';
 export { createBlock } from './blocks/create-block';
 
 // ── built-in block classes (the declarative node tree is the normal path) ──

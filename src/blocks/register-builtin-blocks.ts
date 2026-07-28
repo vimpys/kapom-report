@@ -1,4 +1,4 @@
-import { createBlock, registerBlockType } from './block-registry';
+import { createBlock, hasBlockType, registerBlockType } from './block-registry';
 import { TextBlock } from './text-block';
 import { SpacerBlock } from './spacer-block';
 import { DividerBlock } from './divider-block';
@@ -29,20 +29,22 @@ import type {
   TextNode,
 } from '../types/node';
 
-let registered = false;
-
 /**
  * Built-in blocks register through the same registry API a plugin would use (no special
  * privilege). This is a named function, not a side-effect import — a bundler that sees
  * `sideEffects: false` can silently drop a bare import (seen for real when bundling for the
  * browser: esbuild warns "Ignoring this import" → createBlock then throws "unknown type" for
  * every type at runtime). Calling the function directly from create-block.ts is a side effect
- * inside a module whose exports are actually used, which a bundler can't drop; idempotent —
- * calling it again is a no-op (registerBlockType throws on a duplicate name).
+ * inside a module whose exports are actually used, which a bundler can't drop.
+ *
+ * Idempotent, and the guard has to read the shared registry rather than a module-scoped flag:
+ * the CJS build embeds a copy of this module in each entry point, so a local flag starts out
+ * false in the second copy and every registerBlockType call would throw on the duplicate name
+ * (see the globalThis note in block-registry.ts). 'text' stands in for the whole set — the
+ * registrations below are one atomic, synchronous block that always runs together.
  */
 export function registerBuiltinBlocks(): void {
-  if (registered) return;
-  registered = true;
+  if (hasBlockType('text')) return;
 
   registerBlockType('text', (node) => new TextBlock(node as TextNode));
   registerBlockType('spacer', (node) => new SpacerBlock(node as SpacerNode));

@@ -29,6 +29,9 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
-      - run: npm test
+      # build before test on purpose: the cross-entry registry tests exercise the real dist
+      # bundles (the CJS plugin-registry bug only exists in how tsup splits the entry points,
+      # not in the source) and skip themselves when dist/ is missing
       - run: npm run build
+      - run: npm test
       - run: npm run demo

@@ -11,7 +11,42 @@ import { resolveNodeInput } from '../types/node';
  */
 export type BlockFactory = (node: ReportNode<unknown>) => MeasurableBlock;
 
-const registry = new Map<string, BlockFactory>();
+/**
+ * The registry is keyed off globalThis rather than held in module scope, because this module is
+ * evaluated more than once in a real install:
+ * - the package ships two entry points (`kapom-report` + `kapom-report/advanced`) and the CJS
+ *   build has no code splitting, so each entry embeds its own copy of this file. With a
+ *   module-scoped Map, `registerBlockType` (exported from /advanced) wrote into a different
+ *   registry than the one `createBlock` (reached via the main entry) read from, and every
+ *   plugin block threw "is not registered" for CJS consumers.
+ * - the same applies to a consumer who ends up with two copies of the package installed
+ *   (transitive version conflict) or who mixes the ESM and CJS builds in one process.
+ *
+ * The key is versioned: a future breaking change to BlockFactory must bump it, so two major
+ * versions sharing a process each get their own registry instead of handing each other
+ * incompatible factories.
+ */
+const REGISTRY_KEY = Symbol.for('kapom-report.block-registry.v1');
+
+type RegistryHost = typeof globalThis & { [REGISTRY_KEY]?: Map<string, BlockFactory> };
+
+function registry(): Map<string, BlockFactory> {
+  const host = globalThis as RegistryHost;
+  const existing = host[REGISTRY_KEY];
+  if (existing) return existing;
+  const created = new Map<string, BlockFactory>();
+  host[REGISTRY_KEY] = created;
+  return created;
+}
+
+/**
+ * Whether a block type is already registered — lets a plugin author check before registering
+ * instead of catching the duplicate-name throw, and lets registerBuiltinBlocks stay idempotent
+ * across the duplicated module copies described above (a module-scoped "done" flag can't).
+ */
+export function hasBlockType(type: string): boolean {
+  return registry().has(type);
+}
 
 /**
  * Registers a new block type — core doesn't need to change to add a type (Open/Closed)
@@ -19,12 +54,13 @@ const registry = new Map<string, BlockFactory>();
  * accidentally shadowing a built-in)
  */
 export function registerBlockType(type: string, factory: BlockFactory): void {
-  if (registry.has(type)) {
+  const blocks = registry();
+  if (blocks.has(type)) {
     throw new KapomError(
       `Block type '${type}' is already registered — check for duplicate registration or a name clash with a built-in`,
     );
   }
-  registry.set(type, factory);
+  blocks.set(type, factory);
 }
 
 /**
@@ -33,7 +69,7 @@ export function registerBlockType(type: string, factory: BlockFactory): void {
  */
 export function createBlock<T>(input: ReportNodeInput<T>): MeasurableBlock {
   const node = resolveNodeInput(input);
-  const factory = registry.get(node.type);
+  const factory = registry().get(node.type);
   if (!factory) {
     throw new KapomError(
       `Block type '${node.type}' is not registered (see roadmap in CLAUDE.md)`,
