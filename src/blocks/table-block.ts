@@ -24,7 +24,7 @@ import {
   resolveTableContent,
   visibleColumns,
 } from '../table/column-resolver';
-import { computeColumnWidths } from '../table/column-width';
+import { assertFixedWidthsFit, computeColumnWidths } from '../table/column-width';
 import type { GroupTreeNode } from '../table/group-tree';
 import {
   buildGroupTree,
@@ -374,6 +374,10 @@ export class TableBlock<T> implements MeasurableBlock {
     const perPage = createPerPageRowNumberState();
     const columns = visibleColumns(this.node.columns);
     const content = resolveTableContent(this.node, ctx.numeric);
+
+    // the flat path hands widths straight to AutoTable instead of going through
+    // computeColumnWidths, so it needs the same guard the grouped/nested paths get from there
+    assertFixedWidthsFit(content.widths, ctx.contentWidth);
 
     const columnStyles = this.buildColumnStyles(content.aligns, columns, (index) => {
       const width = content.widths[index];

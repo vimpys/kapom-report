@@ -12,14 +12,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Plugin blocks now work for CJS consumers.** The block registry lived in module scope, and the CJS build embeds a copy of it in each entry point, so a type registered via `registerBlockType` (from `kapom-report/advanced`) was invisible to `createKapomReport` (from the main entry) and every plugin block threw `Block type '…' is not registered` under `require()`. The registry is now shared across every copy in the process, which also covers a consumer who ends up with two copies of the package installed, or who mixes the ESM and CJS builds. ESM was never affected.
 - **A bad numeric value no longer prints as `NaN`.** `Decimalish` accepts strings (mysql2/pg return `DECIMAL` columns as strings), and the boundary only checked the type — so `'N/A'`, `'-'` or a pre-formatted `'1,234.00'` reached the page as a literal `NaN` inside a total, and `''` silently counted as a real `0`. Every value entering arithmetic or number formatting is now validated, including the `computed` / `runningTotal` paths that previously bypassed the check entirely.
 - A custom `aggregate` function returning a non-numeric string (`() => 'n/a'`) used to render as `NaN`; it is now printed verbatim, as the deliberate placeholder it reads as.
+- **Column `width`s that don't fit no longer overflow the page silently.** Only auto-width columns are ever scaled, so once the fixed widths alone filled the content area the table was simply drawn past the right margin, with no error from this library or from AutoTable.
+- **`nested(row)` runs once per row instead of twice.** Measure and render both walked every master row, and each level built a throwaway child table for measuring and another for rendering — so a resolver's cost doubled again at every level down the tree.
+- A `nested` resolver that never bottoms out used to fail as a bare `Maximum call stack size exceeded` from deep inside measure; it now throws a `KapomError` naming the cause once nesting passes 10 levels.
+- Two stale error messages: the Thai font guard pointed at `summaryLabel`/`footerLabel` defaults that became English in 0.1.x, and an unregistered block type pointed at a file that isn't published. The latter now lists the types that *are* registered.
+- Theme colours are validated and copied. An out-of-range or non-numeric channel was silently clamped by jsPDF (a wrong-coloured report you only notice in print), and a resolved theme held onto the caller's array, so mutating it later changed the report's colours mid-flight.
 
 ### Changed
 
 - A value that cannot be parsed as a finite number now throws a `KapomError` naming the column and row instead of rendering. If your data legitimately contains blanks or placeholders in a numeric column, map them before passing the data in (`price: row.price ?? 0`), or use a `formatter` on that column to control the display yourself. `aggregate: 'count'` is unaffected — it never reads the values, so counting a text column still works.
+- Fixed column widths that exceed the content area now throw a `KapomLayoutError` reporting the totals. Widths that exactly fill it are still fine when *every* column is fixed, and an error when an auto-width column is left with no room.
+- `GroupResolver.keepTogether` is the exported `KeepTogetherPolicy` interface rather than an inline anonymous type, so callers can name it. Structurally identical — no change to how it's written.
 
 ### Added
 
 - `hasBlockType(type)` and `isFiniteDecimalish(value)`, exported from `kapom-report/advanced` — check a block-type name before registering it (instead of catching the duplicate-name throw), and test a value against the numeric boundary without throwing.
+- `kapom-report/advanced` now exports the composite block classes (`BoxBlock`, `RowBlock`, `KeyValueBlock`, `BottomAnchorBlock`) with their constructor option types, plus what authoring a composite block actually requires: `deriveMeasureContext`, `measureBlocksHeight`, `buildConfinedContext`, `applyTextStyle`, `lineHeightOf`, `splitTextLines`, `measureTextBlockHeight`, and `assertFixedWidthsFit`.
 
 ## [0.1.2] - 2026-07-21
 

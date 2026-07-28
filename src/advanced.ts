@@ -107,7 +107,7 @@ export {
 } from './table/group-resolver';
 export type { GroupTreeNode } from './table/group-tree';
 export { buildGroupTree, flattenGroupTreeRows, countGroupBands } from './table/group-tree';
-export { computeColumnWidths } from './table/column-width';
+export { computeColumnWidths, assertFixedWidthsFit } from './table/column-width';
 export { resolveRowStyle } from './style/resolve-cell-style';
 
 // ── formatting internals ────────────────────────────────────────────────────

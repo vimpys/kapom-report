@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { KapomError } from '../../src/core/errors';
+import type { RGB } from '../../src/types/primitives';
 import {
   DEFAULT_RESOLVED_THEME,
   resolveTheme,
@@ -54,5 +55,35 @@ describe('resolveTheme', () => {
   it('ชื่อ preset ไม่รู้จัก → throw KapomError (fail-fast)', () => {
     // @ts-expect-error — จงใจส่งชื่อผิดเพื่อทดสอบ runtime guard
     expect(() => resolveTheme('teal')).toThrow(KapomError);
+  });
+});
+
+describe('resolveTheme — validate + copy สีที่รับเข้ามา', () => {
+  it('channel นอกช่วง 0–255 / ไม่ใช่เลข → throw KapomError พร้อมชื่อ field', () => {
+    expect(() => resolveTheme({ primary: [300, 0, 0], bandFill: [0, 0, 0] })).toThrow(/theme\.primary/);
+    expect(() => resolveTheme({ primary: [0, 0, 0], bandFill: [0, -1, 0] })).toThrow(/theme\.bandFill/);
+    expect(() => resolveTheme({ primary: [0, 0, 0], bandFill: [0, Number.NaN, 0] })).toThrow(KapomError);
+    expect(() =>
+      resolveTheme({ primary: [0, 0, 0], bandFill: [0, 0, 0], zebraFill: [256, 0, 0] }),
+    ).toThrow(/theme\.zebraFill/);
+  });
+
+  it('tuple ที่ความยาวไม่ใช่ 3 → throw', () => {
+    expect(() => resolveTheme({ primary: [0, 0] as unknown as RGB, bandFill: [0, 0, 0] })).toThrow(
+      /tuple of 3/,
+    );
+  });
+
+  it('ขอบเขต 0 กับ 255 ใช้ได้', () => {
+    expect(() => resolveTheme({ primary: [0, 0, 0], bandFill: [255, 255, 255] })).not.toThrow();
+  });
+
+  it('คัดลอกสี ไม่ถือ reference ของ caller — mutate ทีหลังต้องไม่กระทบ theme ที่ resolve แล้ว', () => {
+    const primary: [number, number, number] = [10, 20, 30];
+    const resolved = resolveTheme({ primary, bandFill: [200, 200, 200] });
+
+    primary[0] = 999;
+
+    expect(resolved.primary).toEqual([10, 20, 30]);
   });
 });

@@ -84,6 +84,30 @@ export const THEME_PRESETS: Record<ThemeName, Theme> = {
   stone: { primary: [150, 155, 165], bandFill: [234, 235, 238] },
 };
 
+/**
+ * Every colour a caller hands in is checked and copied. Checked because an out-of-range or
+ * non-numeric channel doesn't fail anywhere downstream — jsPDF clamps it, so the report just comes
+ * out the wrong colour, which is the kind of thing you only notice after printing; the rest of the
+ * library already fails fast on bad config (an unknown preset name right below, margins, watermark
+ * opacity), so this was the odd one out. Copied because `RGB` is readonly only to *us*: the caller
+ * still holds the array they passed and could mutate it later, silently changing a theme that was
+ * meant to be resolved once for the whole report.
+ */
+function checkedColor(value: RGB, field: string): RGB {
+  if (!Array.isArray(value) || value.length !== 3) {
+    throw new KapomError(`theme.${field} must be an [r, g, b] tuple of 3 numbers`);
+  }
+  for (const channel of value) {
+    if (typeof channel !== 'number' || !Number.isFinite(channel) || channel < 0 || channel > 255) {
+      throw new KapomError(
+        `theme.${field} must be 3 numbers between 0 and 255 (got [${value.join(', ')}])`,
+      );
+    }
+  }
+  const [r, g, b] = value;
+  return [r, g, b];
+}
+
 /** relative luminance (0..1) of an sRGB colour — used to pick readable text on a fill */
 function luminance([r, g, b]: RGB): number {
   return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
@@ -115,18 +139,22 @@ export function resolveTheme(input?: ThemeInput): ResolvedTheme {
     theme = input;
   }
 
-  const onPrimary = theme.onPrimary ?? autoContrast(theme.primary);
-  const onBand = theme.onBand ?? autoContrast(theme.bandFill);
+  const primary = checkedColor(theme.primary, 'primary');
+  const bandFill = checkedColor(theme.bandFill, 'bandFill');
+  const onPrimary = theme.onPrimary ? checkedColor(theme.onPrimary, 'onPrimary') : autoContrast(primary);
+  const onBand = theme.onBand ? checkedColor(theme.onBand, 'onBand') : autoContrast(bandFill);
+  const zebraFill = theme.zebraFill ? checkedColor(theme.zebraFill, 'zebraFill') : undefined;
+
   return {
-    primary: theme.primary,
+    primary,
     onPrimary,
-    bandFill: theme.bandFill,
+    bandFill,
     onBand,
-    zebraFill: theme.zebraFill,
+    zebraFill,
     // nested master-detail tints reuse the band identity for a coherent single-theme look
-    nestedIdentityFill: theme.bandFill,
+    nestedIdentityFill: bandFill,
     nestedIdentityText: onBand,
-    nestedChildFill: theme.bandFill,
+    nestedChildFill: bandFill,
     nestedChildText: onBand,
   };
 }

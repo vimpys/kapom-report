@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { computeColumnWidths } from '../../src/table/column-width';
+import { assertFixedWidthsFit, computeColumnWidths } from '../../src/table/column-width';
+import { KapomLayoutError } from '../../src/core/errors';
 import { makeStubDoc, SCALE_FACTOR } from '../helpers/stub-doc';
 
 // stub: getTextWidth = 2 หน่วย/ตัวอักษร, padding = 10/SCALE_FACTOR ต่อ column
@@ -71,5 +72,34 @@ describe('computeColumnWidths', () => {
 
     const calls = stub.setFontSize.mock.calls.map((args) => args[0]);
     expect(calls).toEqual([14, 16]); // วัดที่ 14 แล้ว restore 16 เดิม
+  });
+});
+
+describe('assertFixedWidthsFit — fixed width ที่เกินหน้าต้อง throw ไม่ใช่ล้นเงียบ', () => {
+  it('fixed รวมเกิน contentWidth (ทุก column fixed) → throw KapomLayoutError', () => {
+    expect(() => assertFixedWidthsFit([100, 100], 180)).toThrow(KapomLayoutError);
+    expect(() => assertFixedWidthsFit([100, 100], 180)).toThrow(/100 \+ 100.*total 200.*only 180/);
+  });
+
+  it('fixed รวมพอดี contentWidth: ok ถ้าทุก column fixed, throw ถ้ายังมี auto column เหลือ', () => {
+    expect(() => assertFixedWidthsFit([90, 90], 180)).not.toThrow();
+    // auto column ไม่เหลือที่ให้วาดเลย
+    expect(() => assertFixedWidthsFit([90, 90, undefined], 180)).toThrow(/auto-width column/);
+  });
+
+  it('fixed น้อยกว่า contentWidth → ผ่านทั้งกรณีมีและไม่มี auto column', () => {
+    expect(() => assertFixedWidthsFit([50, 50], 180)).not.toThrow();
+    expect(() => assertFixedWidthsFit([50, undefined], 180)).not.toThrow();
+  });
+
+  it('ไม่มี fixed เลย → ไม่ต้องเช็ค', () => {
+    expect(() => assertFixedWidthsFit([undefined, undefined], 10)).not.toThrow();
+    expect(() => assertFixedWidthsFit([], 180)).not.toThrow();
+  });
+
+  it('computeColumnWidths บังคับ guard เดียวกัน (grouped/nested เรียกผ่านตัวนี้)', () => {
+    const { doc } = makeStubDoc();
+
+    expect(() => computeColumnWidths(doc, [['a', 'b']], [120, 120], 180)).toThrow(KapomLayoutError);
   });
 });
