@@ -21,6 +21,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `hasBlockType(type)` and `isFiniteDecimalish(value)`, exported from `kapom-report/advanced` — check a block-type name before registering it (instead of catching the duplicate-name throw), and test a value against the numeric boundary without throwing.
 
+## [0.1.2] - 2026-07-21
+
+Metadata and documentation only — no code changes, nothing to migrate.
+
+### Changed
+
+- npm keywords reworked for discoverability (`report-generator`, `report-builder`, `server-side`, `serverless`, `backend`, `nodejs`).
+- `homepage` now points at the published API reference rather than the repo.
+
+### Docs
+
+- README examples use the `col.data()` column constructors.
+- The Thai-font README example is English-only, so it renders without a Thai font registered.
+
 ## [0.1.1] - 2026-07-19
 
 ### Fixed

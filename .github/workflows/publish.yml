@@ -1,7 +1,8 @@
 name: Publish
 
-# Publishes to npm when a GitHub Release is published (create a release tagged
-# e.g. v1.0.0). Can also be triggered manually from the Actions tab.
+# Publishes to npm when a GitHub Release is published. Tag the release `v<version>`
+# matching package.json (e.g. v0.2.0) — the job below refuses to publish otherwise.
+# Can also be triggered manually from the Actions tab.
 on:
   release:
     types: [published]
@@ -22,7 +23,23 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
           cache: npm
       - run: npm ci
-      # npm publish runs prepublishOnly (typecheck + lint + test + build) first,
+
+      # A GitHub Release can be cut against any tag, while npm publishes whatever version
+      # package.json happens to hold — nothing tied the two together, which is exactly how the
+      # repo ended up carrying a v1.0.0 tag while npm was on 0.1.x. Fail loudly instead of
+      # publishing a version nobody asked for. Skipped on workflow_dispatch (no tag to compare).
+      - name: Verify the release tag matches package.json
+        if: github.event_name == 'release'
+        run: |
+          pkg="$(node -p "require('./package.json').version")"
+          tag="${GITHUB_REF_NAME#v}"
+          if [ "$pkg" != "$tag" ]; then
+            echo "::error::release tag '$GITHUB_REF_NAME' does not match package.json version '$pkg' — bump one of them and re-cut the release"
+            exit 1
+          fi
+          echo "publishing $pkg from tag $GITHUB_REF_NAME"
+
+      # npm publish runs prepublishOnly (typecheck + lint + build + test) first,
       # so a broken build never reaches the registry.
       - run: npm publish --provenance --access public
         env:
