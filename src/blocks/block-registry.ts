@@ -69,10 +69,13 @@ export function registerBlockType(type: string, factory: BlockFactory): void {
  */
 export function createBlock<T>(input: ReportNodeInput<T>): MeasurableBlock {
   const node = resolveNodeInput(input);
-  const factory = registry().get(node.type);
+  const blocks = registry();
+  const factory = blocks.get(node.type);
   if (!factory) {
+    // listing what IS registered turns the usual cause (a typo in `type`) into a one-glance fix
     throw new KapomError(
-      `Block type '${node.type}' is not registered (see roadmap in CLAUDE.md)`,
+      `Block type '${node.type}' is not registered. Register a custom type with registerBlockType() ` +
+        `from 'kapom-report/advanced' before rendering it. Available: ${[...blocks.keys()].join(', ')}`,
     );
   }
   return factory(node as ReportNode<unknown>);

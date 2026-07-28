@@ -21,8 +21,8 @@ export function thaiGlyphError(fontName: string, sample: string): KapomFontError
   return new KapomFontError(
     `Thai text ("${preview}") is about to be rendered with '${fontName}', a jsPDF built-in font ` +
       `with no Thai glyphs — the output would be garbled without any error from jsPDF itself. ` +
-      `Register a Thai font via the font config (e.g. Sarabun), or change the text/label to a ` +
-      `language the font supports (note: summaryLabel/footerLabel default to Thai 'รวม' — override them in English).`,
+      `Register a Thai font through the report's font config (e.g. Sarabun), or change the text ` +
+      `to a language the font supports.`,
   );
 }
 
