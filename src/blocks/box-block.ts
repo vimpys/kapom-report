@@ -29,7 +29,7 @@ export function assertBoxNodeValid(node: BoxNode<unknown>): void {
 }
 
 /** the paint/behavior options the factory resolves out of a BoxNode */
-interface BoxBlockOptions {
+export interface BoxBlockOptions {
   readonly background: RGB | undefined;
   readonly borderColor: RGB | undefined;
   readonly borderWidth: number;

@@ -65,6 +65,7 @@ export type {
   ImageNode,
   SignatureSlot,
   SignatureNode,
+  KeepTogetherPolicy,
   GroupResolver,
   ZebraOption,
   TableStyleOptions,

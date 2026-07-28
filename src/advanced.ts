@@ -21,6 +21,17 @@ export { PdfCursor } from './core/cursor';
 
 // ── block contract + context (for authoring custom blocks) ─────────────────
 export type { CursorState, MeasureContext, RenderContext, MeasurableBlock } from './core/context';
+/**
+ * The pieces a *composite* custom block needs and could not reach before: render() only ever
+ * receives a RenderContext, so without deriveMeasureContext there was no way to measure children
+ * at all, and measureBlocksHeight/buildConfinedContext are what the built-in containers
+ * (stack/row/box) use to size and confine theirs.
+ */
+export { deriveMeasureContext, measureBlocksHeight } from './core/measure-context';
+export { buildConfinedContext } from './core/confined-context';
+/** drawing text in a custom block: applyTextStyle is drawText's companion (fontSize/font/colour), lineHeightOf tells you how far to advance afterwards */
+export { applyTextStyle } from './core/draw-text';
+export { lineHeightOf, splitTextLines, measureTextBlockHeight } from './core/text-metrics';
 
 // ── plugin authoring: register a new block type ────────────────────────────
 export type { BlockFactory } from './blocks/block-registry';
@@ -43,6 +54,14 @@ export { TableBlock } from './blocks/table-block';
 export { StackBlock } from './blocks/stack-block';
 export { SectionBlock } from './blocks/section-block';
 export { RawBlock } from './blocks/raw-block';
+// the composite containers — omitted until now while every sibling class was exported, so their
+// constructor option types ship too (a class you cannot name the arguments of is half an export)
+export type { BoxBlockOptions } from './blocks/box-block';
+export { BoxBlock } from './blocks/box-block';
+export type { RowBlockColumn } from './blocks/row-block';
+export { RowBlock } from './blocks/row-block';
+export { KeyValueBlock } from './blocks/key-value-block';
+export { BottomAnchorBlock } from './blocks/bottom-anchor-block';
 
 // ── config resolvers (Progressive Disclosure → ReportNode tree; pure) ──────
 export type { ResolvedReportConfig } from './report/resolve-report-config';

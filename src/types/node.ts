@@ -71,12 +71,21 @@ export interface SignatureNode {
   style?: Partial<TextStyle>;
 }
 
+/**
+ * How much of a group has to fit below its own header before the group may start on a page —
+ * guards against an orphan header stranded at the bottom with its rows overleaf.
+ */
+export interface KeepTogetherPolicy {
+  /** minimum body rows that must fit alongside the group header, or the whole group moves to the next page */
+  minRowsWithHeader: number;
+}
+
 export interface GroupResolver<T> {
   by: keyof T | ((row: T) => string);
   headerLabel?: (groupKey: string, rows: readonly T[]) => string;
   footerLabel?: (groupKey: string, rows: readonly T[]) => string;
   sortGroups?: (a: string, b: string) => number;
-  keepTogether?: { minRowsWithHeader: number };
+  keepTogether?: KeepTogetherPolicy;
   /**
    * a group nested one level inside this one (recursive composition — roadmap 10), e.g. group by
    * region, then subGroup by category; nests to N levels, each level has its own band/subtotal/

@@ -97,7 +97,7 @@ export function assertRowNodeValid(node: RowNode<unknown>): void {
 }
 
 /** a column after the factory built its children — width config + the child blocks to stack */
-interface RowBlockColumn {
+export interface RowBlockColumn {
   readonly width: number | undefined;
   readonly blocks: readonly MeasurableBlock[];
 }
