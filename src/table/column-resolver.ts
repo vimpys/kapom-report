@@ -1,7 +1,7 @@
 import { KapomError } from '../core/errors';
 import { normalizeText } from '../core/text-normalizer';
 import { formatNumber } from '../format/number-format';
-import { computeAggregate } from './aggregate';
+import { asDecimalish, computeAggregate, isFiniteDecimalish } from './aggregate';
 import type { Decimalish, NumericStrategy } from '../numeric/numeric-strategy';
 import type { ComputedColumn, DataColumn, ReportColumn, ResolvedAlign, TableColumn } from '../types/column';
 import { DEFAULT_ROW_NUMBER_MODE, flattenColumns, isAggregatableColumn, isColumnVisible, resolveColumnAlign } from '../types/column';
@@ -64,11 +64,18 @@ function stringifyCell(value: unknown): string {
   return value === null || value === undefined ? '' : String(value);
 }
 
-function asDecimalishCell(value: unknown, columnHeader: string): Decimalish {
-  if (typeof value === 'number' || typeof value === 'string') return value;
-  throw new KapomError(
-    `column '${columnHeader}': numberFormat requires a number|string value (got ${typeof value})`,
-  );
+/**
+ * Locator prefix for every numeric-boundary error — the column always, plus the 1-based row when
+ * the caller knows it (a bad value in row 400 is otherwise a needle in a haystack). The row number
+ * is relative to the segment being resolved, so in a grouped table it counts within that group.
+ */
+function cellContext(columnHeader: string, rowIndex?: number): string {
+  return rowIndex === undefined ? `column '${columnHeader}'` : `column '${columnHeader}' row ${rowIndex + 1}`;
+}
+
+/** every value entering arithmetic/formatting goes through the one boundary in aggregate.ts (see asDecimalish) */
+function asDecimalishCell(value: unknown, columnHeader: string, rowIndex?: number): Decimalish {
+  return asDecimalish(value, cellContext(columnHeader, rowIndex));
 }
 
 /**
@@ -115,7 +122,7 @@ function resolveCell<T>(
       if (col.formatter) return col.formatter(value, row);
       if (col.numberFormat) {
         return formatNumber(
-          asDecimalishCell(value, col.header),
+          asDecimalishCell(value, col.header, localIndex),
           numeric,
           col.numberFormat,
         );
@@ -136,12 +143,13 @@ function resolveCell<T>(
     case 'computed': {
       const value = col.compute(row);
       if (col.formatter) return col.formatter(value, row);
-      // computed is numeric by contract (returns Decimalish) → always formatted (default th-TH)
-      return formatNumber(value, numeric, col.numberFormat);
+      // computed is numeric by contract (returns Decimalish) → always formatted (default th-TH);
+      // the contract is only a type, so the returned value is still checked like any other input
+      return formatNumber(asDecimalishCell(value, col.header, localIndex), numeric, col.numberFormat);
     }
     case 'runningTotal': {
       const previous = state.runningTotals[colIndex] ?? 0;
-      const accumulated = numeric.add(previous, col.valueOf(row));
+      const accumulated = numeric.add(previous, asDecimalishCell(col.valueOf(row), col.header, localIndex));
       state.runningTotals[colIndex] = accumulated;
       return col.formatter
         ? col.formatter(accumulated)
@@ -212,21 +220,29 @@ export function resolveAggregateRow<T>(
     if (!isAggregatableColumn(col)) return '';
     if (col.aggregate === undefined) return '';
 
+    // 'count' is the one aggregate that never reads the cell values, only how many rows there are
+    // (see computeAggregate) — so counting a text column (e.g. product names) is legitimate and
+    // must not be forced through the numeric boundary below. It's always a whole number too:
+    // formatting it to 2 decimal places would read oddly (e.g. "3.00").
+    if (col.aggregate === 'count') return String(rows.length);
+
     if (typeof col.aggregate === 'function') {
-      // a custom aggregate fn only exists on DataColumn (see types/column.ts)
-      return formatAggregateResult(col, col.aggregate(rows), numeric);
+      // a custom aggregate fn only exists on DataColumn (see types/column.ts). This value came
+      // from the user's own code rather than their data source, so a non-numeric string is read as
+      // a deliberate literal ('n/a', '—' for "no meaningful total") and printed verbatim instead of
+      // being rejected — it used to go through Intl and land on the page as "NaN".
+      const custom = col.aggregate(rows);
+      return isFiniteDecimalish(custom) ? formatAggregateResult(col, custom, numeric) : String(custom);
     }
 
     // discriminate on the positive 'computed' — a DataColumn's `type` is optional ('data' | undefined),
     // so `=== 'data'` wouldn't exclude it from the negative branch
     const values =
       col.type === 'computed'
-        ? rows.map((row) => col.compute(row))
-        : rows.map((row) => asDecimalishCell(row[col.key], col.header));
+        ? rows.map((row, index) => asDecimalishCell(col.compute(row), col.header, index))
+        : rows.map((row, index) => asDecimalishCell(row[col.key], col.header, index));
 
-    const result = computeAggregate(col.aggregate, values, numeric);
-    // count is always a whole number — formatting it to 2 decimal places would read oddly (e.g. "3.00")
-    return col.aggregate === 'count' ? String(result) : formatAggregateResult(col, result, numeric);
+    return formatAggregateResult(col, computeAggregate(col.aggregate, values, numeric), numeric);
   });
 
   const firstEmpty = firstAggregateLabelIndex(columns);

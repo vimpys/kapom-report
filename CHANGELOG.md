@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **Plugin blocks now work for CJS consumers.** The block registry lived in module scope, and the CJS build embeds a copy of it in each entry point, so a type registered via `registerBlockType` (from `kapom-report/advanced`) was invisible to `createKapomReport` (from the main entry) and every plugin block threw `Block type '…' is not registered` under `require()`. The registry is now shared across every copy in the process, which also covers a consumer who ends up with two copies of the package installed, or who mixes the ESM and CJS builds. ESM was never affected.
+- **A bad numeric value no longer prints as `NaN`.** `Decimalish` accepts strings (mysql2/pg return `DECIMAL` columns as strings), and the boundary only checked the type — so `'N/A'`, `'-'` or a pre-formatted `'1,234.00'` reached the page as a literal `NaN` inside a total, and `''` silently counted as a real `0`. Every value entering arithmetic or number formatting is now validated, including the `computed` / `runningTotal` paths that previously bypassed the check entirely.
+- A custom `aggregate` function returning a non-numeric string (`() => 'n/a'`) used to render as `NaN`; it is now printed verbatim, as the deliberate placeholder it reads as.
+
+### Changed
+
+- A value that cannot be parsed as a finite number now throws a `KapomError` naming the column and row instead of rendering. If your data legitimately contains blanks or placeholders in a numeric column, map them before passing the data in (`price: row.price ?? 0`), or use a `formatter` on that column to control the display yourself. `aggregate: 'count'` is unaffected — it never reads the values, so counting a text column still works.
+
+### Added
+
+- `hasBlockType(type)` and `isFiniteDecimalish(value)`, exported from `kapom-report/advanced` — check a block-type name before registering it (instead of catching the duplicate-name throw), and test a value against the numeric boundary without throwing.
+
 ## [0.1.1] - 2026-07-19
 
 ### Fixed

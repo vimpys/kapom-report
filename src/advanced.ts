@@ -78,7 +78,7 @@ export {
   DEFAULT_SUMMARY_LABEL,
   DEFAULT_NO_DATA_TEXT,
 } from './table/column-resolver';
-export { computeAggregate, asDecimalish } from './table/aggregate';
+export { computeAggregate, asDecimalish, isFiniteDecimalish } from './table/aggregate';
 export type { ResolvedGroup } from './table/group-resolver';
 export {
   splitGroups,

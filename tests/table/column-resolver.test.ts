@@ -31,6 +31,111 @@ const baseNode = (columns: TableNode<Sale>['columns']): TableNode<Sale> => ({
   data: sales,
 });
 
+describe('numeric boundary — ค่าที่ parse ไม่ได้ต้อง throw ไม่ใช่พิมพ์ "NaN" ลง PDF', () => {
+  /** DECIMAL ที่ DB คืนมาเป็น string — แถวที่ 2 เป็นค่าเสียแบบที่เจอจริง (legacy/nullable column) */
+  const dirty: Sale[] = [
+    { product: 'Widget A', qty: 2, price: '10.50' },
+    { product: 'Widget B', qty: 1, price: 'N/A' },
+  ];
+
+  it('aggregate sum เจอ string ที่ parse ไม่ได้ → throw พร้อมชื่อ column + เลขแถว', () => {
+    const node: TableNode<Sale> = {
+      type: 'table',
+      columns: [{ key: 'price', header: 'Price', aggregate: 'sum' }],
+      data: dirty,
+    };
+
+    expect(() => resolveTableContent(node, nativeNumeric)).toThrow(KapomError);
+    expect(() => resolveTableContent(node, nativeNumeric)).toThrow(/column 'Price' row 2/);
+  });
+
+  it("string ว่างไม่ถูกนับเป็น 0 เงียบๆ ในผลรวม (Number('') = 0)", () => {
+    const node: TableNode<Sale> = {
+      type: 'table',
+      columns: [{ key: 'price', header: 'Price', aggregate: 'sum' }],
+      data: [{ product: 'A', qty: 1, price: '' }],
+    };
+
+    expect(() => resolveTableContent(node, nativeNumeric)).toThrow(KapomError);
+  });
+
+  it('data column ที่ตั้ง numberFormat: cell ระดับแถวก็ต้องผ่าน boundary เดียวกัน', () => {
+    const node: TableNode<Sale> = {
+      type: 'table',
+      columns: [{ key: 'price', header: 'Price', numberFormat: { fractionDigits: 2 } }],
+      data: dirty,
+    };
+
+    expect(() => resolveTableContent(node, nativeNumeric)).toThrow(/column 'Price' row 2/);
+  });
+
+  it('computed / runningTotal ที่คืนค่าเสีย → throw ด้วย (contract เป็นแค่ type ยังเชื่อไม่ได้)', () => {
+    const computed: TableNode<Sale> = {
+      type: 'table',
+      columns: [{ type: 'computed', header: 'Amount', compute: (row) => row.price }],
+      data: dirty,
+    };
+    const running: TableNode<Sale> = {
+      type: 'table',
+      columns: [{ type: 'runningTotal', header: 'Running', valueOf: (row) => row.price }],
+      data: dirty,
+    };
+
+    expect(() => resolveTableContent(computed, nativeNumeric)).toThrow(/column 'Amount' row 2/);
+    expect(() => resolveTableContent(running, nativeNumeric)).toThrow(/column 'Running' row 2/);
+  });
+
+  it("aggregate 'count' นับ column ข้อความได้ตามเดิม — count ไม่เคยอ่านค่า จึงไม่ต้องผ่าน boundary", () => {
+    const content = resolveTableContent(
+      {
+        type: 'table',
+        columns: [{ key: 'product', header: 'Product', aggregate: 'count' }],
+        data: dirty,
+      },
+      nativeNumeric,
+    );
+
+    expect(content.foot).toEqual(['2']);
+  });
+
+  it('custom aggregate fn คืน string ที่ไม่ใช่ตัวเลข → พิมพ์ตามตรง (เดิมได้ "NaN")', () => {
+    const content = resolveTableContent(
+      {
+        type: 'table',
+        columns: [
+          { key: 'product', header: 'Product' },
+          { key: 'price', header: 'Price', aggregate: () => 'n/a' },
+        ],
+        data: sales,
+      },
+      nativeNumeric,
+    );
+
+    expect(content.foot?.[1]).toBe('n/a');
+  });
+
+  it('custom aggregate fn คืนค่าที่เป็นตัวเลข → ยัง format ตาม numberFormat เหมือนเดิม', () => {
+    const content = resolveTableContent(
+      {
+        type: 'table',
+        columns: [
+          { key: 'product', header: 'Product' },
+          {
+            key: 'price',
+            header: 'Price',
+            numberFormat: { locale: 'en-US', fractionDigits: 2 },
+            aggregate: () => '1234.5',
+          },
+        ],
+        data: sales,
+      },
+      nativeNumeric,
+    );
+
+    expect(content.foot?.[1]).toBe('1,234.50');
+  });
+});
+
 describe('resolveTableContent — head/aligns/widths', () => {
   it('head จาก header; header align default center, headerAlign override; data align แยกอิสระ', () => {
     const content = resolveTableContent(
