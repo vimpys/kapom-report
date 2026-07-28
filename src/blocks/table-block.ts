@@ -45,6 +45,15 @@ const ESTIMATED_ROW_HEIGHT_RATIO = 1.9;
 const GROUP_BAND_HEIGHT_RATIO = 1.6;
 
 /**
+ * How deep master-detail tables may nest before it's treated as a mistake. `nested(row)` builds the
+ * child table on demand, so a resolver defined in terms of itself (`const node = (rows) => ({ …,
+ * nested: (r) => node(r.children) })`) over data that never bottoms out recurses forever — which
+ * surfaced as a bare "Maximum call stack size exceeded" from somewhere deep in measure. The limit is
+ * far past anything that fits on a page: even three levels of indented sub-tables is a hard read.
+ */
+const MAX_NESTED_DEPTH = 10;
+
+/**
  * `rowNumber` mode 'per-page' counts per physical PDF page — a page's row 1 has to actually be
  * drawn before we know it landed on a new page, so this state is shared across every AutoTable
  * segment in a single TableBlock.render() call (a flat table's one segment, or every leaf +
@@ -103,11 +112,49 @@ export class TableBlock<T> implements MeasurableBlock {
   /** the render-time style layer (Typography tokens + per-table overrides + theme → AutoTable styles) */
   private readonly styles: TableStyleResolver<T>;
 
-  constructor(private readonly node: TableNode<T>) {
+  /**
+   * `nested(row)` resolved once per row, shared by measureHeight and render. It's the user's own
+   * callback and is usually a scan over a bigger array, but measure and render each walk every row,
+   * so it used to run twice per row — and twice again per row of every child, compounding down the
+   * tree, since each level built a throwaway child TableBlock for measuring and another for
+   * rendering. The child blocks are cached alongside for the same reason. Lazy: a table with no
+   * `nested` never allocates, and a block that is only measured pays for one pass.
+   */
+  private nestedChildren: readonly (TableBlock<unknown> | undefined)[] | undefined;
+
+  /** how many master-detail levels sit above this block — see MAX_NESTED_DEPTH */
+  private readonly depth: number;
+
+  constructor(private readonly node: TableNode<T>, depth = 0) {
     if (node.nested && node.group) {
       throw new KapomError('nested (master-detail) and group cannot be combined yet — pick one');
     }
+    if (depth > MAX_NESTED_DEPTH) {
+      throw new KapomError(
+        `nested (master-detail) tables are more than ${MAX_NESTED_DEPTH} levels deep — this is ` +
+          `almost always a nested() resolver that never bottoms out (it returns a child for every ` +
+          `row, including the deepest). Return undefined for a row with no detail.`,
+      );
+    }
+    this.depth = depth;
     this.styles = new TableStyleResolver(node.style);
+  }
+
+  /**
+   * The nested child of each row, as a ready block — built on first use and reused by both passes.
+   * Empty when the table has no `nested` resolver at all.
+   */
+  private resolveNestedChildren(): readonly (TableBlock<unknown> | undefined)[] {
+    if (this.nestedChildren) return this.nestedChildren;
+    const nested = this.node.nested;
+    const resolved = nested
+      ? this.node.data.map((row) => {
+          const child = nested(row);
+          return child ? new TableBlock(child, this.depth + 1) : undefined;
+        })
+      : [];
+    this.nestedChildren = resolved;
+    return resolved;
   }
 
   /**
@@ -192,14 +239,13 @@ export class TableBlock<T> implements MeasurableBlock {
    * height, which doesn't depend on the available width at all.
    */
   private measureNested(ctx: MeasureContext): number {
-    const nested = this.node.nested;
-    if (!nested) return 0;
+    if (!this.node.nested) return 0;
     const { rowHeight, footRows } = this.measureBasis(ctx);
+    const children = this.resolveNestedChildren();
     let height = rowHeight;
-    for (const row of this.node.data) {
+    for (const child of children) {
       height += rowHeight;
-      const child = nested(row);
-      if (child) height += new TableBlock(child).measureHeight(ctx);
+      if (child) height += child.measureHeight(ctx);
     }
     return height + footRows * rowHeight;
   }
@@ -382,13 +428,13 @@ export class TableBlock<T> implements MeasurableBlock {
       labelIndex: number;
       columnStyles: Record<string, Partial<Styles>>;
       masterInclusive: boolean;
-      renderDetail: (rowIndex: number, child: TableNode<unknown>) => void;
+      renderDetail: (rowIndex: number, child: TableBlock<unknown>) => void;
     },
   ): void {
-    const nested = this.node.nested;
-    if (!nested) return;
+    if (!this.node.nested) return;
     const { labelIndex, columnStyles, masterInclusive, renderDetail } = options;
     const rows = this.node.data;
+    const children = this.resolveNestedChildren();
     let segmentStart = 0;
 
     const flush = (end: number, foot: readonly string[] | undefined): void => {
@@ -408,9 +454,7 @@ export class TableBlock<T> implements MeasurableBlock {
     };
 
     for (let i = 0; i < rows.length; i += 1) {
-      const row = rows[i];
-      if (row === undefined) continue;
-      const child = nested(row);
+      const child = children[i];
       if (child === undefined) continue;
 
       flush(masterInclusive ? i + 1 : i, undefined); // detail row joins the master segment ('below') or is excluded ('stacked')
@@ -465,7 +509,7 @@ export class TableBlock<T> implements MeasurableBlock {
    */
   private renderNestedChild(
     ctx: RenderContext,
-    child: TableNode<unknown>,
+    child: TableBlock<unknown>,
     indentX: number,
     childWidth: number,
   ): void {
@@ -478,7 +522,7 @@ export class TableBlock<T> implements MeasurableBlock {
       },
       contentWidth: childWidth,
     };
-    new TableBlock(child).render(childCtx);
+    child.render(childCtx);
   }
 
   // ── master-detail (nested, 'stacked' layout): each master row with a child becomes one
@@ -522,8 +566,12 @@ export class TableBlock<T> implements MeasurableBlock {
     masterHead: readonly string[],
     masterAligns: readonly ResolvedAlign[],
     identity: readonly string[],
-    child: TableNode<unknown>,
+    childBlock: TableBlock<unknown>,
   ): void {
+    // this layout flattens the child into the same AutoTable rather than delegating to its
+    // render(), so it reads the child's node directly — reachable here because `node` is private
+    // to TableBlock, and this *is* TableBlock (a different type argument is still the same class)
+    const child = childBlock.node;
     const childColumns = visibleColumns(child.columns);
     const childContent = resolveTableContent(child, ctx.numeric);
     const gridCols = Math.max(masterColumns.length, childColumns.length);
