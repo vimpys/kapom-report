@@ -3,7 +3,7 @@ import { KapomLayoutError } from '../core/errors';
 import type { RawNode } from '../types/node';
 
 /**
- * escape hatch (roadmap level 2) — wraps the user's measure+draw contract into the engine loop:
+ * escape hatch — wraps the user's measure+draw contract into the engine loop:
  * the engine still runs measureHeight → ensureSpace (auto page-break) → render, so the user only
  * writes raw jsPDF drawing at the position the engine hands them; they don't manage page-breaks.
  * measure is called in both steps (like ImageBlock) — it must be deterministic for the same contentWidth.

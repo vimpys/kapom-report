@@ -18,8 +18,8 @@ export type PageNumberPosition =
 /**
  * A lightweight page-number annotation — unlike pageHeader/pageFooter (PageBand), this never
  * reserves height from the content area. It's drawn directly inside the existing page margin
- * (which content never uses anyway), at a fixed position on every page — see CLAUDE.md for the
- * design discussion (reserved-band footer vs. margin-only annotation).
+ * (which content never uses anyway), at a fixed position on every page. Reach for a `pageFooter`
+ * band instead when the footer holds real content that must not overlap the body.
  */
 export interface PageNumberOptions {
   /** default 'bottom-left' */

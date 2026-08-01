@@ -38,7 +38,7 @@ export function writeFile(filename: string, data: Uint8Array): void {
   fs.writeFileSync(filename, data);
 }
 
-/** minimum age of a temp file before it's cleared (review fix #7) — anything newer is assumed to possibly still be open in a viewer */
+/** minimum age of a temp file before it's cleared — anything newer is assumed to possibly still be open in a viewer */
 export const TEMP_PDF_MAX_AGE_MS = 60 * 60 * 1000;
 
 const TEMP_PDF_PATTERN = /^kapom-report-\d+\.pdf$/;

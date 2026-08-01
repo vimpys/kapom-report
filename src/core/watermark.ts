@@ -73,7 +73,7 @@ export const DEFAULT_WATERMARK_ROTATE = 0;
 export const DEFAULT_WATERMARK_LAYOUT: WatermarkLayout = 'single';
 
 /**
- * Declarative preset (review fix #2) — just give it a string and get a stamp centered on every
+ * Declarative preset — just give it a string and get a stamp centered on every
  * page, with no need to write a render callback or know jsPDF at all (same pattern as
  * createAnchoredBand, which did this for PageBand); reach for the full Watermark interface if you need more control.
  */

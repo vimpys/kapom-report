@@ -33,7 +33,7 @@ function openInNewTab(url: string): void {
 }
 
 /**
- * Public entry point (roadmap 8) — the user never needs to touch RenderEngine/createBlock directly
+ * Public entry point — the user never needs to touch RenderEngine/createBlock directly
  * `createKapomReport({ columns, data, ... }).save('report.pdf')` — zero-config layer 1;
  * column shorthand ({ key, header } without `type`) + group shorthand (a string key) + full
  * style/typography/font for layers 2/3, all converted through resolveReportConfig() into the same ReportNode tree;

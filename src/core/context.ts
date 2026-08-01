@@ -53,7 +53,7 @@ export interface RenderContext {
    * force a new page regardless of whether there's enough room left (unlike ensureSpace,
    * which only breaks when there isn't enough space) — a no-op if the cursor is already at
    * the top of a page (avoids stacking blank pages); used for the page-break policy between
-   * sections of a Composite Report (roadmap 6c)
+   * sections of a Composite Report
    */
   readonly forcePageBreak: () => void;
 }

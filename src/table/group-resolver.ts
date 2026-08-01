@@ -6,7 +6,7 @@ export interface ResolvedGroup<T> {
 }
 
 /**
- * the label for a group whose key is null/undefined/empty (review fix #6) — prevents a band
+ * the label for a group whose key is null/undefined/empty — prevents a band
  * from literally showing "null"/"undefined" (real DB data can always have NULL mixed into a
  * group column); overridable via headerLabel/footerLabel, which receive this key to transform
  * further — English (2026-07-07 — was Thai '(ไม่ระบุ)') for the same zero-config reason as

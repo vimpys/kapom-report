@@ -7,7 +7,7 @@ import { resolveAggregateRow, resolveSegmentBody } from './column-resolver';
 import { groupFooterLabel, groupHeaderLabel, splitGroups } from './group-resolver';
 
 /**
- * A single node in the group tree (roadmap 10 — nested group)
+ * A single node in the group tree (nested group)
  * A leaf (no subGroup) has a `body` to draw as an AutoTable segment; a non-leaf has `children`
  * to recurse into — both kinds have their own `foot` (subtotal) if a column has an aggregate.
  */

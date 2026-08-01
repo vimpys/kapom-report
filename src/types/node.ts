@@ -58,7 +58,7 @@ export interface SignatureSlot {
   label: string;
 }
 
-/** a signature line + label, multiple slots laid out horizontally in equal widths (Report Footer, roadmap 6d) */
+/** a signature line + label, multiple slots laid out horizontally in equal widths (a report footer) */
 export interface SignatureNode {
   type: 'signature';
   slots: readonly SignatureSlot[];
@@ -87,7 +87,7 @@ export interface GroupResolver<T> {
   sortGroups?: (a: string, b: string) => number;
   keepTogether?: KeepTogetherPolicy;
   /**
-   * a group nested one level inside this one (recursive composition — roadmap 10), e.g. group by
+   * a group nested one level inside this one (recursive composition), e.g. group by
    * region, then subGroup by category; nests to N levels, each level has its own band/subtotal/
    * keepTogether — a different concept from `TableNode.nested` (master-detail, which returns a
    * sub-table per row)
@@ -135,7 +135,7 @@ export interface TableNode<T> {
    * share a single concrete type when each row's child table has its own independent columns) —
    * a concrete `TableNode<Payment>` literal needs `satisfies TableNode<Payment> as unknown as
    * TableNode<unknown>` to assign here (an invariance quirk of `DataColumn.key: keyof T`, same
-   * reason `ReportRegistry` casts once internally — see CLAUDE.md)
+   * reason `ReportRegistry` casts once internally)
    */
   nested?: (row: T) => TableNode<unknown> | undefined;
   /**
@@ -264,12 +264,12 @@ export interface StackNode<T> {
   children: readonly ReportNodeInput<T>[];
 }
 
-/** like stack but carries a `name` for reference (e.g. Report Registry selects a section by name — roadmap 6c) */
+/** like stack but carries a `name` for reference (e.g. Report Registry selects a section by name) */
 export interface SectionNode<T> {
   type: 'section';
   name: string;
   children: readonly ReportNodeInput<T>[];
-  /** always force a new page before this section (no-op if the cursor is already at the top of a page) — a page-break policy between sections (roadmap 6c) */
+  /** always force a new page before this section (no-op if the cursor is already at the top of a page) — a page-break policy between sections */
   breakBefore?: boolean;
 }
 

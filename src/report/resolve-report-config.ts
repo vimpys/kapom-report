@@ -43,7 +43,7 @@ export interface KapomColumnGroupInput<T> {
 export type KapomColumnInput<T> = ReportColumn<T> | DataColumnShorthand<T> | KapomColumnGroupInput<T>;
 
 /**
- * layer 2: a simple string key group, or an array of keys = a nested group ordered outer→inner (roadmap 10);
+ * layer 2: a simple string key group, or an array of keys = a nested group ordered outer→inner;
  * layer 3: a full GroupResolver (function `by` + label/sort/keepTogether + its own subGroup chain)
  */
 export type KapomGroupInput<T> = keyof T | readonly (keyof T)[] | GroupResolver<T>;

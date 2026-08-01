@@ -1,7 +1,7 @@
 // side-effect import — pulls the `jsPDF.lastAutoTable` module augmentation into the published
 // .d.ts bundle; tsup's dts bundler only follows the import graph from this entry point, so
 // without this the ambient declaration (picked up locally only via tsconfig `include`) never
-// ships to consumers (see CLAUDE.md "jsPDF 4.x หมายเหตุ") — the augmentation file must be a
+// ships to consumers — the augmentation file must be a
 // plain `.ts` (not `.d.ts`) so esbuild can resolve it as a real (empty-at-runtime) module
 import './types/jspdf-autotable';
 

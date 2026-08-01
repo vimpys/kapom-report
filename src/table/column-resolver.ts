@@ -202,7 +202,7 @@ function formatAggregateResult<T>(
 
 /**
  * An aggregate row (group footer / grand total) — the label lands on "the first empty cell"
- * (review fix #4: it used to check only foot[0], so the label went missing silently if the
+ * (it used to check only foot[0], so the label went missing silently if the
  * first column had an aggregate); if every cell ends up with a value (every column has an
  * aggregate), the label is omitted — there's nowhere to put it without overwriting a total
  * returns undefined when no column declares an aggregate

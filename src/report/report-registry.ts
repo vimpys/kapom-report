@@ -5,7 +5,7 @@ import type { SectionNode } from '../types/node';
 export type SectionBuilder<C> = (context: C) => SectionNode<unknown>;
 
 /**
- * Composes a Composite Report from multiple sections, selected by name (roadmap 6c) — one
+ * Composes a Composite Report from multiple sections, selected by name — one
  * instance per report (unlike block-registry, which is a global singleton for block *types*:
  * a section is content specific to one report, not an extensibility point of the lib, so it
  * shouldn't share state across reports). Shared context (e.g. hotel name/date) is injected once

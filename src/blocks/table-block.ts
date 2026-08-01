@@ -250,7 +250,7 @@ export class TableBlock<T> implements MeasurableBlock {
     return height + footRows * rowHeight;
   }
 
-  // ── No-Data fallback (empty data — review fix #5) ────────────────────────
+  // ── No-Data fallback (empty data) ────────────────────────────────────────
 
   /** header + a single message row, colSpan across the full width — replaces the old silent empty header */
   private renderNoData(ctx: RenderContext): void {
@@ -617,7 +617,7 @@ export class TableBlock<T> implements MeasurableBlock {
     const head = columns.map((col) => normalizeText(col.header));
     const state = createSegmentState(columns.length);
 
-    // a tree covering every level of the subGroup chain — a leaf has a body, a non-leaf has children (roadmap 10)
+    // a tree covering every level of the subGroup chain — a leaf has a body, a non-leaf has children
     const tree = buildGroupTree(columns, this.node.data, resolver, ctx.numeric, state);
     const grandFoot = resolveAggregateRow(
       columns,

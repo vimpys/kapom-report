@@ -27,7 +27,7 @@ export function thaiGlyphError(fontName: string, sample: string): KapomFontError
 }
 
 /**
- * Fail fast against silent mojibake (review fix #1): Thai text + a jsPDF built-in font
+ * Fail fast against silent mojibake: Thai text + a jsPDF built-in font
  * always garbles silently — throw with a fix instead, per the fail-fast font validation
  * decision; a font the user registered is assumed to support it (checking real glyph
  * coverage would mean parsing a TTF's cmap table — too expensive for a guard that runs on every draw)

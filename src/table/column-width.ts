@@ -56,7 +56,7 @@ function paddingAllowance(doc: jsPDF): number {
  * text wider than what was measured, AutoTable wraps on its own (the row gets taller, it doesn't overflow)
  *
  * @param fontSize must match the fontSize the body actually uses (typography.detailRow once resolved —
- *   review fix #3: it used to be hardcoded to 10, which measured wrong whenever a user overrode typography)
+ *   it used to be hardcoded to 10, which measured wrong whenever a user overrode typography)
  */
 export function computeColumnWidths(
   doc: jsPDF,

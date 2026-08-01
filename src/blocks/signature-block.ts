@@ -18,7 +18,7 @@ interface NormalizedSlot {
 
 /**
  * A signature line + label below it — divides contentWidth equally by the number of slots
- * (Report Footer, roadmap 6d); doesn't use a Typography token (those 9 are locked in for
+ * (a report footer); doesn't use a Typography token (those 9 are locked in for
  * table/text only) — style uses its own default, like DividerNode
  */
 export class SignatureBlock implements MeasurableBlock {

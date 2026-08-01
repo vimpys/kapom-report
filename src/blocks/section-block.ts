@@ -4,7 +4,7 @@ import { StackBlock } from './stack-block';
 /**
  * Identical to StackBlock in every way (renders children in order) but keeps a `name` around
  * for reference — not used during rendering itself (awaits the Report Registry selecting a
- * section by name, roadmap 6c)
+ * section by name)
  */
 export class SectionBlock implements MeasurableBlock {
   private readonly stack: StackBlock;

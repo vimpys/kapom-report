@@ -1,5 +1,5 @@
 /**
- * Enforced on every piece of text before it reaches jsPDF (decision in CLAUDE.md) — jsPDF
+ * Enforced on every piece of text before it reaches jsPDF (always via the drawText facade) — jsPDF
  * computes width glyph-by-glyph directly, so stray control/whitespace characters break
  * layout (wrong widths, wrapping in the wrong place, or drawing as boxes) with no visible error.
  */

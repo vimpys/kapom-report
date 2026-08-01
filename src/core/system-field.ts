@@ -3,7 +3,7 @@ import type { DateFormat } from '../format/date-format';
 import { KapomError } from './errors';
 
 /**
- * Values the engine injects automatically (roadmap 7) — distinct from a user's own data fields.
+ * Values the engine injects automatically — distinct from a user's own data fields.
  * pageNumber/totalPages are only known for real at finalize() (naturally two-pass, since
  * finalize iterates every page in the doc after rendering finishes — see PageBand/Watermark).
  * sectionName/groupName/reportTitle/generatedBy/sectionPageNumber are not supported yet
