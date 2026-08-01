@@ -186,6 +186,7 @@ export function resolveWatermark(input: WatermarkInput): Watermark {
             break;
           default: {
             const exhaustive: never = layout;
+
             throw new KapomError(`watermark: unknown layout ${String(exhaustive)}`);
           }
         }

@@ -31,9 +31,10 @@ export default tseslint.config(
         // ปิด block (`}`) แล้วมีโค้ดต่อ → เว้น 1 บรรทัด ให้แต่ละ guard/branch เป็นหน่วยที่แยกกันด้วยตา
         // (เห็นผลชัดสุดใน validation ที่เขียน if ต่อกันรัวๆ)
         { blankLine: 'always', prev: 'block-like', next: '*' },
-        // เว้นก่อน return เพื่อแยก "ผลลัพธ์" ออกจากงานที่ทำมาก่อนหน้า — return ที่เป็น statement แรก
-        // ของ block ไม่โดน เพราะกฎทำงานระหว่างสอง statement เท่านั้น (ไม่มีตัวก่อนหน้า = ไม่บังคับ)
-        { blankLine: 'always', prev: '*', next: 'return' },
+        // เว้นก่อน return/throw เพื่อแยก "ทางออกของฟังก์ชัน" ออกจากงานที่ทำมาก่อนหน้า — ตัวที่เป็น
+        // statement แรกของ block ไม่โดน เพราะกฎทำงานระหว่างสอง statement เท่านั้น (ไม่มีตัวก่อนหน้า
+        // = ไม่บังคับ) ซึ่งครอบคลุม guard ส่วนใหญ่ที่เขียน `if (...) { throw ... }` อยู่แล้ว
+        { blankLine: 'always', prev: '*', next: ['return', 'throw'] },
       ],
     },
   },

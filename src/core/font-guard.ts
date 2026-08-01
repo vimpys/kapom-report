@@ -37,5 +37,6 @@ export function assertThaiRenderable(doc: jsPDF, text: string): void {
   if (!containsThai(text)) return;
   const fontName = doc.getFont().fontName;
   if (!isBuiltinStandardFont(fontName)) return;
+
   throw thaiGlyphError(fontName, text);
 }
