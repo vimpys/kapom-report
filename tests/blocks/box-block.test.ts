@@ -14,6 +14,7 @@ const CONTENT_BOTTOM = 282;
 
 function textBoxBlock(count: number, options: Partial<Parameters<typeof boxOptions>[0]> = {}) {
   const children = Array.from({ length: count }, () => new TextBlock({ type: 'text', content: 'x' }));
+
   return new BoxBlock(children, boxOptions(options));
 }
 

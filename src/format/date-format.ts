@@ -36,12 +36,14 @@ function getDateTimeFormatter(
 export function formatDate(date: Date, format?: DateFormat): string {
   const locale = format?.locale ?? DEFAULT_DATE_FORMAT.locale;
   const dateStyle = format?.dateStyle ?? DEFAULT_DATE_FORMAT.dateStyle;
+
   return getDateTimeFormatter(locale, { dateStyle }).format(date);
 }
 
 export function formatTime(date: Date, format?: DateFormat): string {
   const locale = format?.locale ?? DEFAULT_DATE_FORMAT.locale;
   const timeStyle = format?.timeStyle ?? 'short';
+
   return getDateTimeFormatter(locale, { timeStyle }).format(date);
 }
 
@@ -49,6 +51,7 @@ export function formatDateTime(date: Date, format?: DateFormat): string {
   const locale = format?.locale ?? DEFAULT_DATE_FORMAT.locale;
   const dateStyle = format?.dateStyle ?? DEFAULT_DATE_FORMAT.dateStyle;
   const timeStyle = format?.timeStyle ?? 'short';
+
   return getDateTimeFormatter(locale, { dateStyle, timeStyle }).format(date);
 }
 
@@ -60,5 +63,6 @@ export function formatDateTime(date: Date, format?: DateFormat): string {
  */
 export function formatTimestamp(date: Date): string {
   const pad = (n: number): string => String(n).padStart(2, '0');
+
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }

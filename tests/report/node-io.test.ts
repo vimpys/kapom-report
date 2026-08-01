@@ -14,6 +14,7 @@ function makeTempPdf(name: string, ageMs: number): string {
   const past = new Date(Date.now() - ageMs);
   utimesSync(file, past, past);
   created.push(file);
+
   return file;
 }
 

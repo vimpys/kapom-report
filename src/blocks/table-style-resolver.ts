@@ -28,6 +28,7 @@ export class TableStyleResolver<T> {
   ): S | 'normal' {
     if (!requested || requested === 'normal') return 'normal';
     const available = doc.getFontList()[fontName] ?? [];
+
     return available.includes(requested) ? requested : 'normal';
   }
 
@@ -42,6 +43,7 @@ export class TableStyleResolver<T> {
   resolveTokenStyles(ctx: RenderContext, token: TextStyle): Partial<Styles> {
     const styles = partialTextStyleToAutoTableStyles(token);
     this.guardFontStyle(ctx, styles);
+
     return styles;
   }
 
@@ -54,6 +56,7 @@ export class TableStyleResolver<T> {
     if (!override) return base;
     const merged = { ...base, ...cellStyleToAutoTableStyles(override) };
     this.guardFontStyle(ctx, merged);
+
     return merged;
   }
 
@@ -72,6 +75,7 @@ export class TableStyleResolver<T> {
       fillColor: [...ctx.theme.primary],
       textColor: [...ctx.theme.onPrimary],
     };
+
     return this.applyStyleOverride(ctx, base, this.style?.header);
   }
 
@@ -82,6 +86,7 @@ export class TableStyleResolver<T> {
       fillColor: [...ctx.theme.primary],
       textColor: [...ctx.theme.onPrimary],
     };
+
     return this.applyStyleOverride(ctx, base, this.style?.footer);
   }
 
@@ -90,6 +95,7 @@ export class TableStyleResolver<T> {
     const style = this.style;
     const zebraFill = ctx.theme.zebraFill;
     if (!zebraFill || style?.zebra) return style;
+
     return { ...style, zebra: { even: zebraFill } };
   }
 }

@@ -56,10 +56,12 @@ export function registerBuiltinBlocks(): void {
   registerBlockType('table', (node) => new TableBlock(node as TableNode<unknown>));
   registerBlockType('stack', (node) => {
     const stackNode = node as StackNode<unknown>;
+
     return new StackBlock(stackNode.children.map((child) => createBlock(child)));
   });
   registerBlockType('section', (node) => {
     const sectionNode = node as SectionNode<unknown>;
+
     return new SectionBlock(
       sectionNode.name,
       sectionNode.children.map((child) => createBlock(child)),
@@ -69,6 +71,7 @@ export function registerBuiltinBlocks(): void {
   registerBlockType('row', (node) => {
     const rowNode = node as RowNode<unknown>;
     assertRowNodeValid(rowNode); // fail-fast before building children (validates widths/gap + rejects table/section)
+
     return new RowBlock(
       rowNode.columns.map((column) => ({
         width: column.width,
@@ -80,12 +83,14 @@ export function registerBuiltinBlocks(): void {
   registerBlockType('keyValue', (node) => new KeyValueBlock(node as KeyValueNode));
   registerBlockType('bottomAnchor', (node) => {
     const anchorNode = node as BottomAnchorNode<unknown>;
+
     return new BottomAnchorBlock(anchorNode.children.map((child) => createBlock(child)));
   });
   registerBlockType('box', (node) => {
     const boxNode = node as BoxNode<unknown>;
     assertBoxNodeValid(boxNode);
     for (const child of boxNode.children) assertConfinedChildAllowed(child, 'box');
+
     return new BoxBlock(
       boxNode.children.map((child) => createBlock(child)),
       {

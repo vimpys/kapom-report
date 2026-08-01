@@ -12,6 +12,7 @@ function resolveImageSize(
   }
 
   const scale = contentWidth / node.width;
+
   return { width: contentWidth, height: node.height * scale };
 }
 

@@ -27,5 +27,6 @@ export const fontConfig: FontConfig = {
 /** absolute path for a demo PDF — examples/output/<name>.pdf (the folder is created on first use) */
 export function outPath(name: string): string {
   mkdirSync(outDir, { recursive: true });
+
   return join(outDir, `${name}.pdf`);
 }

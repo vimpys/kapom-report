@@ -102,6 +102,7 @@ export function resolveSegmentBody<T>(
   );
 
   state.rowOffset += rows.length;
+
   return body;
 }
 
@@ -141,12 +142,14 @@ function resolveCell<T>(
       // once AutoTable has decided which page each row really lands on (see perPageRowNumberHook)
       const base = mode === 'per-group' ? 0 : state.rowOffset;
       const n = (col.startAt ?? 1) + base + localIndex;
+
       return col.formatter ? col.formatter(n) : String(n);
     }
 
     case 'computed': {
       const value = col.compute(row);
       if (col.formatter) return col.formatter(value, row);
+
       // computed is numeric by contract (returns Decimalish) → always formatted (default th-TH);
       // the contract is only a type, so the returned value is still checked like any other input
       return formatNumber(asDecimalishCell(value, col.header, localIndex), numeric, col.numberFormat);
@@ -156,6 +159,7 @@ function resolveCell<T>(
       const previous = state.runningTotals[colIndex] ?? 0;
       const accumulated = numeric.add(previous, asDecimalishCell(col.valueOf(row), col.header, localIndex));
       state.runningTotals[colIndex] = accumulated;
+
       return col.formatter
         ? col.formatter(accumulated)
         : formatNumber(accumulated, numeric, col.numberFormat);
@@ -163,12 +167,14 @@ function resolveCell<T>(
   }
 
   const exhaustive: never = col;
+
   return exhaustive;
 }
 
 /** true when an aggregate row has nothing to put in this column (no aggregate declared, or not a data/computed column) — the exact rule resolveAggregateRow uses to find the label's slot */
 function isAggregateLabelSlot<T>(col: ReportColumn<T>): boolean {
   if (!isAggregatableColumn(col)) return true;
+
   return col.aggregate === undefined;
 }
 
@@ -203,6 +209,7 @@ function formatAggregateResult<T>(
   numeric: NumericStrategy,
 ): string {
   const format = col.type === 'data' && col.numberFormat === undefined ? UNCONFIGURED_DATA_COLUMN_FORMAT : col.numberFormat;
+
   return formatNumber(result, numeric, format);
 }
 
@@ -238,6 +245,7 @@ export function resolveAggregateRow<T>(
       // a deliberate literal ('n/a', '—' for "no meaningful total") and printed verbatim instead of
       // being rejected — it used to go through Intl and land on the page as "NaN".
       const custom = col.aggregate(rows);
+
       return isFiniteDecimalish(custom) ? formatAggregateResult(col, custom, numeric) : String(custom);
     }
 
@@ -253,6 +261,7 @@ export function resolveAggregateRow<T>(
 
   const firstEmpty = firstAggregateLabelIndex(columns);
   if (firstEmpty !== -1) foot[firstEmpty] = label;
+
   return foot.map((cell) => normalizeText(cell));
 }
 

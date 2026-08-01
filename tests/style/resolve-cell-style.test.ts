@@ -58,6 +58,7 @@ describe('resolveRowStyle — conditional', () => {
     const options: TableStyleOptions<Row> = {
       conditional: (_row, rowIndex) => {
         receivedIndex = rowIndex;
+
         return undefined;
       },
     };

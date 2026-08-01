@@ -76,6 +76,7 @@ export function writeTempPdf(data: Uint8Array): string {
   const path = process.getBuiltinModule('node:path');
   const file = path.join(os.tmpdir(), `kapom-report-${Date.now()}.pdf`);
   writeFile(file, data);
+
   return file;
 }
 

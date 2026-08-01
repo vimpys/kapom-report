@@ -189,6 +189,7 @@ export function resolveTableNode<T>(config: KapomTableInput<T>): TableNode<T> {
 function resolveBand(band: KapomPageBandInput): PageBandLike {
   if (!('children' in band)) return band;
   for (const child of band.children) assertConfinedChildAllowed(child, 'page band');
+
   return {
     ...(band.height !== undefined ? { height: band.height } : {}), // omit = engine auto-measures
     blocks: band.children.map((child) => createBlock(child)),

@@ -67,6 +67,7 @@ export class BoxBlock implements MeasurableBlock {
    */
   measureHeight(ctx: MeasureContext): number {
     const inner: MeasureContext = { ...ctx, contentWidth: this.innerWidth(ctx.contentWidth) };
+
     return measureBlocksHeight(this.children, inner) + 2 * this.options.padding;
   }
 
@@ -80,6 +81,7 @@ export class BoxBlock implements MeasurableBlock {
     if (this.options.keepTogether) return this.measureHeight(ctx);
     const inner: MeasureContext = { ...ctx, contentWidth: this.innerWidth(ctx.contentWidth) };
     const first = this.children[0];
+
     return (first ? first.measureHeight(inner) : 0) + 2 * this.options.padding;
   }
 

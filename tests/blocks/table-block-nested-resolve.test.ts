@@ -42,6 +42,7 @@ function countingNode(layout: 'stacked' | 'below', calls: string[]): TableNode<M
     nestedLayout: layout,
     nested: (row) => {
       calls.push(row.name);
+
       return detailNode(row.name) as TableNode<unknown>;
     },
   };
@@ -86,6 +87,7 @@ describe('TableBlock nested — nested(row) ถูก resolve ครั้งเ
       nestedLayout: 'below',
       nested: (row) => {
         childCalls.push(row.label);
+
         return grandchild as TableNode<unknown>;
       },
     };

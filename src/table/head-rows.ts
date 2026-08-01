@@ -33,6 +33,7 @@ export function buildHeadRows<T>(columns: readonly TableColumn<T>[]): RowInput[]
   const rowAt = (index: number): CellDef[] => {
     const row = rows[index];
     if (!row) throw new KapomError(`buildHeadRows: header row ${index} is out of range`);
+
     return row;
   };
 
@@ -58,5 +59,6 @@ export function buildHeadRows<T>(columns: readonly TableColumn<T>[]): RowInput[]
   };
 
   for (const col of topColumns) place(col, 0);
+
   return rows;
 }

@@ -49,6 +49,7 @@ export class SignatureBlock implements MeasurableBlock {
 
   private columnWidth(contentWidth: number): number {
     const n = this.slots.length;
+
     return (contentWidth - (n - 1) * this.slotGap) / n;
   }
 
@@ -57,6 +58,7 @@ export class SignatureBlock implements MeasurableBlock {
     const labelHeights = this.slots.map((slot) =>
       ctx.measureText(slot.label, this.style.fontSize, columnWidth),
     );
+
     return this.signHeight + this.labelGap + Math.max(...labelHeights);
   }
 

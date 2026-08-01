@@ -30,18 +30,21 @@ export class BandBuilder {
   /** append one or more blocks to the band (row / image / text / divider …) */
   addBlock(...blocks: ReportNodeInput[]): this {
     this.blocks.push(...blocks);
+
     return this;
   }
 
   /** pin the reserved height (mm) — default: auto-measured from the blocks */
   height(mm: number): this {
     this.customHeight = mm;
+
     return this;
   }
 
   /** draw on the first page too? — default true */
   showOnFirstPage(show: boolean): this {
     this.firstPage = show;
+
     return this;
   }
 
@@ -49,6 +52,7 @@ export class BandBuilder {
   render(callback: PageBandRenderer, height: number): this {
     this.rawRender = callback;
     this.customHeight = height;
+
     return this;
   }
 
@@ -60,6 +64,7 @@ export class BandBuilder {
     }
 
     if (this.blocks.length === 0) return undefined;
+
     return {
       ...(this.customHeight !== undefined ? { height: this.customHeight } : {}),
       children: this.blocks,
@@ -104,6 +109,7 @@ export class KapomReportBuilder<T = unknown> {
   /** the content/detail — appended in order; flows and paginates. Repeatable. */
   content(...blocks: ReportNodeInput<T>[]): this {
     this.bodyBlocks.push(...blocks);
+
     return this;
   }
 
@@ -122,23 +128,27 @@ export class KapomReportBuilder<T = unknown> {
     // cast: TableNode<T> is invariant in T (DataColumn.key: keyof T), so it isn't directly
     // assignable to ReportNodeInput<T> — narrowed at this one contained site, same as untyped()
     this.bodyBlocks.push(resolveTableNode(config) as ReportNodeInput<T>);
+
     return this;
   }
 
   /** report footer / summary (once, last page) — pinned to the page bottom (wrapped in a bottomAnchor at build). Repeatable. */
   summary(...blocks: ReportNodeInput<T>[]): this {
     this.summaryBlocks.push(...blocks);
+
     return this;
   }
 
   // ── page-frame annotations + settings (methods) ───────────────
   pageNumber(input: Opt<'pageNumber'>): this {
     this.options.pageNumber = input;
+
     return this;
   }
 
   watermark(input: Opt<'watermark'>): this {
     this.options.watermark = input;
+
     return this;
   }
 
@@ -151,27 +161,32 @@ export class KapomReportBuilder<T = unknown> {
     const { margins, ...document } = setup;
     if (margins !== undefined) this.options.margins = margins;
     if (Object.keys(document).length > 0) this.options.document = document;
+
     return this;
   }
 
   font(config: Opt<'font'>): this {
     this.options.font = config;
+
     return this;
   }
 
   numeric(numeric: Opt<'numeric'>): this {
     this.options.numeric = numeric;
+
     return this;
   }
 
   typography(typography: Opt<'typography'>): this {
     this.options.typography = typography;
+
     return this;
   }
 
   /** ready-made colour scheme (preset name or a `Theme` object) — drives every table fill */
   theme(theme: Opt<'theme'>): this {
     this.options.theme = theme;
+
     return this;
   }
 
@@ -187,6 +202,7 @@ export class KapomReportBuilder<T = unknown> {
     ];
     const pageHeader = this.pageHeader.toBand();
     const pageFooter = this.pageFooter.toBand();
+
     return {
       ...this.options,
       ...(pageHeader !== undefined ? { pageHeader } : {}),
@@ -204,6 +220,7 @@ export class KapomReportBuilder<T = unknown> {
   save(filename: string): KapomReport {
     const report = this.build();
     report.save(filename);
+
     return report;
   }
 
@@ -211,6 +228,7 @@ export class KapomReportBuilder<T = unknown> {
   preview(): KapomReport {
     const report = this.build();
     report.preview();
+
     return report;
   }
 }

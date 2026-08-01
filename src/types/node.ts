@@ -308,6 +308,7 @@ export type ReportNodeInput<T = unknown> = ReportNode<T> | TextNodeShorthand | s
 export function resolveNodeInput<T>(input: ReportNodeInput<T>): ReportNode<T> {
   if (typeof input === 'string') return { type: 'text', content: input };
   if (!('type' in input)) return { type: 'text', ...input };
+
   return input;
 }
 

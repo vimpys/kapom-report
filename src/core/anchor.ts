@@ -42,6 +42,7 @@ function resolveAnchorStyle(override?: Partial<TextStyle>): TextStyle {
 export function anchorX(align: HAlign, x: number, width: number, textWidth: number): number {
   if (align === 'left') return x;
   if (align === 'right') return x + width - textWidth;
+
   return x + (width - textWidth) / 2;
 }
 

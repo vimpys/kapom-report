@@ -7,6 +7,7 @@ import { makeStubDoc } from '../helpers/stub-doc';
 
 function makeCtx(stubDoc: ReturnType<typeof makeStubDoc>, overrides?: Partial<PageBandContext>): PageBandContext {
   const { doc } = stubDoc;
+
   return {
     doc,
     pageIndex: 0,

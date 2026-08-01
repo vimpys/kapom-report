@@ -72,6 +72,7 @@ function snapFloatNoise(value: number, maximumFractionDigits: number): number {
   const digits = maximumFractionDigits + FLOAT_NOISE_GUARD_DIGITS;
   // toFixed only accepts 0–100, and a non-finite value has no noise to snap
   if (!Number.isFinite(value) || digits > 100) return value;
+
   return Number(value.toFixed(digits));
 }
 
@@ -85,6 +86,7 @@ export function formatNumber(
   format?: NumberFormat,
 ): string {
   const resolved = resolveNumberFormat(format);
+
   return formatterFor(resolved).format(
     snapFloatNoise(numeric.toNumber(value), resolved.maximumFractionDigits),
   );

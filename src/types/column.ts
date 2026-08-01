@@ -152,6 +152,7 @@ export interface ResolvedAlign {
 
 export function resolveColumnAlign<T>(col: ReportColumn<T>): ResolvedAlign {
   const data = col.align ?? 'left';
+
   // header defaults to center (a common report convention — e.g. a centered 'Qty' over right-aligned
   // numbers); set `headerAlign` to override per column
   return { data, header: col.headerAlign ?? 'center' };
@@ -160,6 +161,7 @@ export function resolveColumnAlign<T>(col: ReportColumn<T>): ResolvedAlign {
 /** structural param so it accepts a leaf, a shorthand, or a group (a group has no `visible` → always shown) */
 export function isColumnVisible(col: { visible?: boolean | (() => boolean) }): boolean {
   if (col.visible === undefined) return true;
+
   return typeof col.visible === 'function' ? col.visible() : col.visible;
 }
 

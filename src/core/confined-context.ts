@@ -20,6 +20,7 @@ export function buildConfinedContext(
 ): RenderContext {
   const pageWidth = ctx.margins.left + ctx.contentWidth + ctx.margins.right;
   const state = { y: top };
+
   return {
     ...ctx,
     cursor: {

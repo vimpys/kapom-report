@@ -18,6 +18,7 @@ export function isBuiltinStandardFont(fontName: string): boolean {
 
 export function thaiGlyphError(fontName: string, sample: string): KapomFontError {
   const preview = sample.length > 40 ? `${sample.slice(0, 40)}…` : sample;
+
   return new KapomFontError(
     `Thai text ("${preview}") is about to be rendered with '${fontName}', a jsPDF built-in font ` +
       `with no Thai glyphs — the output would be garbled without any error from jsPDF itself. ` +

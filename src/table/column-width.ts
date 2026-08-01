@@ -111,6 +111,7 @@ export function computeColumnWidths(
   // guaranteed positive: with at least one auto column the assert rejected fixedSum >= contentWidth
   const targetFlex = contentWidth - fixedSum;
   const factor = targetFlex / flexSum;
+
   return natural.map((width, i) =>
     userWidths[i] !== undefined ? width : width * factor,
   );

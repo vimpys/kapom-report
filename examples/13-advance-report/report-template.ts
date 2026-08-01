@@ -67,6 +67,7 @@ function childTable(items: readonly LineItem[]): TableNode<unknown> {
     // header + subtotal foot both themed green (footer override merges over the summary token)
     style: { header: { fillColor: CHILD_FILL, textColor: DARK }, footer: { fillColor: TINT, textColor: DARK } },
   };
+
   // a concrete child TableNode<LineItem> can't assign to nested's TableNode<unknown> directly
   // (DataColumn.key: keyof T makes TableNode invariant in T) — cast once, same as ReportRegistry
   return table as unknown as TableNode<unknown>;
@@ -75,6 +76,7 @@ function childTable(items: readonly LineItem[]): TableNode<unknown> {
 /** the master table: multi-header (two column groups), a nested child per order, master grand total */
 function masterTable(orders: readonly Order[]): TableNode<Order> {
   const c = col<Order>();
+
   return {
     type: 'table',
     columns: [

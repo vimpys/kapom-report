@@ -52,6 +52,7 @@ const brandHeader: ReportNodeInput = {
 /** one grouped, subtotaled catalog table — identical for every theme; only the theme differs */
 function catalogTable(sales: CatalogSale[]): KapomTableInput<CatalogSale> {
   const c = col<CatalogSale>();
+
   return {
     columns: [
       c.rowNumber({ align: 'right', width: 12, mode: 'per-group' }),

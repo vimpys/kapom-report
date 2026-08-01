@@ -16,6 +16,7 @@ function makeBlock(height: number) {
       ctx.advanceY(height);
     },
   };
+
   return { block, renderedAt };
 }
 

@@ -43,6 +43,7 @@ export class KeyValueBlock implements MeasurableBlock {
     // measureText with an unbounded width = one line's height at that fontSize (no wrapping here)
     const labelLine = ctx.measureText('X', this.labelStyle.fontSize, Number.MAX_SAFE_INTEGER);
     const valueLine = ctx.measureText('X', this.valueStyle.fontSize, Number.MAX_SAFE_INTEGER);
+
     return this.rows.length * Math.max(labelLine, valueLine);
   }
 
@@ -81,6 +82,7 @@ export class KeyValueBlock implements MeasurableBlock {
   private autoLabelWidth(ctx: RenderContext): number {
     applyTextStyle(ctx.doc, this.labelStyle);
     const widest = Math.max(...this.rows.map(([label]) => ctx.doc.getTextWidth(label)));
+
     return widest + AUTO_LABEL_GAP;
   }
 }

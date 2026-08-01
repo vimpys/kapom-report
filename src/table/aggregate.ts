@@ -9,6 +9,7 @@ import type { AggregateFn } from '../types/column';
  */
 function toFiniteNumber(value: number | string): number {
   if (typeof value === 'number') return value;
+
   return value.trim() === '' ? Number.NaN : Number(value);
 }
 
@@ -67,6 +68,7 @@ export function computeAggregate(
     case 'max': {
       if (values.length === 0) return 0;
       const better = fn === 'min' ? (a: number, b: number) => a < b : (a: number, b: number) => a > b;
+
       return values.reduce((best, v) =>
         better(numeric.toNumber(v), numeric.toNumber(best)) ? v : best,
       );

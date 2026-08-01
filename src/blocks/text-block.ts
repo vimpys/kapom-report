@@ -27,6 +27,7 @@ function resolveTextStyle(
   override?: Partial<TextStyle>,
 ): TextStyle {
   const base = role ? typography[role] : DEFAULT_TEXT_STYLE;
+
   return { ...DEFAULT_TEXT_STYLE, ...base, ...override };
 }
 
@@ -40,6 +41,7 @@ export class TextBlock implements MeasurableBlock {
 
   measureHeight(ctx: MeasureContext): number {
     const style = resolveTextStyle(ctx.typography, this.node.role, this.node.style);
+
     return ctx.measureText(this.content, style.fontSize, ctx.contentWidth);
   }
 

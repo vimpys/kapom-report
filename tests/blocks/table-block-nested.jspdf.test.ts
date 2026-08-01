@@ -11,10 +11,12 @@ import type { TableNode } from '../../src/types/node';
 const autoTableCalls: UserOptions[] = [];
 vi.mock('jspdf-autotable', async (importOriginal) => {
   const actual = await importOriginal<typeof import('jspdf-autotable')>();
+
   return {
     ...actual,
     autoTable: (doc: jsPDF, options: UserOptions) => {
       autoTableCalls.push(options);
+
       return actual.autoTable(doc, options);
     },
   };
@@ -38,6 +40,7 @@ function batches(overrides: Partial<Batch>[] = []): Batch[] {
     { batchName: 'B', bank: 'Ally', qty: 2 },
     { batchName: 'C', bank: 'Ally', qty: 3 },
   ];
+
   return base.map((row, i) => ({ ...row, ...overrides[i] }));
 }
 

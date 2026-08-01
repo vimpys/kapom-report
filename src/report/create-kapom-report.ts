@@ -61,6 +61,7 @@ export function createKapomReport<T>(config: KapomReportInput<T>): KapomReport {
       if (isNodeRuntime()) {
         // jsPDF's native doc.save() doesn't work on Node — write the file ourselves, same pattern as before
         writeFile(filename, pdfBytes());
+
         return;
       }
 
@@ -71,6 +72,7 @@ export function createKapomReport<T>(config: KapomReportInput<T>): KapomReport {
       if (isNodeRuntime()) {
         const file = writeTempPdf(pdfBytes());
         openWithDefaultViewer(file);
+
         return file;
       }
 
@@ -78,6 +80,7 @@ export function createKapomReport<T>(config: KapomReportInput<T>): KapomReport {
       // browser: blob URL + open in a new tab (return the URL in case the caller wants to embed it in an <iframe> themselves)
       const url = String(doc.output('bloburl'));
       openInNewTab(url);
+
       return url;
     },
   };

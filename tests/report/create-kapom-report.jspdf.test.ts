@@ -9,6 +9,7 @@ import { openWithDefaultViewer } from '../../src/report/node-io';
 // (writeFile/writeTempPdf ใช้ของจริง เพื่อยืนยันว่าไฟล์ถูกเขียนจริง)
 vi.mock('../../src/report/node-io', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../src/report/node-io')>();
+
   return { ...actual, openWithDefaultViewer: vi.fn() };
 });
 

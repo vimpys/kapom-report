@@ -129,6 +129,7 @@ export class RowBlock implements MeasurableBlock {
       ctx.contentWidth,
       this.gap,
     );
+
     return Math.max(
       0,
       ...this.columns.map((column, i) => this.columnHeight(ctx, column, resolved[i]?.width ?? 0)),
@@ -174,6 +175,7 @@ export class RowBlock implements MeasurableBlock {
 
   private columnHeight(ctx: MeasureContext, column: RowBlockColumn, width: number): number {
     const columnCtx: MeasureContext = { ...ctx, contentWidth: width };
+
     return measureBlocksHeight(column.blocks, columnCtx);
   }
 }

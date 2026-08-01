@@ -10,10 +10,12 @@ import type { TableNode } from '../../src/types/node';
 const autoTableCalls: UserOptions[] = [];
 vi.mock('jspdf-autotable', async (importOriginal) => {
   const actual = await importOriginal<typeof import('jspdf-autotable')>();
+
   return {
     ...actual,
     autoTable: (doc: jsPDF, options: UserOptions) => {
       autoTableCalls.push(options);
+
       return actual.autoTable(doc, options);
     },
   };
@@ -34,6 +36,7 @@ function render(columns: TableColumn<Row>[]): UserOptions {
   engine.render([createBlock(node)]);
   const call = autoTableCalls[0];
   if (!call) throw new Error('autoTable was not called');
+
   return call;
 }
 

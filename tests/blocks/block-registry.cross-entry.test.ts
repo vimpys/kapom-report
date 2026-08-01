@@ -28,6 +28,7 @@ type RegistryModule = typeof import('../../src/blocks/block-registry');
 /** loads a fresh, independently-evaluated instance of block-registry.ts — models one bundled copy */
 async function loadRegistryCopy(): Promise<RegistryModule> {
   vi.resetModules();
+
   return import(REGISTRY_MODULE);
 }
 
@@ -98,6 +99,7 @@ function runNode(args: readonly string[]): string {
     return execFileSync(process.execPath, [...args], { cwd: REPO_ROOT, encoding: 'utf8' }).trim();
   } catch (error) {
     const { stdout = '', stderr = '' } = error as { stdout?: string; stderr?: string };
+
     // ให้ข้อความ error จริงจาก child ขึ้นมาใน assertion แทน "Command failed" เปล่าๆ
     return `child failed: ${stderr.trim() || stdout.trim() || String(error)}`;
   }

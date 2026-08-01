@@ -17,6 +17,7 @@ function docWithSarabun(): jsPDF {
     ],
   });
   doc.setFont(family, 'normal');
+
   return doc;
 }
 

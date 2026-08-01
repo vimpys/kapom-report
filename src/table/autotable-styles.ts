@@ -18,6 +18,7 @@ export function fitRowToGrid(
     const isLast = idx === values.length - 1;
     const colSpan = isLast ? gridCols - (values.length - 1) : 1;
     const halign = aligns[idx]?.[which] ?? 'left';
+
     return { content, colSpan, styles: { halign, ...(extra ?? {}) } };
   });
 }
@@ -31,6 +32,7 @@ export function cellStyleToAutoTableStyles(style: Partial<CellStyle> | undefined
   if (style.fontStyle) styles.fontStyle = style.fontStyle;
   if (style.fontSize !== undefined) styles.fontSize = style.fontSize;
   if (style.halign) styles.halign = style.halign;
+
   return styles;
 }
 
@@ -74,5 +76,6 @@ export function partialTextStyleToAutoTableStyles(style: Partial<TextStyle> | un
   if (style.fontStyle) styles.fontStyle = style.fontStyle;
   if (style.color) styles.textColor = [...style.color];
   if (style.fontFamily) styles.font = style.fontFamily;
+
   return styles;
 }

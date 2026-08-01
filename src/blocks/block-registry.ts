@@ -36,6 +36,7 @@ function registry(): Map<string, BlockFactory> {
   if (existing) return existing;
   const created = new Map<string, BlockFactory>();
   host[REGISTRY_KEY] = created;
+
   return created;
 }
 

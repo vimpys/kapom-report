@@ -30,6 +30,7 @@ describe('BlockBand (declarative page band) — engine finalize', () => {
     // header วาดครบทั้ง 2 หน้า (stub เริ่ม 1 หน้า + spacer ทำให้ ensureSpace เพิ่มหน้า)
     const headerCalls = stub.text.mock.calls.filter((c) => {
       const arg = c[0];
+
       return arg === 'HEADER' || (Array.isArray(arg) && arg.includes('HEADER'));
     });
     expect(headerCalls.length).toBe(doc.getNumberOfPages());
@@ -49,6 +50,7 @@ describe('BlockBand (declarative page band) — engine finalize', () => {
     // TextBlock วาด baseline = cursor.y + lineHeight; band top = margins.top = 20
     const headerCall = stub.text.mock.calls.find((c) => {
       const arg = c[0];
+
       return arg === 'HEADER' || (Array.isArray(arg) && arg.includes('HEADER'));
     });
     expect(headerCall?.[1]).toBe(15); // x = margins.left

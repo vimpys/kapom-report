@@ -152,10 +152,12 @@ export class TableBlock<T> implements MeasurableBlock {
     const resolved = nested
       ? this.node.data.map((row) => {
           const child = nested(row);
+
           return child ? new TableBlock(child, this.depth + 1) : undefined;
         })
       : [];
     this.nestedChildren = resolved;
+
     return resolved;
   }
 
@@ -201,6 +203,7 @@ export class TableBlock<T> implements MeasurableBlock {
     const { rowEstimate: rowHeight, bandHeight } = rowMetricsFromLineHeight(
       ctx.measureText('X', ctx.typography.detailRow.fontSize, ctx.contentWidth),
     );
+
     return {
       rowHeight,
       bandHeight,
@@ -213,12 +216,14 @@ export class TableBlock<T> implements MeasurableBlock {
   /** No-Data fallback: header + a single message row */
   private measureNoData(ctx: MeasureContext): number {
     const { rowHeight, headRows } = this.measureBasis(ctx);
+
     return (headRows + 1) * rowHeight;
   }
 
   /** flat: head + every body row + optional foot */
   private measureFlat(ctx: MeasureContext): number {
     const { rowHeight, footRows, headRows } = this.measureBasis(ctx);
+
     return (headRows + this.node.data.length + footRows) * rowHeight;
   }
 
@@ -229,6 +234,7 @@ export class TableBlock<T> implements MeasurableBlock {
   private measureGrouped(ctx: MeasureContext, group: GroupResolver<T>): number {
     const { rowHeight, bandHeight, footRows } = this.measureBasis(ctx);
     const groupCount = countGroupBands(group, this.node.data);
+
     return (
       groupCount * (bandHeight + rowHeight + footRows * rowHeight) +
       this.node.data.length * rowHeight +
@@ -290,6 +296,7 @@ export class TableBlock<T> implements MeasurableBlock {
         ...cellStyleToAutoTableStyles(columns[index]?.cellStyle),
       };
     });
+
     return columnStyles;
   }
 
@@ -316,6 +323,7 @@ export class TableBlock<T> implements MeasurableBlock {
     foot: readonly string[] | undefined,
   ): number[] {
     const allRows: (readonly string[])[] = [head, ...middle, ...(foot ? [foot] : [])];
+
     return computeColumnWidths(
       ctx.doc,
       allRows,
@@ -339,6 +347,7 @@ export class TableBlock<T> implements MeasurableBlock {
     const labelIndex = firstAggregateLabelIndex(columns);
     const widths = this.resolveColumnWidths(ctx, columns, content.head, content.body, content.foot);
     const columnStyles = this.buildFixedColumnStyles(content.aligns, columns, widths);
+
     return { labelIndex, widths, columnStyles };
   }
 
@@ -350,6 +359,7 @@ export class TableBlock<T> implements MeasurableBlock {
   /** the grand total's styling — themed like the leaf foot (theme.primary + optional style.footer); shared by the grouped and nested-trailing grand foots */
   private grandTotalStyle(ctx: RenderContext): TotalRowStyle {
     const footer = this.node.style?.footer;
+
     return {
       token: ctx.typography.summary,
       fillColor: ctx.theme.primary,
@@ -387,6 +397,7 @@ export class TableBlock<T> implements MeasurableBlock {
 
     const columnStyles = this.buildColumnStyles(content.aligns, columns, (index) => {
       const width = content.widths[index];
+
       return width !== undefined ? { cellWidth: width } : {};
     });
 
@@ -786,6 +797,7 @@ export class TableBlock<T> implements MeasurableBlock {
     }
 
     const bodyRows = node.body?.length ?? 0;
+
     return bandHeight + rowEstimate + Math.min(node.minRowsWithHeader, bodyRows) * rowEstimate;
   }
 
@@ -873,12 +885,14 @@ export class TableBlock<T> implements MeasurableBlock {
         if (align) data.cell.styles.halign = align.header;
         const column = columns[data.column.index];
         Object.assign(data.cell.styles, cellStyleToAutoTableStyles(column?.headerStyle));
+
         return;
       }
 
       if (data.section === 'foot') {
         // a merged label cell (mergeFootLabel) carries its own explicit halign — never override it here
         if (align && typeof data.cell.raw !== 'object') data.cell.styles.halign = align.data;
+
         return;
       }
 

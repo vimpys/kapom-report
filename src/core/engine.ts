@@ -79,6 +79,7 @@ function drawsOnPage<T extends { showOnFirstPage?: boolean }>(
   byDefault: boolean,
 ): decoration is T {
   if (!decoration) return false;
+
   return page > 1 || (decoration.showOnFirstPage ?? byDefault);
 }
 
@@ -161,6 +162,7 @@ export class RenderEngine {
       typography: this.typography,
       measureText: (text, fontSize, maxWidth) => measureTextBlockHeight(this.doc, text, fontSize, maxWidth),
     };
+
     return measureBlocksHeight(blocks, measureCtx);
   }
 

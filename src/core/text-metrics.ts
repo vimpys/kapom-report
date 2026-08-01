@@ -15,6 +15,7 @@ export function splitTextLines(
   // jspdf declares the return type as any → accept as unknown, then narrow
   const split: unknown = doc.splitTextToSize(text, maxWidth);
   doc.setFontSize(previousSize);
+
   return Array.isArray(split) ? (split as string[]) : [text];
 }
 
@@ -31,5 +32,6 @@ export function measureTextBlockHeight(
   maxWidth: number,
 ): number {
   const lines = splitTextLines(doc, text, fontSize, maxWidth);
+
   return lines.length * lineHeightOf(doc, fontSize);
 }

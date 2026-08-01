@@ -90,6 +90,7 @@ export function resolvePageNumber(input: PageNumberInput | undefined): ResolvedP
 function horizontalAlign(position: PageNumberPosition): HAlign {
   if (position.endsWith('left')) return 'left';
   if (position.endsWith('right')) return 'right';
+
   return 'center';
 }
 

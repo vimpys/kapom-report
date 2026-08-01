@@ -31,6 +31,7 @@ export function splitGroups<T>(
           const value = row[by];
           if (value === null || value === undefined) return UNSPECIFIED_GROUP_KEY;
           const key = String(value);
+
           return key === '' ? UNSPECIFIED_GROUP_KEY : key;
         };
 
@@ -48,6 +49,7 @@ export function splitGroups<T>(
   const groups = [...buckets.entries()].map(([key, rows]) => ({ key, rows }));
   const sorter = resolver.sortGroups;
   if (sorter) groups.sort((a, b) => sorter(a.key, b.key));
+
   return groups;
 }
 

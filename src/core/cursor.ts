@@ -141,6 +141,7 @@ export class PdfCursor implements CursorState {
     if (requiredHeight <= this.remainingHeight) return false;
     if (this.isAtTopOfPage) return false;
     this.breakPage();
+
     return true;
   }
 

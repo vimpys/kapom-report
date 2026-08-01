@@ -11,10 +11,12 @@ import { DEFAULT_TYPOGRAPHY } from '../../src/types/typography';
 const autoTableCalls: UserOptions[] = [];
 vi.mock('jspdf-autotable', async (importOriginal) => {
   const actual = await importOriginal<typeof import('jspdf-autotable')>();
+
   return {
     ...actual,
     autoTable: (doc: jsPDF, options: UserOptions) => {
       autoTableCalls.push(options);
+
       return actual.autoTable(doc, options);
     },
   };

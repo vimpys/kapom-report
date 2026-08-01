@@ -107,6 +107,7 @@ function checkedColor(value: RGB, field: string): RGB {
   }
 
   const [r, g, b] = value;
+
   return [r, g, b];
 }
 

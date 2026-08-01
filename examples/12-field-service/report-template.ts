@@ -68,6 +68,7 @@ function fieldRow(label: string, value: string): Node {
 /** "[x] Repair    [ ] Installation …" — the performed type checked, the rest empty ([ ] is glyph-safe; U+2610 isn't in Sarabun) */
 function checkboxLine(selected: string): string {
   const marks = SERVICE_TYPES.map((t) => `${t === selected ? '[x]' : '[ ]'} ${t}`).join('    ');
+
   return `${marks}    [ ] Other: __________`;
 }
 
@@ -83,6 +84,7 @@ function listArea(items: readonly string[]): Node {
     children.push({ content: `${i + 1}. ${item}`, style: valueText });
     if (i < items.length - 1) children.push({ type: 'spacer', height: 1.5 });
   });
+
   return { type: 'box', borderColor: BORDER, padding: 2.5, children };
 }
 

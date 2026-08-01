@@ -92,5 +92,6 @@ export function countGroupBands<T>(resolver: GroupResolver<T>, data: readonly T[
   const groups = splitGroups(data, resolver);
   if (!resolver.subGroup) return groups.length;
   const sub = resolver.subGroup;
+
   return groups.reduce((total, group) => total + countGroupBands(sub, group.rows), groups.length);
 }
