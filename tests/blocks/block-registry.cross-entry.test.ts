@@ -22,14 +22,13 @@ import { describe, expect, it, vi } from 'vitest';
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const DIST = join(REPO_ROOT, 'dist');
 
-const REGISTRY_MODULE = '../../src/blocks/block-registry';
 type RegistryModule = typeof import('../../src/blocks/block-registry');
 
 /** loads a fresh, independently-evaluated instance of block-registry.ts — models one bundled copy */
 async function loadRegistryCopy(): Promise<RegistryModule> {
   vi.resetModules();
 
-  return import(REGISTRY_MODULE);
+  return import('../../src/blocks/block-registry');
 }
 
 const stubFactory = (): { measureHeight: () => number; render: () => void } => ({

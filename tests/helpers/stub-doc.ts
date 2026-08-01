@@ -46,7 +46,8 @@ export function makeStubDoc(splitInto: string[] = ['line1']) {
     setLineWidth: vi.fn(),
     line: vi.fn(),
     rect: vi.fn(),
-    text: vi.fn(),
+    // ให้ signature เพื่อให้ `stub.text.mock.calls[n][0]` มี type จริง ไม่ใช่ any (type-aware lint จับ)
+    text: vi.fn<(text: string | string[], x: number, y: number, options?: unknown) => void>(),
     addImage: vi.fn(),
     /** ความกว้างจำลอง: 2 หน่วยต่อตัวอักษร — พอสำหรับทดสอบสัดส่วน column width */
     getTextWidth: vi.fn((text: string): number => text.length * 2),

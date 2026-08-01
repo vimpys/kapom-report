@@ -14,10 +14,9 @@ import * as publicApi from '../src/index';
  */
 
 /** every block class defined under src/blocks — eager glob so this is a plain synchronous map */
-const blockModules = import.meta.glob('../src/blocks/*-block.ts', { eager: true }) as Record<
-  string,
-  Record<string, unknown>
->;
+const blockModules: Record<string, Record<string, unknown>> = import.meta.glob('../src/blocks/*-block.ts', {
+  eager: true,
+});
 
 function definedBlockClasses(): string[] {
   const names = new Set<string>();

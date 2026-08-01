@@ -107,6 +107,6 @@ describe('buildHeadRows — grouped header', () => {
     const rows = buildHeadRows(nested);
     expect(rows).toHaveLength(3);
     // แถวสุดท้ายคือ leaf Q1/Q2
-    expect(asCellRows(rows)[2]?.map((c) => (c as CellDef).content)).toEqual(['Q1', 'Q2']);
+    expect(asCellRows(rows)[2]?.map((c) => c.content)).toEqual(['Q1', 'Q2']);
   });
 });

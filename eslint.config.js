@@ -10,14 +10,23 @@ const NO_RAW_DOC_TEXT = {
 
 export default tseslint.config(
   {
-    ignores: ['dist/**', 'coverage/**', 'examples/output/**', 'docs/**'],
+    // bug-repros/ = ที่ทดลองในเครื่อง (gitignore ไว้) อยู่นอก tsconfig `include` จึงไม่มี type program ให้ type-aware rules ใช้
+    ignores: ['dist/**', 'coverage/**', 'examples/output/**', 'docs/**', 'bug-repros/**'],
   },
   js.configs.recommended,
-  ...tseslint.configs.recommended,
+  // type-aware: กฎที่ต้องรู้ type จริงถึงจะตรวจได้ (no-floating-promises, no-unsafe-*, no-base-to-string,
+  // switch-exhaustiveness-check) — จับของที่ syntax-only มองไม่เห็น เช่น `String(obj)` ที่ออกมาเป็น
+  // "[object Object]" บน PDF; แลกกับ lint ช้าขึ้น ~2 เท่า (5s → 10s) เพราะต้องสร้าง type program
+  ...tseslint.configs.recommendedTypeChecked,
   {
     files: ['src/**/*.ts', 'tests/**/*.ts', 'examples/**/*.ts'],
+    languageOptions: {
+      parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname },
+    },
     rules: {
       'no-restricted-syntax': ['error', NO_RAW_DOC_TEXT],
+      // switch บน union ต้องครบทุก case — แทนการเขียน `const exhaustive: never` เองทุกที่
+      '@typescript-eslint/switch-exhaustiveness-check': 'error',
       '@typescript-eslint/no-unused-vars': [
         'error',
         // ตาม tsconfig noUnusedParameters: _prefix = ตั้งใจไม่ใช้ (contract ต้องรับ param แต่ implementation ไม่ต้องใช้)
@@ -51,5 +60,10 @@ export default tseslint.config(
     rules: {
       'no-control-regex': 'off',
     },
+  },
+  {
+    // config/script ที่อยู่นอก tsconfig `include` — ไม่มี type program ให้ตรวจ
+    files: ['**/*.js', '**/*.mjs'],
+    ...tseslint.configs.disableTypeChecked,
   },
 );

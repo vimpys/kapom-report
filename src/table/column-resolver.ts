@@ -61,8 +61,29 @@ export function visibleColumns<T>(
   return visible;
 }
 
-function stringifyCell(value: unknown): string {
-  return value === null || value === undefined ? '' : String(value);
+/**
+ * A cell's display string. `String(value)` is right for everything carrying a meaningful text form
+ * — numbers, Dates, arrays, and the decimal objects a DB driver (or bignumber.js) hands back all
+ * define their own toString — but a plain object has only `Object.prototype.toString` and reaches
+ * the page as the literal "[object Object]". Nobody means that, and it is the kind of thing only
+ * noticed after printing, so it is reported with the column and row like any other bad cell.
+ */
+function stringifyCell(value: unknown, context: string): string {
+  if (value === null || value === undefined) return '';
+
+  // one deliberate default stringification, with the single useless result caught on the next line.
+  // no-base-to-string warns about exactly the case being guarded here, and it cannot be satisfied by
+  // narrowing: `typeof value !== 'object'` leaves `unknown` as `{}`, which the rule still flags.
+  // eslint-disable-next-line @typescript-eslint/no-base-to-string
+  const text = String(value);
+  if (text === '[object Object]') {
+    throw new KapomError(
+      `${context}: a plain object has no text form and would print as "[object Object]". ` +
+        `Map it to a string in your data, or use the column's \`formatter\`/\`cellRenderer\` to render it.`,
+    );
+  }
+
+  return text;
 }
 
 /**
@@ -130,7 +151,7 @@ function resolveCell<T>(
         );
       }
 
-      return stringifyCell(value);
+      return stringifyCell(value, cellContext(col.header, localIndex));
     }
 
     case 'rowNumber': {

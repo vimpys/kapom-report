@@ -63,6 +63,9 @@ describe('assertNodeIoSupported — Node < 22.3 guard', () => {
   });
 
   it('จำลอง Node เก่า (ไม่มี getBuiltinModule) → throw KapomError ข้อความชัด พร้อมชื่อ op', () => {
+    // เก็บ reference ไว้คืนตอนจบ ไม่ได้เอาไปเรียก — unbound-method เตือนเรื่องการเรียกโดยหลุด `this`
+    // ซึ่งไม่เกิดขึ้นที่นี่ และ .bind() จะทำให้คืนค่าไม่ใช่ตัวเดิม
+    // eslint-disable-next-line @typescript-eslint/unbound-method
     const original = process.getBuiltinModule;
     try {
       // simulate Node < 22.3: still a Node process (process.versions.node), but no builtin loader

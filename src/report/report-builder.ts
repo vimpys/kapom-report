@@ -125,9 +125,7 @@ export class KapomReportBuilder<T = unknown> {
    * types still needs `.content(TableNode)` + a cast, since one generic can't cover several types.
    */
   table(config: KapomTableInput<T>): this {
-    // cast: TableNode<T> is invariant in T (DataColumn.key: keyof T), so it isn't directly
-    // assignable to ReportNodeInput<T> — narrowed at this one contained site, same as untyped()
-    this.bodyBlocks.push(resolveTableNode(config) as ReportNodeInput<T>);
+    this.bodyBlocks.push(resolveTableNode(config));
 
     return this;
   }

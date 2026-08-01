@@ -521,3 +521,38 @@ describe('resolveSegmentBody — state ข้าม segment (group)', () => {
     expect(body2.map((r) => r[0])).toEqual(['3']);
   });
 });
+
+describe('stringifyCell — cell ที่เป็น object', () => {
+  interface Cell {
+    label: string;
+    meta: unknown;
+  }
+
+  const render = (meta: unknown): string | undefined => {
+    const node: TableNode<Cell> = {
+      type: 'table',
+      columns: [{ key: 'meta', header: 'Meta' }],
+      data: [{ label: 'x', meta }],
+    };
+
+    return resolveTableContent(node, nativeNumeric).body[0]?.[0];
+  };
+
+  it('ค่าที่มี toString ของตัวเองยังแสดงได้ตามปกติ (Date / array / decimal object ของ DB driver)', () => {
+    expect(render(new Date('2026-07-28T00:00:00Z'))).toContain('2026');
+    expect(render([1, 2])).toBe('1,2');
+    // bignumber.js / Decimal ของ driver เป็นแบบนี้ — v1 จะพึ่งพฤติกรรมนี้
+    expect(render({ toString: () => '1234.50' })).toBe('1234.50');
+  });
+
+  it('plain object → throw พร้อมชื่อ column + แถว แทนที่จะพิมพ์ "[object Object]" ลง PDF', () => {
+    expect(() => render({ a: 1 })).toThrow(KapomError);
+    expect(() => render({ a: 1 })).toThrow(/column 'Meta' row 1/);
+    expect(() => render({ a: 1 })).toThrow(/\[object Object\]/);
+  });
+
+  it('null / undefined ยังเป็นช่องว่างเหมือนเดิม', () => {
+    expect(render(null)).toBe('');
+    expect(render(undefined)).toBe('');
+  });
+});
