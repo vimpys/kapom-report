@@ -148,6 +148,7 @@ export class RenderEngine {
     if (isBlockBand(band)) {
       return band.height ?? this.measureBandHeight(band.blocks);
     }
+
     return band.height;
   }
 
@@ -254,13 +255,16 @@ export class RenderEngine {
         drawText: (text, x, y, opts) => drawText(this.doc, text, x, y, undefined, opts),
       });
     }
+
     if (drawsOnPage(this.pageHeader, page, true)) {
       this.drawBand(this.pageHeader, this.margins.top, bandWidth, pageIndex, pageCount, baseCtx);
     }
+
     if (drawsOnPage(this.pageFooter, page, true)) {
       const footerTop = this.pageHeight - this.margins.bottom - this.footerHeight;
       this.drawBand(this.pageFooter, footerTop, bandWidth, pageIndex, pageCount, baseCtx);
     }
+
     // pageNumber is already fully resolved (showOnFirstPage is never undefined), so the default here is never consulted
     if (drawsOnPage(this.pageNumber, page, true)) {
       renderPageNumber(this.doc, pageIndex, pageCount, this.pageWidth, this.pageHeight, this.margins, this.pageNumber);
@@ -282,8 +286,10 @@ export class RenderEngine {
       for (const block of band.blocks) {
         block.render(ctx);
       }
+
       return;
     }
+
     band.render({
       doc: this.doc,
       pageIndex,

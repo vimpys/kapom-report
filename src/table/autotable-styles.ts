@@ -41,6 +41,7 @@ export function cellStringContent(cell: unknown): string | undefined {
     const { content } = cell as { content?: unknown };
     if (typeof content === 'string') return content;
   }
+
   return undefined;
 }
 

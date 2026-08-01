@@ -147,12 +147,15 @@ export function resolveWatermark(input: WatermarkInput): Watermark {
   if (text.trim() === '') {
     throw new KapomError('watermark: text must not be empty');
   }
+
   if (!Number.isFinite(opacity) || opacity < 0 || opacity > 1) {
     throw new KapomError(`watermark: opacity must be between 0 and 1 (got ${opacity})`);
   }
+
   if (!Number.isFinite(fontSize) || fontSize <= 0) {
     throw new KapomError(`watermark: fontSize must be a positive number (got ${fontSize})`);
   }
+
   if (!Number.isFinite(rotate)) {
     throw new KapomError(`watermark: rotate must be a finite number of degrees (got ${rotate})`);
   }
@@ -165,6 +168,7 @@ export function resolveWatermark(input: WatermarkInput): Watermark {
       if (input.fontFamily !== undefined && !(input.fontFamily in ctx.doc.getFontList())) {
         throw new KapomError(`watermark: fontFamily '${input.fontFamily}' is not registered`);
       }
+
       withOpacity(ctx.doc, opacity, () => {
         ctx.doc.setFont(fontFamily, 'normal');
         ctx.doc.setFontSize(fontSize);

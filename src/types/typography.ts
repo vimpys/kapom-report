@@ -41,5 +41,6 @@ export function resolveTypography(override?: DeepPartial<Typography>): Typograph
     const partial = override[name];
     resolved[name] = partial ? { ...base, ...partial } : base;
   }
+
   return resolved;
 }

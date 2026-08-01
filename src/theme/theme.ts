@@ -97,6 +97,7 @@ function checkedColor(value: RGB, field: string): RGB {
   if (!Array.isArray(value) || value.length !== 3) {
     throw new KapomError(`theme.${field} must be an [r, g, b] tuple of 3 numbers`);
   }
+
   for (const channel of value) {
     if (typeof channel !== 'number' || !Number.isFinite(channel) || channel < 0 || channel > 255) {
       throw new KapomError(
@@ -104,6 +105,7 @@ function checkedColor(value: RGB, field: string): RGB {
       );
     }
   }
+
   const [r, g, b] = value;
   return [r, g, b];
 }
@@ -134,6 +136,7 @@ export function resolveTheme(input?: ThemeInput): ResolvedTheme {
         `unknown theme '${input}' — expected one of: ${Object.keys(THEME_PRESETS).join(', ')}`,
       );
     }
+
     theme = preset;
   } else {
     theme = input;

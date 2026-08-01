@@ -56,6 +56,7 @@ export function createAnchoredBand(options: AnchoredBandOptions): PageBand {
     if (seenAlign.has(anchor.align)) {
       throw new KapomError(`Anchor: position '${anchor.align}' is used more than once in a single band`);
     }
+
     seenAlign.add(anchor.align);
   }
 

@@ -60,6 +60,7 @@ export function registerBlockType(type: string, factory: BlockFactory): void {
       `Block type '${type}' is already registered — check for duplicate registration or a name clash with a built-in`,
     );
   }
+
   blocks.set(type, factory);
 }
 
@@ -78,5 +79,6 @@ export function createBlock<T>(input: ReportNodeInput<T>): MeasurableBlock {
         `from 'kapom-report/advanced' before rendering it. Available: ${[...blocks.keys()].join(', ')}`,
     );
   }
+
   return factory(node as ReportNode<unknown>);
 }

@@ -67,6 +67,7 @@ export function resolvePageNumber(input: PageNumberInput | undefined): ResolvedP
       showOnFirstPage: true,
     };
   }
+
   if (isPositionShorthand(input)) {
     return {
       position: input,
@@ -76,6 +77,7 @@ export function resolvePageNumber(input: PageNumberInput | undefined): ResolvedP
       showOnFirstPage: true,
     };
   }
+
   return {
     position: input.position ?? DEFAULT_PAGE_NUMBER_POSITION,
     format: input.format ?? DEFAULT_PAGE_NUMBER_FORMAT,

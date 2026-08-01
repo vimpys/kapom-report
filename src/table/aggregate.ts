@@ -38,6 +38,7 @@ export function asDecimalish(value: unknown, context: string): Decimalish {
       `${context}: expected a number or a numeric string (got ${typeof value})`,
     );
   }
+
   if (!Number.isFinite(toFiniteNumber(value))) {
     throw new KapomError(
       `${context}: ${JSON.stringify(value)} is not a finite number — it would print as "NaN" ` +
@@ -45,6 +46,7 @@ export function asDecimalish(value: unknown, context: string): Decimalish {
         `and strip any formatting such as thousands separators or a currency symbol.`,
     );
   }
+
   return value;
 }
 

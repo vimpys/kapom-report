@@ -80,8 +80,10 @@ export function flattenGroupTreeRows<T>(tree: readonly GroupTreeNode<T>[]): stri
     } else if (node.body) {
       rows.push(...node.body);
     }
+
     if (node.foot) rows.push(node.foot);
   }
+
   return rows;
 }
 

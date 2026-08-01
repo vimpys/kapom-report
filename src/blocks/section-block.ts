@@ -25,6 +25,7 @@ export class SectionBlock implements MeasurableBlock {
     if (this.breakBefore) {
       ctx.forcePageBreak();
     }
+
     this.stack.render(ctx);
   }
 }

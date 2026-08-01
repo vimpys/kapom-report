@@ -41,6 +41,7 @@ export function assertFixedWidthsFit(
       `. Reduce the widths, widen the page (or use landscape/wider margins), or leave more columns auto.`,
   );
 }
+
 /** left+right cellPadding, approximating AutoTable's default (5pt per side) in the doc's units */
 function paddingAllowance(doc: jsPDF): number {
   return (2 * 5) / doc.internal.scaleFactor;
@@ -78,6 +79,7 @@ export function computeColumnWidths(
       natural.push(user);
       continue;
     }
+
     let widest = 0;
     for (const row of rows) {
       const cell = row[i];
@@ -87,8 +89,10 @@ export function computeColumnWidths(
         widest = Math.max(widest, doc.getTextWidth(line));
       }
     }
+
     natural.push(widest + pad);
   }
+
   doc.setFontSize(previousSize);
 
   // scale only the columns the user didn't fix, so the total fits contentWidth exactly (both

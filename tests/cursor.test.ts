@@ -240,6 +240,7 @@ describe('PdfCursor — ensureSpace / page-break', () => {
       cursor.advanceY(250);
       cursor.ensureSpace(100);
     }
+
     expect(cursor.pageIndex).toBe(3);
     expect(indices).toEqual([1, 2, 3]);
   });

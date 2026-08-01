@@ -25,12 +25,14 @@ export class KeyValueBlock implements MeasurableBlock {
     if (node.rows.length === 0) {
       throw new KapomError('keyValue: rows must not be empty');
     }
+
     if (
       node.labelWidth !== undefined &&
       (!Number.isFinite(node.labelWidth) || node.labelWidth <= 0)
     ) {
       throw new KapomLayoutError(`keyValue: labelWidth must be > 0 (got ${node.labelWidth})`);
     }
+
     // normalize once at creation, same as TextBlock — measure/render always see the same strings
     this.rows = node.rows.map(([label, value]) => [normalizeText(label), normalizeText(value)]);
     this.labelStyle = { ...DEFAULT_TEXT_STYLE, fontStyle: 'bold', ...node.labelStyle };

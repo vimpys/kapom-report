@@ -32,12 +32,14 @@ export class SignatureBlock implements MeasurableBlock {
     if (node.slots.length === 0) {
       throw new KapomLayoutError('SignatureNode.slots must contain at least 1 slot');
     }
+
     this.signHeight = node.signHeight ?? DEFAULT_SIGNATURE_SIGN_HEIGHT;
     if (!Number.isFinite(this.signHeight) || this.signHeight < 0) {
       throw new KapomLayoutError(
         `SignatureNode.signHeight must be >= 0 (got ${this.signHeight})`,
       );
     }
+
     this.labelGap = node.labelGap ?? DEFAULT_SIGNATURE_LABEL_GAP;
     this.slotGap = node.slotGap ?? DEFAULT_SIGNATURE_SLOT_GAP;
     this.style = { ...DEFAULT_TEXT_STYLE, ...node.style };

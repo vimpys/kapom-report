@@ -29,6 +29,7 @@ function getDateTimeFormatter(
     formatter = new Intl.DateTimeFormat(locale, options);
     formatterCache.set(key, formatter);
   }
+
   return formatter;
 }
 

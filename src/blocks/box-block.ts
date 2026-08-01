@@ -14,15 +14,18 @@ export function assertBoxNodeValid(node: BoxNode<unknown>): void {
   if (node.children.length === 0) {
     throw new KapomError('box: children must not be empty');
   }
+
   if (node.padding !== undefined && (!Number.isFinite(node.padding) || node.padding < 0)) {
     throw new KapomLayoutError(`box: padding must be >= 0 (got ${node.padding})`);
   }
+
   if (
     node.borderWidth !== undefined &&
     (!Number.isFinite(node.borderWidth) || node.borderWidth <= 0)
   ) {
     throw new KapomLayoutError(`box: borderWidth must be > 0 (got ${node.borderWidth})`);
   }
+
   if (node.radius !== undefined && (!Number.isFinite(node.radius) || node.radius < 0)) {
     throw new KapomLayoutError(`box: radius must be >= 0 (got ${node.radius})`);
   }
@@ -120,6 +123,7 @@ export class BoxBlock implements MeasurableBlock {
         `box: content height ${contentHeight.toFixed(2)} is taller than one full page and keepTogether is set — split the content into multiple boxes or remove keepTogether`,
       );
     }
+
     const boxHeight = contentHeight + 2 * this.options.padding;
     ctx.ensureSpace(boxHeight);
     this.renderSegment(ctx, this.children, boxHeight, innerWidth);
@@ -182,6 +186,7 @@ export class BoxBlock implements MeasurableBlock {
       doc.setFillColor(background[0], background[1], background[2]);
       paint('F');
     }
+
     if (borderColor) {
       doc.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
       doc.setLineWidth(borderWidth);

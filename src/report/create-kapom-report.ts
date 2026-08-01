@@ -29,6 +29,7 @@ function openInNewTab(url: string): void {
       'preview(): neither a Node runtime nor window.open is available — use report.doc.output(...) directly in this environment',
     );
   }
+
   opener(url);
 }
 
@@ -62,6 +63,7 @@ export function createKapomReport<T>(config: KapomReportInput<T>): KapomReport {
         writeFile(filename, pdfBytes());
         return;
       }
+
       assertNodeIoSupported('save'); // clear error on Node < 22.3 (else jsPDF throws a cryptic DOM error)
       doc.save(filename); // browser: trigger a download
     },
@@ -71,6 +73,7 @@ export function createKapomReport<T>(config: KapomReportInput<T>): KapomReport {
         openWithDefaultViewer(file);
         return file;
       }
+
       assertNodeIoSupported('preview'); // clear error on Node < 22.3
       // browser: blob URL + open in a new tab (return the URL in case the caller wants to embed it in an <iframe> themselves)
       const url = String(doc.output('bloburl'));

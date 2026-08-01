@@ -28,6 +28,7 @@ export class ReportRegistry<C> {
     if (this.builders.has(name)) {
       throw new KapomError(`ReportRegistry: section '${name}' is already registered`);
     }
+
     this.builders.set(name, builder as unknown as SectionBuilder<C>);
   }
 
@@ -38,6 +39,7 @@ export class ReportRegistry<C> {
       if (!builder) {
         throw new KapomError(`ReportRegistry: section '${name}' is not registered`);
       }
+
       return builder(context);
     });
   }

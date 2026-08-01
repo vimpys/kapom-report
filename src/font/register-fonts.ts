@@ -16,6 +16,7 @@ function uint8ArrayToBase64(bytes: Uint8Array): string {
     const chunk = bytes.subarray(offset, offset + CHUNK_SIZE);
     binary += String.fromCharCode(...chunk);
   }
+
   return btoa(binary);
 }
 
@@ -45,6 +46,7 @@ function validateFontConfig(config: FontConfig): void {
     if (font.family.trim() === '') {
       throw new KapomFontError('FontSource.family must not be empty');
     }
+
     if (typeof font.data === 'string' && !isValidBase64(font.data)) {
       throw new KapomFontError(
         `FontSource '${font.family}': data is not valid base64 (check for a leftover data URI prefix)`,

@@ -16,6 +16,7 @@ export class RawBlock implements MeasurableBlock {
     if (!Number.isFinite(height) || height < 0) {
       throw new KapomLayoutError(`RawNode.measure must return a value >= 0 (got ${height})`);
     }
+
     return height;
   }
 

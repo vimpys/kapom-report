@@ -16,6 +16,7 @@ describe('asDecimalish — boundary ของทุกค่าที่เข�
     for (const bad of [null, undefined, {}, [], true, new Date()]) {
       expect(() => asDecimalish(bad, "column 'Qty'")).toThrow(KapomError);
     }
+
     expect(() => asDecimalish(null, "column 'Qty'")).toThrow(/expected a number or a numeric string/);
   });
 

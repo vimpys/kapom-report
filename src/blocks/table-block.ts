@@ -129,6 +129,7 @@ export class TableBlock<T> implements MeasurableBlock {
     if (node.nested && node.group) {
       throw new KapomError('nested (master-detail) and group cannot be combined yet — pick one');
     }
+
     if (depth > MAX_NESTED_DEPTH) {
       throw new KapomError(
         `nested (master-detail) tables are more than ${MAX_NESTED_DEPTH} levels deep — this is ` +
@@ -136,6 +137,7 @@ export class TableBlock<T> implements MeasurableBlock {
           `row, including the deepest). Return undefined for a row with no detail.`,
       );
     }
+
     this.depth = depth;
     this.styles = new TableStyleResolver(node.style);
   }
@@ -181,13 +183,16 @@ export class TableBlock<T> implements MeasurableBlock {
     if (this.node.data.length === 0) {
       return { measure: (ctx) => this.measureNoData(ctx), render: (ctx) => this.renderNoData(ctx) };
     }
+
     if (this.node.nested) {
       return { measure: (ctx) => this.measureNested(ctx), render: (ctx) => this.renderNested(ctx) };
     }
+
     const group = this.node.group;
     if (group) {
       return { measure: (ctx) => this.measureGrouped(ctx, group), render: (ctx) => this.renderGrouped(ctx, group) };
     }
+
     return { measure: (ctx) => this.measureFlat(ctx), render: (ctx) => this.renderFlat(ctx) };
   }
 
@@ -247,6 +252,7 @@ export class TableBlock<T> implements MeasurableBlock {
       height += rowHeight;
       if (child) height += child.measureHeight(ctx);
     }
+
     return height + footRows * rowHeight;
   }
 
@@ -673,6 +679,7 @@ export class TableBlock<T> implements MeasurableBlock {
             textColor: ctx.theme.onBand,
           });
         }
+
         continue;
       }
 
@@ -749,6 +756,7 @@ export class TableBlock<T> implements MeasurableBlock {
         state.page = data.pageNumber;
         state.counts.clear();
       }
+
       const count = (state.counts.get(data.column.index) ?? 0) + 1;
       state.counts.set(data.column.index, count);
 
@@ -761,6 +769,7 @@ export class TableBlock<T> implements MeasurableBlock {
       if (isBuiltinStandardFont(fontName) && containsThai(text)) {
         throw thaiGlyphError(fontName, text);
       }
+
       data.cell.text = [text];
     };
   }
@@ -775,6 +784,7 @@ export class TableBlock<T> implements MeasurableBlock {
     if (firstChild) {
       return bandHeight + this.requiredSpaceFor(firstChild, bandHeight, rowEstimate);
     }
+
     const bodyRows = node.body?.length ?? 0;
     return bandHeight + rowEstimate + Math.min(node.minRowsWithHeader, bodyRows) * rowEstimate;
   }
@@ -948,6 +958,7 @@ export class TableBlock<T> implements MeasurableBlock {
         'AutoTable did not set lastAutoTable.finalY after render — check the jspdf-autotable version',
       );
     }
+
     // AutoTable paginates on its own → the doc may now be on a different page than the cursor, so it must be synced back
     const pageIndex = ctx.doc.getCurrentPageInfo().pageNumber - 1;
     ctx.syncCursor(pageIndex, finalY);

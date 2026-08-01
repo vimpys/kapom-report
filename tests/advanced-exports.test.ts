@@ -29,6 +29,7 @@ function definedBlockClasses(): string[] {
       }
     }
   }
+
   return [...names].sort();
 }
 
@@ -54,6 +55,7 @@ describe('kapom-report/advanced — export surface', () => {
     for (const name of ['applyTextStyle', 'lineHeightOf', 'splitTextLines', 'measureTextBlockHeight']) {
       expect(typeof (advanced as Record<string, unknown>)[name]).toBe('function');
     }
+
     // drawText อยู่ฝั่ง public เพราะ raw block ใช้ — applyTextStyle เป็นของคู่กันแต่เคยตกไป
     expect(typeof publicApi.drawText).toBe('function');
   });
@@ -62,6 +64,7 @@ describe('kapom-report/advanced — export surface', () => {
     for (const [name, value] of Object.entries(advanced)) {
       expect(value, `advanced.${name}`).toBeDefined();
     }
+
     for (const [name, value] of Object.entries(publicApi)) {
       expect(value, `index.${name}`).toBeDefined();
     }

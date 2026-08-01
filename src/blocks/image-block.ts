@@ -10,6 +10,7 @@ function resolveImageSize(
   if (node.width <= contentWidth) {
     return { width: node.width, height: node.height };
   }
+
   const scale = contentWidth / node.width;
   return { width: contentWidth, height: node.height * scale };
 }
@@ -19,6 +20,7 @@ export class ImageBlock implements MeasurableBlock {
     if (!Number.isFinite(node.width) || node.width <= 0) {
       throw new KapomLayoutError(`ImageNode.width must be > 0 (got ${node.width})`);
     }
+
     if (!Number.isFinite(node.height) || node.height <= 0) {
       throw new KapomLayoutError(`ImageNode.height must be > 0 (got ${node.height})`);
     }

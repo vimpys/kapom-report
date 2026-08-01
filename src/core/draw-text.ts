@@ -40,6 +40,7 @@ export function drawText(
   for (const line of Array.isArray(normalized) ? normalized : [normalized]) {
     assertThaiRenderable(doc, line);
   }
+
   // keep the 3-arg call shape when no text options are given (nearly every caller) so nothing changes for them
   if (textOptions) {
     doc.text(normalized, x, y, textOptions);

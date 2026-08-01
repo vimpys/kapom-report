@@ -58,6 +58,7 @@ export class BandBuilder {
     if (this.rawRender) {
       return { height: this.customHeight ?? 0, render: this.rawRender, ...firstPage };
     }
+
     if (this.blocks.length === 0) return undefined;
     return {
       ...(this.customHeight !== undefined ? { height: this.customHeight } : {}),
@@ -96,6 +97,7 @@ export class KapomReportBuilder<T = unknown> {
     } else {
       this.titleBlocks.push(block);
     }
+
     return this;
   }
 

@@ -23,6 +23,12 @@ export default tseslint.config(
         // ตาม tsconfig noUnusedParameters: _prefix = ตั้งใจไม่ใช้ (contract ต้องรับ param แต่ implementation ไม่ต้องใช้)
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
+      // style: ปิด block (`}`) แล้วมีโค้ดต่อ → ต้องเว้น 1 บรรทัด ให้แต่ละ guard/branch
+      // เป็นหน่วยที่แยกกันด้วยตา (เห็นผลชัดสุดใน validation ที่เขียน if ต่อกันรัวๆ)
+      // auto-fix ได้ด้วย `npx eslint . --fix`
+      // NOTE: กฎ formatting ย้ายไป @stylistic/eslint-plugin ตั้งแต่ ESLint 9 — ตัวนี้ยังอยู่ใน core
+      // ของ v10 ถ้า upgrade แล้วหาย ให้ลง @stylistic แล้วใช้ชื่อ '@stylistic/padding-line-between-statements'
+      'padding-line-between-statements': ['error', { blankLine: 'always', prev: 'block-like', next: '*' }],
     },
   },
   {

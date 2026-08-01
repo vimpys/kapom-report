@@ -41,23 +41,28 @@ export class PdfCursor implements CursorState {
     if (!Number.isFinite(pageWidth) || pageWidth <= 0) {
       throw new KapomLayoutError(`pageWidth must be a positive number (got ${pageWidth})`);
     }
+
     if (!Number.isFinite(pageHeight) || pageHeight <= 0) {
       throw new KapomLayoutError(`pageHeight must be a positive number (got ${pageHeight})`);
     }
+
     for (const side of ['top', 'bottom', 'left', 'right'] as const) {
       const value = margins[side];
       if (!Number.isFinite(value) || value < 0) {
         throw new KapomLayoutError(`margin.${side} must be >= 0 (got ${value})`);
       }
     }
+
     for (const [name, value] of [['headerHeight', headerHeight], ['footerHeight', footerHeight]] as const) {
       if (!Number.isFinite(value) || value < 0) {
         throw new KapomLayoutError(`${name} must be >= 0 (got ${value})`);
       }
     }
+
     if (pageWidth - margins.left - margins.right <= 0) {
       throw new KapomLayoutError('left+right margins exceed the page width — no content area left');
     }
+
     if (pageHeight - margins.top - margins.bottom - headerHeight - footerHeight <= 0) {
       throw new KapomLayoutError('margins + reserved header/footer heights exceed the page height — no content area left');
     }
@@ -116,6 +121,7 @@ export class PdfCursor implements CursorState {
     if (!Number.isFinite(amount) || amount < 0) {
       throw new KapomLayoutError(`advanceY requires a value >= 0 (got ${amount})`);
     }
+
     this.currentY += amount;
   }
 
@@ -131,6 +137,7 @@ export class PdfCursor implements CursorState {
     if (!Number.isFinite(requiredHeight) || requiredHeight < 0) {
       throw new KapomLayoutError(`ensureSpace requires a value >= 0 (got ${requiredHeight})`);
     }
+
     if (requiredHeight <= this.remainingHeight) return false;
     if (this.isAtTopOfPage) return false;
     this.breakPage();
@@ -155,9 +162,11 @@ export class PdfCursor implements CursorState {
         `syncTo: pageIndex must be an integer >= current page ${this.currentPageIndex} (got ${pageIndex})`,
       );
     }
+
     if (!Number.isFinite(y) || y < 0) {
       throw new KapomLayoutError(`syncTo: y must be >= 0 (got ${y})`);
     }
+
     this.currentPageIndex = pageIndex;
     this.currentY = y;
     this.currentX = this.margins.left;

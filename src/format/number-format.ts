@@ -37,6 +37,7 @@ function formatterFor(resolved: ResolvedNumberFormat): Intl.NumberFormat {
     });
     formatterCache.set(key, formatter);
   }
+
   return formatter;
 }
 

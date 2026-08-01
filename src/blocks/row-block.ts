@@ -34,6 +34,7 @@ export function resolveRowColumnWidths(
       `row: fixed column widths + gaps (${(fixedTotal + gapTotal).toFixed(2)}) leave no room for the flexible columns within contentWidth ${contentWidth.toFixed(2)}`,
     );
   }
+
   if (flexCount === 0 && fixedTotal + gapTotal > contentWidth) {
     throw new KapomLayoutError(
       `row: fixed column widths + gaps (${(fixedTotal + gapTotal).toFixed(2)}) exceed contentWidth ${contentWidth.toFixed(2)}`,
@@ -48,6 +49,7 @@ export function resolveRowColumnWidths(
     resolved.push({ x, width });
     x += width + gap;
   }
+
   return resolved;
 }
 
@@ -65,14 +67,17 @@ export function assertConfinedChildAllowed(input: ReportNodeInput<unknown>, cont
       `${container}: a '${node.type}' block is not supported inside a ${container} (v1) — it paginates or breaks pages itself, which conflicts with the reserved box it would render into`,
     );
   }
+
   if (node.type === 'bottomAnchor') {
     throw new KapomError(
       `${container}: a 'bottomAnchor' block is not supported inside a ${container} — it pins to the page bottom (contentBottom), which has no meaning inside a fixed zone; use it at the top level`,
     );
   }
+
   if (node.type === 'stack' || node.type === 'box') {
     for (const child of node.children) assertConfinedChildAllowed(child, container);
   }
+
   if (node.type === 'row') {
     for (const column of node.columns) {
       for (const child of column.children) assertConfinedChildAllowed(child, container);
@@ -85,12 +90,15 @@ export function assertRowNodeValid(node: RowNode<unknown>): void {
   if (node.columns.length === 0) {
     throw new KapomError('row: columns must not be empty');
   }
+
   for (const column of node.columns) {
     if (column.width !== undefined && (!Number.isFinite(column.width) || column.width <= 0)) {
       throw new KapomLayoutError(`row: column width must be > 0 (got ${column.width})`);
     }
+
     for (const child of column.children) assertConfinedChildAllowed(child, 'row column');
   }
+
   if (node.gap !== undefined && (!Number.isFinite(node.gap) || node.gap < 0)) {
     throw new KapomLayoutError(`row: gap must be >= 0 (got ${node.gap})`);
   }

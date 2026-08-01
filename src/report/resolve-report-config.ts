@@ -142,6 +142,7 @@ function resolveColumn<T>(input: KapomColumnInput<T>): TableColumn<T> {
   if (isColumnGroupInput(input)) {
     return { ...input, columns: input.columns.map(resolveColumn) };
   }
+
   return isShorthandColumn(input) ? { ...input, type: 'data' } : input;
 }
 
@@ -157,11 +158,13 @@ function resolveGroup<T>(input: KapomGroupInput<T> | undefined): GroupResolver<T
     if (input.length === 0) {
       throw new KapomError('group: array must contain at least 1 key (fail-fast against silently ignored config)');
     }
+
     return input.reduceRight<GroupResolver<T> | undefined>(
       (subGroup, by) => ({ by, ...(subGroup !== undefined ? { subGroup } : {}) }),
       undefined,
     );
   }
+
   return typeof input === 'object' ? input : { by: input };
 }
 

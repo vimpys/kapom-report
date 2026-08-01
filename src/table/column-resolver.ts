@@ -57,6 +57,7 @@ export function visibleColumns<T>(
   if (visible.length === 0) {
     throw new KapomError('table requires at least 1 visible column');
   }
+
   return visible;
 }
 
@@ -127,8 +128,10 @@ function resolveCell<T>(
           col.numberFormat,
         );
       }
+
       return stringifyCell(value);
     }
+
     case 'rowNumber': {
       const mode = col.mode ?? DEFAULT_ROW_NUMBER_MODE;
       // 'per-page' can't be resolved here — this step is pure and jsPDF-agnostic, so it has no
@@ -140,6 +143,7 @@ function resolveCell<T>(
       const n = (col.startAt ?? 1) + base + localIndex;
       return col.formatter ? col.formatter(n) : String(n);
     }
+
     case 'computed': {
       const value = col.compute(row);
       if (col.formatter) return col.formatter(value, row);
@@ -147,6 +151,7 @@ function resolveCell<T>(
       // the contract is only a type, so the returned value is still checked like any other input
       return formatNumber(asDecimalishCell(value, col.header, localIndex), numeric, col.numberFormat);
     }
+
     case 'runningTotal': {
       const previous = state.runningTotals[colIndex] ?? 0;
       const accumulated = numeric.add(previous, asDecimalishCell(col.valueOf(row), col.header, localIndex));
@@ -156,6 +161,7 @@ function resolveCell<T>(
         : formatNumber(accumulated, numeric, col.numberFormat);
     }
   }
+
   const exhaustive: never = col;
   return exhaustive;
 }
