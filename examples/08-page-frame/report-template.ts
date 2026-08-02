@@ -80,7 +80,7 @@ export function buildInventoryReport(stock: StockRow[]): KapomReport {
   // table even starts — see CLAUDE.md notes on table pagination.
   report.table({
     columns: [
-      c.rowNumber({ align: 'right', width: 12 }),
+      c.rowNumber({ width: 12 }),
       c.data('sku', 'SKU', { width: 34 }),
       c.data('item', 'Item'),
       c.data('qty', 'Qty', { align: 'right', aggregate: 'sum' }),

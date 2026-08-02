@@ -150,8 +150,23 @@ export interface ResolvedAlign {
   data: HAlign;
 }
 
+/**
+ * Whether a column is numeric on the strength of what it already declares — no inspection of the
+ * data. `computed`/`runningTotal` produce a `Decimalish` by contract and `rowNumber` counts rows;
+ * a data column that set `numberFormat` has said as much itself. Deliberately not inferred from the
+ * values: a column of order numbers is numeric to a scan and is not a quantity, and this stays the
+ * question-free half of the rule.
+ */
+export function isNumericColumn<T>(col: ReportColumn<T>): boolean {
+  if (col.type === 'computed' || col.type === 'runningTotal' || col.type === 'rowNumber') return true;
+
+  return col.numberFormat !== undefined;
+}
+
 export function resolveColumnAlign<T>(col: ReportColumn<T>): ResolvedAlign {
-  const data = col.align ?? 'left';
+  // numbers read right-aligned in every report, so a column already known to hold them doesn't
+  // need `align: 'right'` spelled out — an explicit `align` still wins, this is only the default
+  const data = col.align ?? (isNumericColumn(col) ? 'right' : 'left');
 
   // header defaults to center (a common report convention — e.g. a centered 'Qty' over right-aligned
   // numbers); set `headerAlign` to override per column

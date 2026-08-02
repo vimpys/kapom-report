@@ -52,10 +52,9 @@ function childTable(items: readonly LineItem[]): TableNode<unknown> {
     type: 'table',
     columns: [
       c.data('item', 'Item'),
-      c.data('unitPrice', 'Unit price', { align: 'right', numberFormat: { fractionDigits: 2 } }),
+      c.data('unitPrice', 'Unit price', { numberFormat: { fractionDigits: 2 } }),
       c.data('qty', 'Qty', { align: 'right', aggregate: 'sum' }),
       c.computed('Line total', (li) => li.unitPrice * li.qty, {
-        align: 'right',
         aggregate: 'sum',
         numberFormat: { fractionDigits: 2 },
         // per-column conditional cell style: only this cell turns red when the line total is negative
@@ -83,9 +82,8 @@ function masterTable(orders: readonly Order[]): TableNode<Order> {
       c.rowNumber(),
       c.group('Order info', [c.data('poNumber', 'PO no.'), c.data('vendor', 'Vendor')]),
       c.group('Financials', [
-        c.computed('Qty', orderQty, { align: 'right', aggregate: 'sum', numberFormat: { fractionDigits: 0 } }),
+        c.computed('Qty', orderQty, { aggregate: 'sum', numberFormat: { fractionDigits: 0 } }),
         c.computed('Amount', orderAmount, {
-          align: 'right',
           aggregate: 'sum',
           numberFormat: { fractionDigits: 2 },
           // the master Amount cell for an order that nets negative gets a soft red highlight too

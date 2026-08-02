@@ -49,7 +49,7 @@ export function buildBranchSales(branchSales: BranchSale[]): KapomReport {
         // column); if that were a narrow rowNumber column, a long label would wrap awkwardly
         c.data('product', 'Item'),
         c.data('qty', 'Qty', { align: 'right', aggregate: 'sum' }),
-        c.data('price', 'Price', { align: 'right', numberFormat: {} }),
+        c.data('price', 'Price', { numberFormat: {} }),
         c.computed('Amount', (row) => nativeNumeric.multiply(row.qty, row.price), { align: 'right', aggregate: 'sum' }),
       ],
       data: branchSales,

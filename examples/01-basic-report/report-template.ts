@@ -77,7 +77,6 @@ export function buildCombinedReport(sales: Sale[], ledger: LedgerEntry[], orders
       {
         key: 'amount',
         header: 'Amount',
-        align: 'right',
         width: 35,
         numberFormat: {}, // {} = DEFAULT_NUMBER_FORMAT (thousands separator + 2 decimals)
         aggregate: 'sum',
@@ -100,21 +99,19 @@ export function buildCombinedReport(sales: Sale[], ledger: LedgerEntry[], orders
   const orderTable: TableNode<OrderLine> = {
     type: 'table',
     columns: [
-      { type: 'rowNumber', header: '#', align: 'right', width: 12 },
+      { type: 'rowNumber', header: '#', width: 12 },
       { key: 'product', header: 'Product' },
       { key: 'qty', header: 'Qty', align: 'right', aggregate: 'sum' },
-      { key: 'price', header: 'Unit Price', align: 'right', numberFormat: {}, aggregate: 'avg' },
+      { key: 'price', header: 'Unit Price', numberFormat: {}, aggregate: 'avg' },
       {
         type: 'computed',
         header: 'Amount',
-        align: 'right',
         compute: (row) => nativeNumeric.multiply(row.qty, row.price),
         aggregate: 'sum',
       },
       {
         type: 'runningTotal',
         header: 'Running',
-        align: 'right',
         valueOf: (row) => nativeNumeric.multiply(row.qty, row.price),
       },
     ],

@@ -57,7 +57,7 @@ const masterColumns: ReportColumn<Batch>[] = [
   b.data('openDate', 'Open Date'),
   b.data('bank', 'Bank'),
   b.data('qty', 'Qty', { align: 'right', aggregate: 'sum' }),
-  b.data('sumPayments', 'Sum Payments', { align: 'right', numberFormat: {}, aggregate: 'sum' }),
+  b.data('sumPayments', 'Sum Payments', { numberFormat: {}, aggregate: 'sum' }),
 ];
 
 /** the detail table for one batch — `undefined` would mean "this row has no detail to show" */
@@ -69,7 +69,7 @@ const paymentsOf = (row: Batch): TableNode<unknown> | undefined =>
       p.data('card', 'Card#'),
       p.data('method', 'Method'),
       p.data('billingStatus', 'Billing Status'),
-      p.data('amount', 'Amount', { align: 'right', numberFormat: {} }),
+      p.data('amount', 'Amount', { numberFormat: {} }),
     ],
     data: row.payments,
   } satisfies TableNode<Payment> as unknown as TableNode<unknown>);

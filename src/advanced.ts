@@ -79,6 +79,7 @@ export { resolvePageNumber, renderPageNumber } from './core/page-number';
 // ── column introspection helpers ────────────────────────────────────────────
 export {
   resolveColumnAlign,
+  isNumericColumn,
   isColumnVisible,
   isColumnGroup,
   flattenColumns,

@@ -94,11 +94,10 @@ function partsTable(parts: readonly PartUsed[]): KapomTableInput<PartUsed> {
     columns: [
       { key: 'name', header: 'Item' },
       { key: 'qty', header: 'Qty', align: 'center', width: 20 },
-      { key: 'unitPrice', header: 'Unit Price', align: 'right', width: 30, numberFormat: {}, aggregate: 'sum' },
+      { key: 'unitPrice', header: 'Unit Price', width: 30, numberFormat: {}, aggregate: 'sum' },
       {
         type: 'computed',
         header: 'Total',
-        align: 'right',
         width: 30,
         compute: (row) => row.qty * row.unitPrice,
         numberFormat: {},

@@ -55,12 +55,11 @@ function catalogTable(sales: CatalogSale[]): KapomTableInput<CatalogSale> {
 
   return {
     columns: [
-      c.rowNumber({ align: 'right', width: 12, mode: 'per-group' }),
+      c.rowNumber({ width: 12, mode: 'per-group' }),
       c.data('product', 'Product'),
       c.data('qty', 'Qty', { align: 'right', aggregate: 'sum' }),
-      c.data('price', 'Price', { align: 'right', numberFormat: {} }),
+      c.data('price', 'Price', { numberFormat: {} }),
       c.computed('Amount', (row) => nativeNumeric.multiply(row.qty, row.price), {
-        align: 'right',
         aggregate: 'sum',
         numberFormat: { fractionDigits: 2 },
       }),

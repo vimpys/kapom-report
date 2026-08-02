@@ -173,8 +173,8 @@ export function buildQuotation(quotation: Quotation): KapomReport {
       columns: [
         { key: 'description', header: 'Description' },
         { key: 'qty', header: 'Quantity', align: 'center' },
-        { key: 'unitPrice', header: 'Price', align: 'right', numberFormat: {} },
-        { type: 'computed', header: 'Total', align: 'right', compute: (row) => row.qty * row.unitPrice, numberFormat: {} },
+        { key: 'unitPrice', header: 'Price', numberFormat: {} },
+        { type: 'computed', header: 'Total', compute: (row) => row.qty * row.unitPrice, numberFormat: {} },
       ],
       data: quotation.items,
       style: { header: { fillColor: BRAND_HEAD }, zebra: { even: ZEBRA_FILL } },
