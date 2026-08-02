@@ -93,6 +93,21 @@ interface SegmentContext<T> {
   perPage: PerPageRowNumberState;
 }
 
+/**
+ * Everything one standalone total row needs. Bundled rather than passed positionally because the
+ * list ran to seven, three of them adjacent numbers — `labelIndex` and `rowEstimate` swapped places
+ * would still compile and would only show up as a wrong-looking page.
+ */
+interface TotalRowParams {
+  foot: readonly string[];
+  labelIndex: number;
+  columnStyles: Record<string, Partial<Styles>>;
+  aligns: readonly ResolvedAlign[];
+  /** vertical room to reserve before drawing (the row never splits) */
+  rowEstimate: number;
+  style: TotalRowStyle;
+}
+
 /** the styling of a single-total row (grand total or a non-leaf subtotal) — see renderSingleTotalRow */
 interface TotalRowStyle {
   token: TextStyle;
@@ -368,22 +383,6 @@ export class TableBlock<T> implements MeasurableBlock {
     };
   }
 
-  /**
-   * Grand foot for a nested table whose last row carried a child — no trailing body rows for the
-   * foot to attach to, so reuse the single-total-row mechanism the grand total already relies on
-   * (a foot-only AutoTable call is an edge case the library doesn't guarantee).
-   */
-  private renderTrailingGrandFoot(
-    ctx: RenderContext,
-    foot: readonly string[],
-    labelIndex: number,
-    columnStyles: Record<string, Partial<Styles>>,
-    aligns: readonly ResolvedAlign[],
-  ): void {
-    const { rowEstimate } = this.estimateRowMetrics(ctx);
-    this.renderSingleTotalRow(ctx, foot, labelIndex, columnStyles, aligns, rowEstimate, this.grandTotalStyle(ctx));
-  }
-
   // ── flat (ungrouped) ────────────────────────────────────────────────
 
   private renderFlat(ctx: RenderContext): void {
@@ -486,8 +485,17 @@ export class TableBlock<T> implements MeasurableBlock {
     if (segmentStart < rows.length) {
       flush(rows.length, content.foot); // trailing rows carry the grand foot
     } else if (content.foot) {
-      // the last row itself had a child — no trailing rows left for the foot to attach to
-      this.renderTrailingGrandFoot(ctx, content.foot, labelIndex, columnStyles, content.aligns);
+      // the last row itself had a child, so there are no trailing body rows for a foot to attach
+      // to — fall back to the standalone total row the grand total already uses (a foot-only
+      // AutoTable call is an edge case the library doesn't guarantee)
+      this.renderSingleTotalRow(ctx, {
+        foot: content.foot,
+        labelIndex,
+        columnStyles,
+        aligns: content.aligns,
+        rowEstimate: this.estimateRowMetrics(ctx).rowEstimate,
+        style: this.grandTotalStyle(ctx),
+      });
     }
   }
 
@@ -665,7 +673,14 @@ export class TableBlock<T> implements MeasurableBlock {
       // the grand total is a single, boldly-styled body row — not AutoTable's own foot, because
       // a table with only a foot and no body is an edge case the library doesn't guarantee (same
       // reasoning as a non-leaf group's subtotal — see renderSingleTotalRow)
-      this.renderSingleTotalRow(ctx, grandFoot, labelIndex, columnStyles, aligns, rowEstimate, this.grandTotalStyle(ctx));
+      this.renderSingleTotalRow(ctx, {
+        foot: grandFoot,
+        labelIndex,
+        columnStyles,
+        aligns,
+        rowEstimate,
+        style: this.grandTotalStyle(ctx),
+      });
     }
   }
 
@@ -684,10 +699,17 @@ export class TableBlock<T> implements MeasurableBlock {
         this.renderGroupTree(ctx, node.children, shared);
         // a non-leaf subtotal has no segment to attach a foot to — drawn as a separate single row instead
         if (node.foot) {
-          this.renderSingleTotalRow(ctx, node.foot, shared.labelIndex, shared.columnStyles, shared.aligns, shared.rowEstimate, {
-            token: ctx.typography.groupFooter,
-            fillColor: ctx.theme.bandFill,
-            textColor: ctx.theme.onBand,
+          this.renderSingleTotalRow(ctx, {
+            foot: node.foot,
+            labelIndex: shared.labelIndex,
+            columnStyles: shared.columnStyles,
+            aligns: shared.aligns,
+            rowEstimate: shared.rowEstimate,
+            style: {
+              token: ctx.typography.groupFooter,
+              fillColor: ctx.theme.bandFill,
+              textColor: ctx.theme.onBand,
+            },
           });
         }
 
@@ -810,15 +832,8 @@ export class TableBlock<T> implements MeasurableBlock {
    * (observed for real on a demo — the background faded to gray instead of the intended color);
    * 'plain' doesn't define alternateRow at all, sidestepping the problem entirely.
    */
-  private renderSingleTotalRow(
-    ctx: RenderContext,
-    foot: readonly string[],
-    labelIndex: number,
-    columnStyles: Record<string, Partial<Styles>>,
-    aligns: readonly ResolvedAlign[],
-    rowEstimate: number,
-    style: TotalRowStyle,
-  ): void {
+  private renderSingleTotalRow(ctx: RenderContext, params: TotalRowParams): void {
+    const { foot, labelIndex, columnStyles, aligns, rowEstimate, style } = params;
     ctx.ensureSpace(rowEstimate);
     const base: Partial<Styles> = {
       ...this.styles.resolveTokenStyles(ctx, style.token),
