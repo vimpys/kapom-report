@@ -34,4 +34,9 @@ jobs:
       # not in the source) and skip themselves when dist/ is missing
       - run: npm run build
       - run: npm test
+      # the README advertises browser support, and nothing above can check it: typecheck, lint and
+      # the tests all run on Node, where the Node builtins exist and nothing is tree-shaken. Both
+      # browser bugs this project has had were invisible to all of them and only showed at bundle
+      # time — see scripts/check-browser-bundle.mjs
+      - run: npm run check:browser
       - run: npm run demo

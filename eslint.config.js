@@ -66,4 +66,11 @@ export default tseslint.config(
     files: ['**/*.js', '**/*.mjs'],
     ...tseslint.configs.disableTypeChecked,
   },
+  {
+    // script ใน scripts/ รันด้วย Node ตรงๆ — ประกาศ global เท่าที่ใช้จริง (โปรเจกต์ไม่มี package `globals`)
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      globals: { process: 'readonly', console: 'readonly' },
+    },
+  },
 );
